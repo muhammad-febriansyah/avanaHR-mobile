@@ -1,5 +1,7 @@
 // Employee self-service models for the AvanaHR mobile API (all {data}-enveloped).
 
+import '../../core/config/env.dart';
+
 class LeaveType {
   final int id;
   final String code;
@@ -186,7 +188,7 @@ class FieldVisitItem {
         clientName: j['client_name'],
         purpose: j['purpose'],
         notes: j['notes'],
-        photoUrl: j['photo_url'],
+        photoUrl: Env.resolveMedia(j['photo_url'] as String?),
         status: j['status'] ?? '',
       );
 }

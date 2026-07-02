@@ -1,3 +1,5 @@
+import '../../core/config/env.dart';
+
 /// A mobile intro slide served by the web `/onboarding-slides` endpoint.
 /// [imageUrl] may point to an SVG (vector) or a raster image.
 class OnboardingSlide {
@@ -17,7 +19,7 @@ class OnboardingSlide {
     return OnboardingSlide(
       title: (json['title'] ?? '').toString(),
       subtitle: (json['subtitle'] ?? '').toString(),
-      imageUrl: json['image_url'],
+      imageUrl: Env.resolveMedia(json['image_url'] as String?),
     );
   }
 }

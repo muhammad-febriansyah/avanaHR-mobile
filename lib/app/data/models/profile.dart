@@ -1,3 +1,5 @@
+import '../../core/config/env.dart';
+
 class Employment {
   final String? company;
   final String? branch;
@@ -59,7 +61,7 @@ class Profile {
         address: json['address'],
         status: json['status'] ?? '',
         joinDate: json['join_date'],
-        photoUrl: json['photo_url'],
+        photoUrl: Env.resolveMedia(json['photo_url'] as String?),
         employment: json['employment'] != null
             ? Employment.fromJson(Map<String, dynamic>.from(json['employment']))
             : null,

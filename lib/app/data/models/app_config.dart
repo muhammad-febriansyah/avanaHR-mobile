@@ -1,3 +1,5 @@
+import '../../core/config/env.dart';
+
 class AppConfig {
   final String siteName;
   final String tagline;
@@ -20,8 +22,8 @@ class AppConfig {
     return AppConfig(
       siteName: (json['site_name'] ?? 'AvanaHR').toString(),
       tagline: (json['tagline'] ?? 'Advancing People, Empowering Growth').toString(),
-      logoUrl: json['logo_url'],
-      faviconUrl: json['favicon_url'],
+      logoUrl: Env.resolveMedia(json['logo_url'] as String?),
+      faviconUrl: Env.resolveMedia(json['favicon_url'] as String?),
       contactEmail: contact['email'],
       contactPhone: contact['phone'],
     );
