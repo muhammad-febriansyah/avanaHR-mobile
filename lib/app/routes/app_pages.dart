@@ -2,6 +2,12 @@ import 'package:get/get.dart';
 
 import '../modules/announcement/announcement_binding.dart';
 import '../modules/announcement/announcement_view.dart';
+import '../modules/dokumen/dokumen_binding.dart';
+import '../modules/dokumen/dokumen_view.dart';
+import '../modules/shift_swap/shift_swap_binding.dart';
+import '../modules/shift_swap/shift_swap_view.dart';
+import '../modules/visiting/visiting_binding.dart';
+import '../modules/visiting/visiting_view.dart';
 import '../modules/attendance/attendance_binding.dart';
 import '../modules/attendance/attendance_view.dart';
 import '../modules/home/bindings/home_binding.dart';
@@ -103,6 +109,21 @@ class AppPages {
       name: _Paths.ANNOUNCEMENT,
       page: () => const AnnouncementView(),
       binding: AnnouncementBinding(),
+    ),
+    GetPage(
+      name: _Paths.DOKUMEN,
+      page: () => const DokumenView(),
+      binding: DokumenBinding(),
+    ),
+    GetPage(
+      name: _Paths.VISITING,
+      page: () => const VisitingView(),
+      binding: VisitingBinding(),
+    ),
+    GetPage(
+      name: _Paths.SHIFT_SWAP,
+      page: () => const ShiftSwapView(),
+      binding: ShiftSwapBinding(),
     ),
   ];
 }

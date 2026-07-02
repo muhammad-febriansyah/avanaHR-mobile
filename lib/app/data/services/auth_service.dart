@@ -30,7 +30,7 @@ class AuthService extends GetxService {
       }
       return ApiClient.messageFrom(res, 'Email atau kata sandi salah.');
     } on DioException catch (e) {
-      return ApiClient.messageFrom(e.response, 'Gagal terhubung ke server.');
+      return ApiClient.errorMessage(e);
     }
   }
 

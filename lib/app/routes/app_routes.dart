@@ -17,6 +17,9 @@ abstract class Routes {
   static const WFH = _Paths.WFH;
   static const REIMBURSEMENT = _Paths.REIMBURSEMENT;
   static const ANNOUNCEMENT = _Paths.ANNOUNCEMENT;
+  static const DOKUMEN = _Paths.DOKUMEN;
+  static const VISITING = _Paths.VISITING;
+  static const SHIFT_SWAP = _Paths.SHIFT_SWAP;
 }
 
 abstract class _Paths {
@@ -36,4 +39,7 @@ abstract class _Paths {
   static const WFH = '/wfh';
   static const REIMBURSEMENT = '/reimbursement';
   static const ANNOUNCEMENT = '/announcement';
+  static const DOKUMEN = '/dokumen';
+  static const VISITING = '/visiting';
+  static const SHIFT_SWAP = '/shift-swap';
 }

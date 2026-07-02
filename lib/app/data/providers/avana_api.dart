@@ -202,4 +202,70 @@ class AvanaApi {
     final res = await _dio.get('/mss/team');
     return (res.data['data'] as List?) ?? [];
   }
+
+  // ---- Documents ----
+  Future<List<DocumentItem>> documents() async {
+    final res = await _dio.get('/me/documents');
+    final list = (res.data['data'] as List?) ?? [];
+    return list.map((e) => DocumentItem.fromJson(Map<String, dynamic>.from(e))).toList();
+  }
+
+  Future<Response> submitDocument({required String name, String? type, required String filePath}) async {
+    final form = FormData.fromMap({
+      'name': name,
+      if (type != null && type.isNotEmpty) 'type': type,
+      'file': await MultipartFile.fromFile(filePath, filename: filePath.split('/').last),
+    });
+    return _dio.post('/me/documents', data: form);
+  }
+
+  // ---- Field visits ----
+  Future<List<FieldVisitItem>> fieldVisits() async {
+    final res = await _dio.get('/me/field-visits');
+    final list = (res.data['data'] as List?) ?? [];
+    return list.map((e) => FieldVisitItem.fromJson(Map<String, dynamic>.from(e))).toList();
+  }
+
+  Future<Response> submitFieldVisit({
+    required String visitDate,
+    required String location,
+    String? clientName,
+    String? purpose,
+    String? notes,
+    double? latitude,
+    double? longitude,
+    String? photoPath,
+  }) async {
+    final form = FormData.fromMap({
+      'visit_date': visitDate,
+      'location': location,
+      if (clientName != null && clientName.isNotEmpty) 'client_name': clientName,
+      if (purpose != null && purpose.isNotEmpty) 'purpose': purpose,
+      if (notes != null && notes.isNotEmpty) 'notes': notes,
+      if (latitude != null) 'latitude': latitude,
+      if (longitude != null) 'longitude': longitude,
+      if (photoPath != null) 'photo': await MultipartFile.fromFile(photoPath, filename: photoPath.split('/').last),
+    });
+    return _dio.post('/me/field-visits', data: form);
+  }
+
+  // ---- Shift swaps ----
+  Future<List<ShiftSwapItem>> shiftSwaps() async {
+    final res = await _dio.get('/me/shift-swaps');
+    final list = (res.data['data'] as List?) ?? [];
+    return list.map((e) => ShiftSwapItem.fromJson(Map<String, dynamic>.from(e))).toList();
+  }
+
+  Future<List<Colleague>> swapColleagues() async {
+    final res = await _dio.get('/me/shift-swaps/colleagues');
+    final list = (res.data['data'] as List?) ?? [];
+    return list.map((e) => Colleague.fromJson(Map<String, dynamic>.from(e))).toList();
+  }
+
+  Future<Response> submitShiftSwap({required int targetId, required String date, String? reason}) =>
+      _dio.post('/me/shift-swaps', data: {
+        'target_id': targetId,
+        'date': date,
+        if (reason != null && reason.isNotEmpty) 'reason': reason,
+      });
 }

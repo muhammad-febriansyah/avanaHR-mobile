@@ -137,3 +137,100 @@ class AnnouncementItem {
         publishedAt: j['published_at'],
       );
 }
+
+class DocumentItem {
+  final int id;
+  final String name;
+  final String? type;
+  final String? url;
+  final int size;
+  final String? uploadedAt;
+
+  DocumentItem({required this.id, required this.name, required this.size, this.type, this.url, this.uploadedAt});
+
+  factory DocumentItem.fromJson(Map<String, dynamic> j) => DocumentItem(
+        id: j['id'],
+        name: j['name'] ?? '',
+        type: j['type'],
+        url: j['url'],
+        size: (j['size'] ?? 0) is int ? j['size'] : int.tryParse('${j['size']}') ?? 0,
+        uploadedAt: j['uploaded_at'],
+      );
+}
+
+class FieldVisitItem {
+  final int id;
+  final String visitDate;
+  final String location;
+  final String? clientName;
+  final String? purpose;
+  final String? notes;
+  final String? photoUrl;
+  final String status;
+
+  FieldVisitItem({
+    required this.id,
+    required this.visitDate,
+    required this.location,
+    required this.status,
+    this.clientName,
+    this.purpose,
+    this.notes,
+    this.photoUrl,
+  });
+
+  factory FieldVisitItem.fromJson(Map<String, dynamic> j) => FieldVisitItem(
+        id: j['id'],
+        visitDate: j['visit_date'] ?? '',
+        location: j['location'] ?? '',
+        clientName: j['client_name'],
+        purpose: j['purpose'],
+        notes: j['notes'],
+        photoUrl: j['photo_url'],
+        status: j['status'] ?? '',
+      );
+}
+
+class ShiftSwapItem {
+  final int id;
+  final String date;
+  final String? requester;
+  final String? target;
+  final String direction;
+  final String? reason;
+  final String status;
+
+  ShiftSwapItem({
+    required this.id,
+    required this.date,
+    required this.direction,
+    required this.status,
+    this.requester,
+    this.target,
+    this.reason,
+  });
+
+  factory ShiftSwapItem.fromJson(Map<String, dynamic> j) => ShiftSwapItem(
+        id: j['id'],
+        date: j['date'] ?? '',
+        requester: j['requester'],
+        target: j['target'],
+        direction: j['direction'] ?? 'outgoing',
+        reason: j['reason'],
+        status: j['status'] ?? '',
+      );
+}
+
+class Colleague {
+  final int id;
+  final String name;
+  final String? employeeNumber;
+
+  Colleague({required this.id, required this.name, this.employeeNumber});
+
+  factory Colleague.fromJson(Map<String, dynamic> j) => Colleague(
+        id: j['id'],
+        name: j['name'] ?? '',
+        employeeNumber: j['employee_number'],
+      );
+}

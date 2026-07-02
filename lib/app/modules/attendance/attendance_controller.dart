@@ -55,7 +55,7 @@ class AttendanceController extends GetxController {
         AppToast.error(ApiClient.messageFrom(res, 'Gagal mencatat absensi.'));
       }
     } on DioException catch (e) {
-      AppToast.error(ApiClient.messageFrom(e.response, 'Gagal terhubung ke server.'));
+      AppToast.error(ApiClient.errorMessage(e));
     } finally {
       isClocking.value = false;
     }

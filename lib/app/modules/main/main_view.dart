@@ -4,6 +4,7 @@ import 'package:get/get.dart';
 import 'package:iconsax/iconsax.dart';
 
 import '../../core/theme/app_colors.dart';
+import '../../data/services/connectivity_service.dart';
 import '../announcement/announcement_view.dart';
 import '../attendance/attendance_view.dart';
 import '../home/views/home_tab.dart';
@@ -26,18 +27,55 @@ class MainView extends GetView<MainController> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.muted,
-      body: Obx(
-        () => IndexedStack(
-          index: controller.tab.value,
-          children: const [
-            HomeTab(),
-            AttendanceView(),
-            AnnouncementView(),
-            ProfileView(),
-          ],
-        ),
+      body: Column(
+        children: [
+          _offlineBanner(),
+          Expanded(
+            child: Obx(
+              () => IndexedStack(
+                index: controller.tab.value,
+                children: const [
+                  HomeTab(),
+                  AttendanceView(),
+                  AnnouncementView(),
+                  ProfileView(),
+                ],
+              ),
+            ),
+          ),
+        ],
       ),
       bottomNavigationBar: _bottomNav(),
+    );
+  }
+
+  /// A slim red bar shown whenever the device loses its network connection.
+  Widget _offlineBanner() {
+    final connectivity = Get.find<ConnectivityService>();
+    return Obx(
+      () => AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        height: connectivity.online.value ? 0 : 30.h,
+        width: double.infinity,
+        color: const Color(0xFFDC2626),
+        alignment: Alignment.center,
+        child: connectivity.online.value
+            ? const SizedBox.shrink()
+            : SafeArea(
+                bottom: false,
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(Iconsax.wifi_square, size: 14.sp, color: Colors.white),
+                    SizedBox(width: 6.w),
+                    Text(
+                      'Tidak ada koneksi internet',
+                      style: TextStyle(fontSize: 11.5.sp, color: Colors.white, fontWeight: FontWeight.w600),
+                    ),
+                  ],
+                ),
+              ),
+      ),
     );
   }
 

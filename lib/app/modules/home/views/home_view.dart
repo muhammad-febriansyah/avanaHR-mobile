@@ -194,6 +194,9 @@ class HomeView extends GetView<HomeController> {
       _Action('WFH', Iconsax.house, Routes.WFH, const Color(0xFF0EA5E9)),
       _Action('Reimburse', Iconsax.wallet_money, Routes.REIMBURSEMENT, const Color(0xFFDB2777)),
       _Action('Slip Gaji', Iconsax.receipt_2, Routes.PAYSLIP, const Color(0xFF0891B2)),
+      _Action('Tukar Shift', Iconsax.arrow_swap_horizontal, Routes.SHIFT_SWAP, const Color(0xFF0D9488)),
+      _Action('Dokumen', Iconsax.document_text, Routes.DOKUMEN, const Color(0xFF9333EA)),
+      _Action('Visiting', Iconsax.location, Routes.VISITING, const Color(0xFFE11D48)),
       _Action('Pengumuman', Iconsax.volume_high, Routes.ANNOUNCEMENT, const Color(0xFFEA580C)),
       _Action('Profil', Iconsax.user, Routes.PROFILE, const Color(0xFF475569)),
     ];

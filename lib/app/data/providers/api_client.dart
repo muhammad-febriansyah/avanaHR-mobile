@@ -51,4 +51,18 @@ class ApiClient extends GetxService {
     }
     return fallback;
   }
+
+  /// Friendly message for a DioException, distinguishing a network/connectivity
+  /// problem (no or bad internet) from a server-side error.
+  static String errorMessage(DioException e) {
+    switch (e.type) {
+      case DioExceptionType.connectionError:
+      case DioExceptionType.connectionTimeout:
+      case DioExceptionType.sendTimeout:
+      case DioExceptionType.receiveTimeout:
+        return 'Koneksi internet buruk atau tidak ada. Periksa jaringan lalu coba lagi.';
+      default:
+        return messageFrom(e.response, 'Gagal terhubung ke server.');
+    }
+  }
 }

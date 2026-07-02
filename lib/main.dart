@@ -9,6 +9,7 @@ import 'app/core/theme/app_theme.dart';
 import 'app/data/providers/api_client.dart';
 import 'app/data/services/auth_service.dart';
 import 'app/data/services/config_service.dart';
+import 'app/data/services/connectivity_service.dart';
 import 'app/data/services/device_service.dart';
 import 'app/data/services/storage_service.dart';
 import 'app/routes/app_pages.dart';
@@ -21,6 +22,7 @@ Future<void> main() async {
   // Permanent services, ordered by dependency.
   await Get.putAsync(() async => StorageService());
   Get.put(ApiClient(), permanent: true);
+  Get.put(ConnectivityService(), permanent: true);
   Get.put(DeviceService(), permanent: true);
   Get.put(AuthService(), permanent: true);
   Get.put(ConfigService(), permanent: true);
