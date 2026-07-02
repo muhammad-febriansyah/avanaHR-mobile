@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:iconsax/iconsax.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:get/get.dart';
+import 'package:iconsax/iconsax.dart';
 
 import '../../core/theme/app_colors.dart';
+import '../../core/widgets/app_page.dart';
 import '../../data/services/attendance_queue_service.dart';
 import 'attendance_controller.dart';
 
@@ -12,10 +13,10 @@ class AttendanceView extends GetView<AttendanceController> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppColors.muted,
-      appBar: AppBar(title: const Text('Absensi')),
-      body: Column(
+    return AppPage(
+      title: 'Absensi',
+      subtitle: 'Clock in / clock out',
+      child: Column(
         children: [
           _pendingBanner(),
           Expanded(child: _body()),

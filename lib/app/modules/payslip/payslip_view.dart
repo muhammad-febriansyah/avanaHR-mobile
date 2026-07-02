@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
-import 'package:iconsax/iconsax.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:get/get.dart';
+import 'package:iconsax/iconsax.dart';
 
 import '../../core/theme/app_colors.dart';
 import '../../core/utils/formats.dart';
+import '../../core/widgets/app_page.dart';
 import '../../core/widgets/ui.dart';
 import 'payslip_controller.dart';
 
@@ -13,70 +14,80 @@ class PayslipView extends GetView<PayslipController> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppColors.muted,
-      appBar: AppBar(title: const Text('Slip Gaji')),
-      body: Obx(() {
+    return AppPage(
+      title: 'Slip Gaji',
+      subtitle: 'Riwayat gaji',
+      child: Obx(() {
         if (controller.isLoading.value) {
           return const Loading();
         }
-        if (controller.items.isEmpty) {
-          return const EmptyState(icon: Iconsax.receipt_2, message: 'Belum ada slip gaji.');
-        }
-        return Center(
-          child: ConstrainedBox(
-            constraints: BoxConstraints(maxWidth: 600),
-            child: RefreshIndicator(
-              onRefresh: controller.load,
-              child: ListView.separated(
-                padding: EdgeInsets.all(20.w),
-                itemCount: controller.items.length,
-                separatorBuilder: (_, i) => SizedBox(height: 12.h),
-                itemBuilder: (_, i) {
-                  final p = controller.items[i];
-                  return Container(
-                    padding: EdgeInsets.all(16.w),
-                    decoration: softCard(radius: 16),
-                    child: Row(
-                      children: [
-                        Container(
-                          padding: EdgeInsets.all(12.w),
-                          decoration: BoxDecoration(
-                            color: AppColors.primary.withValues(alpha: 0.1),
-                            borderRadius: BorderRadius.circular(12.r),
-                          ),
-                          child: Icon(Iconsax.receipt_2, color: AppColors.primary, size: 24.sp),
-                        ),
-                        SizedBox(width: 14.w),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                p.period ?? monthLabel(p.periodMonth, p.periodYear),
-                                style: TextStyle(fontWeight: FontWeight.w700, color: AppColors.navy, fontSize: 14.sp),
-                              ),
-                              Text('Diterbitkan ${p.issuedAt ?? '-'}', style: TextStyle(color: AppColors.textMuted, fontSize: 12.sp)),
-                            ],
-                          ),
-                        ),
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.end,
-                          children: [
-                            Text('Netto', style: TextStyle(color: AppColors.textMuted, fontSize: 11.sp)),
-                            Text(
-                              formatRupiah(p.net),
-                              style: TextStyle(fontWeight: FontWeight.w700, color: AppColors.success, fontSize: 14.sp),
-                            ),
-                          ],
-                        ),
-                      ],
+        return RefreshIndicator(
+          onRefresh: controller.load,
+          color: AppColors.primary,
+          child: controller.items.isEmpty
+              ? ListView(
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  children: [
+                    SizedBox(height: 80.h),
+                    const EmptyState(
+                      icon: Iconsax.receipt_2,
+                      message: 'Belum ada slip gaji.',
                     ),
-                  );
-                },
-              ),
-            ),
-          ),
+                  ],
+                )
+              : ListView.separated(
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  padding: EdgeInsets.fromLTRB(20.w, 20.h, 20.w, 24.h),
+                  itemCount: controller.items.length,
+                  separatorBuilder: (_, i) => SizedBox(height: 10.h),
+                  itemBuilder: (_, i) {
+                    final p = controller.items[i];
+                    return ContentCard(
+                      child: Row(
+                        children: [
+                          const IconBubble(
+                            Iconsax.receipt_2,
+                            Color(0xFF0891B2),
+                          ),
+                          SizedBox(width: 12.w),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  p.period ??
+                                      monthLabel(p.periodMonth, p.periodYear),
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.w700,
+                                    color: AppColors.navy,
+                                    fontSize: 13.5.sp,
+                                  ),
+                                ),
+                                SizedBox(height: 2.h),
+                                Text(
+                                  'Terbit ${p.issuedAt ?? '-'}',
+                                  style: TextStyle(
+                                    color: AppColors.textMuted,
+                                    fontSize: 12.sp,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          SizedBox(width: 8.w),
+                          Text(
+                            formatRupiah(p.net),
+                            style: TextStyle(
+                              fontWeight: FontWeight.w700,
+                              color: AppColors.primary,
+                              fontSize: 14.sp,
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                  },
+                ),
         );
       }),
     );

@@ -62,7 +62,9 @@ class MainView extends GetView<MainController> {
         height: 62.w,
         decoration: BoxDecoration(
           shape: BoxShape.circle,
-          gradient: const LinearGradient(colors: [AppColors.primary, AppColors.accent]),
+          gradient: const LinearGradient(
+            colors: [AppColors.primary, AppColors.accent],
+          ),
           border: Border.all(color: Colors.white, width: 4),
           boxShadow: [
             BoxShadow(
@@ -98,7 +100,11 @@ class MainView extends GetView<MainController> {
                     SizedBox(width: 6.w),
                     Text(
                       'Tidak ada koneksi internet',
-                      style: TextStyle(fontSize: 11.5.sp, color: Colors.white, fontWeight: FontWeight.w600),
+                      style: TextStyle(
+                        fontSize: 11.5.sp,
+                        color: Colors.white,
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
                   ],
                 ),
@@ -113,7 +119,11 @@ class MainView extends GetView<MainController> {
         color: Colors.white,
         border: Border(top: BorderSide(color: AppColors.border)),
         boxShadow: [
-          BoxShadow(color: AppColors.navy.withValues(alpha: 0.06), blurRadius: 20, offset: const Offset(0, -4)),
+          BoxShadow(
+            color: AppColors.navy.withValues(alpha: 0.06),
+            blurRadius: 20,
+            offset: const Offset(0, -4),
+          ),
         ],
       ),
       child: SafeArea(
@@ -125,7 +135,7 @@ class MainView extends GetView<MainController> {
               children: [
                 _navTab(0),
                 _navTab(1),
-                SizedBox(width: 64.w), // gap for the center Absensi FAB
+                SizedBox(width: 56.w), // gap for the center Absensi FAB
                 _navTab(2),
                 _navTab(3),
               ],
@@ -153,16 +163,25 @@ class MainView extends GetView<MainController> {
                 duration: const Duration(milliseconds: 200),
                 padding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 5.h),
                 decoration: BoxDecoration(
-                  color: active ? AppColors.primary.withValues(alpha: 0.12) : Colors.transparent,
+                  color: active
+                      ? AppColors.primary.withValues(alpha: 0.12)
+                      : Colors.transparent,
                   borderRadius: BorderRadius.circular(100.r),
                 ),
-                child: Icon(item.icon, size: 22.sp, color: active ? AppColors.primary : AppColors.textMuted),
+                child: Icon(
+                  item.icon,
+                  size: 22.sp,
+                  color: active ? AppColors.primary : AppColors.textMuted,
+                ),
               ),
               SizedBox(height: 4.h),
               Text(
                 item.label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                textAlign: TextAlign.center,
                 style: TextStyle(
-                  fontSize: 10.5.sp,
+                  fontSize: 9.5.sp,
                   fontWeight: active ? FontWeight.w700 : FontWeight.w500,
                   color: active ? AppColors.primary : AppColors.textMuted,
                 ),

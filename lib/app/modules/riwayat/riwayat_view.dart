@@ -5,6 +5,7 @@ import 'package:iconsax/iconsax.dart';
 import 'package:intl/intl.dart';
 
 import '../../core/theme/app_colors.dart';
+import '../../core/widgets/app_page.dart';
 import '../../data/models/activity.dart';
 import 'riwayat_controller.dart';
 
@@ -13,10 +14,11 @@ class RiwayatView extends GetView<RiwayatController> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppColors.muted,
-      appBar: AppBar(title: const Text('Riwayat Aktivitas')),
-      body: Obx(() {
+    return AppPage(
+      title: 'Riwayat Aktivitas',
+      subtitle: 'Aktivitas terbaru',
+      showBack: false,
+      child: Obx(() {
         if (controller.isLoading.value) {
           return const Center(child: CircularProgressIndicator());
         }
@@ -85,7 +87,11 @@ class RiwayatView extends GetView<RiwayatController> {
               children: [
                 Text(
                   item.title,
-                  style: TextStyle(fontSize: 13.5.sp, fontWeight: FontWeight.w700, color: AppColors.navy),
+                  style: TextStyle(
+                    fontSize: 13.5.sp,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.navy,
+                  ),
                 ),
                 SizedBox(height: 2.h),
                 Text(
@@ -95,8 +101,13 @@ class RiwayatView extends GetView<RiwayatController> {
                 if (item.occurredAt != null) ...[
                   SizedBox(height: 4.h),
                   Text(
-                    DateFormat('d MMM yyyy · HH:mm').format(item.occurredAt!.toLocal()),
-                    style: TextStyle(fontSize: 10.5.sp, color: AppColors.textMuted),
+                    DateFormat(
+                      'd MMM yyyy · HH:mm',
+                    ).format(item.occurredAt!.toLocal()),
+                    style: TextStyle(
+                      fontSize: 10.5.sp,
+                      color: AppColors.textMuted,
+                    ),
                   ),
                 ],
               ],
@@ -122,7 +133,11 @@ class RiwayatView extends GetView<RiwayatController> {
       ),
       child: Text(
         _statusLabel(status),
-        style: TextStyle(fontSize: 10.5.sp, fontWeight: FontWeight.w600, color: color),
+        style: TextStyle(
+          fontSize: 10.5.sp,
+          fontWeight: FontWeight.w600,
+          color: color,
+        ),
       ),
     );
   }
@@ -148,13 +163,21 @@ class RiwayatView extends GetView<RiwayatController> {
 
   Color _statusColor(String status) {
     final s = status.toLowerCase();
-    if (s.contains('approve') || s.contains('setuju') || s == 'present' || s == 'hadir') {
+    if (s.contains('approve') ||
+        s.contains('setuju') ||
+        s == 'present' ||
+        s == 'hadir') {
       return AppColors.success;
     }
-    if (s.contains('reject') || s.contains('tolak') || s == 'absent' || s == 'alpha') {
+    if (s.contains('reject') ||
+        s.contains('tolak') ||
+        s == 'absent' ||
+        s == 'alpha') {
       return AppColors.destructive;
     }
-    if (s.contains('pending') || s.contains('menunggu') || s.contains('review')) {
+    if (s.contains('pending') ||
+        s.contains('menunggu') ||
+        s.contains('review')) {
       return AppColors.warning;
     }
 

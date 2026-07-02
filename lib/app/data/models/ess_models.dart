@@ -1,6 +1,27 @@
 // Employee self-service models for the AvanaHR mobile API (all {data}-enveloped).
 
+import 'package:intl/intl.dart';
+
 import '../../core/config/env.dart';
+
+/// Normalize an API date/datetime string to a clean "d MMM yyyy" label,
+/// dropping any time component. Handles bare dates and full ISO timestamps.
+/// Returns '' for null/empty.
+String fmtDate(dynamic value) {
+  if (value == null) {
+    return '';
+  }
+  final s = value.toString();
+  if (s.isEmpty) {
+    return '';
+  }
+  final d = DateTime.tryParse(s);
+  if (d == null) {
+    return s.split('T').first.split(' ').first;
+  }
+
+  return DateFormat('d MMM yyyy').format(d.toLocal());
+}
 
 class LeaveType {
   final int id;
@@ -9,15 +30,23 @@ class LeaveType {
   final int defaultQuota;
   final bool requiresAttachment;
 
-  LeaveType({required this.id, required this.code, required this.name, required this.defaultQuota, required this.requiresAttachment});
+  LeaveType({
+    required this.id,
+    required this.code,
+    required this.name,
+    required this.defaultQuota,
+    required this.requiresAttachment,
+  });
 
   factory LeaveType.fromJson(Map<String, dynamic> j) => LeaveType(
-        id: j['id'],
-        code: j['code'] ?? '',
-        name: j['name'] ?? '',
-        defaultQuota: (j['default_quota'] ?? 0) is int ? j['default_quota'] : int.tryParse('${j['default_quota']}') ?? 0,
-        requiresAttachment: j['requires_attachment'] ?? false,
-      );
+    id: j['id'],
+    code: j['code'] ?? '',
+    name: j['name'] ?? '',
+    defaultQuota: (j['default_quota'] ?? 0) is int
+        ? j['default_quota']
+        : int.tryParse('${j['default_quota']}') ?? 0,
+    requiresAttachment: j['requires_attachment'] ?? false,
+  );
 }
 
 class LeaveRequestItem {
@@ -29,17 +58,27 @@ class LeaveRequestItem {
   final String? reason;
   final String status;
 
-  LeaveRequestItem({required this.id, required this.startDate, required this.endDate, required this.totalDays, required this.status, this.leaveType, this.reason});
+  LeaveRequestItem({
+    required this.id,
+    required this.startDate,
+    required this.endDate,
+    required this.totalDays,
+    required this.status,
+    this.leaveType,
+    this.reason,
+  });
 
   factory LeaveRequestItem.fromJson(Map<String, dynamic> j) => LeaveRequestItem(
-        id: j['id'],
-        leaveType: j['leave_type'],
-        startDate: j['start_date'] ?? '',
-        endDate: j['end_date'] ?? '',
-        totalDays: (j['total_days'] ?? 0) is int ? j['total_days'] : int.tryParse('${j['total_days']}') ?? 0,
-        reason: j['reason'],
-        status: j['status'] ?? '',
-      );
+    id: j['id'],
+    leaveType: j['leave_type'],
+    startDate: fmtDate(j['start_date']),
+    endDate: fmtDate(j['end_date']),
+    totalDays: (j['total_days'] ?? 0) is int
+        ? j['total_days']
+        : int.tryParse('${j['total_days']}') ?? 0,
+    reason: j['reason'],
+    status: j['status'] ?? '',
+  );
 }
 
 class OvertimeItem {
@@ -49,15 +88,21 @@ class OvertimeItem {
   final String? reason;
   final String status;
 
-  OvertimeItem({required this.id, required this.date, required this.hours, required this.status, this.reason});
+  OvertimeItem({
+    required this.id,
+    required this.date,
+    required this.hours,
+    required this.status,
+    this.reason,
+  });
 
   factory OvertimeItem.fromJson(Map<String, dynamic> j) => OvertimeItem(
-        id: j['id'],
-        date: j['date'] ?? '',
-        hours: (j['hours'] ?? 0).toDouble(),
-        reason: j['reason'],
-        status: j['status'] ?? '',
-      );
+    id: j['id'],
+    date: fmtDate(j['date']),
+    hours: (j['hours'] ?? 0).toDouble(),
+    reason: j['reason'],
+    status: j['status'] ?? '',
+  );
 }
 
 class PermissionItem {
@@ -69,17 +114,25 @@ class PermissionItem {
   final String? reason;
   final String status;
 
-  PermissionItem({required this.id, required this.date, required this.type, required this.status, this.startTime, this.endTime, this.reason});
+  PermissionItem({
+    required this.id,
+    required this.date,
+    required this.type,
+    required this.status,
+    this.startTime,
+    this.endTime,
+    this.reason,
+  });
 
   factory PermissionItem.fromJson(Map<String, dynamic> j) => PermissionItem(
-        id: j['id'],
-        date: j['date'] ?? '',
-        type: j['type'] ?? '',
-        startTime: j['start_time'],
-        endTime: j['end_time'],
-        reason: j['reason'],
-        status: j['status'] ?? '',
-      );
+    id: j['id'],
+    date: fmtDate(j['date']),
+    type: j['type'] ?? '',
+    startTime: j['start_time'],
+    endTime: j['end_time'],
+    reason: j['reason'],
+    status: j['status'] ?? '',
+  );
 }
 
 class WfhItem {
@@ -89,15 +142,21 @@ class WfhItem {
   final String? reason;
   final String status;
 
-  WfhItem({required this.id, required this.startDate, required this.endDate, required this.status, this.reason});
+  WfhItem({
+    required this.id,
+    required this.startDate,
+    required this.endDate,
+    required this.status,
+    this.reason,
+  });
 
   factory WfhItem.fromJson(Map<String, dynamic> j) => WfhItem(
-        id: j['id'],
-        startDate: j['start_date'] ?? '',
-        endDate: j['end_date'] ?? '',
-        reason: j['reason'],
-        status: j['status'] ?? '',
-      );
+    id: j['id'],
+    startDate: fmtDate(j['start_date']),
+    endDate: fmtDate(j['end_date']),
+    reason: j['reason'],
+    status: j['status'] ?? '',
+  );
 }
 
 class ReimbursementItem {
@@ -108,14 +167,24 @@ class ReimbursementItem {
   final String date;
   final String status;
 
-  ReimbursementItem({required this.id, required this.category, required this.amount, required this.date, required this.status, this.title});
+  ReimbursementItem({
+    required this.id,
+    required this.category,
+    required this.amount,
+    required this.date,
+    required this.status,
+    this.title,
+  });
 
-  factory ReimbursementItem.fromJson(Map<String, dynamic> j) => ReimbursementItem(
+  factory ReimbursementItem.fromJson(Map<String, dynamic> j) =>
+      ReimbursementItem(
         id: j['id'],
         category: j['category'] ?? '',
         title: j['title'],
-        amount: (j['amount'] ?? 0) is int ? j['amount'] : int.tryParse('${j['amount']}') ?? 0,
-        date: j['date'] ?? '',
+        amount: (j['amount'] ?? 0) is int
+            ? j['amount']
+            : int.tryParse('${j['amount']}') ?? 0,
+        date: fmtDate(j['date']),
         status: j['status'] ?? '',
       );
 }
@@ -128,16 +197,23 @@ class AnnouncementItem {
   final bool pinned;
   final String? publishedAt;
 
-  AnnouncementItem({required this.id, required this.title, required this.pinned, this.body, this.category, this.publishedAt});
+  AnnouncementItem({
+    required this.id,
+    required this.title,
+    required this.pinned,
+    this.body,
+    this.category,
+    this.publishedAt,
+  });
 
   factory AnnouncementItem.fromJson(Map<String, dynamic> j) => AnnouncementItem(
-        id: j['id'],
-        title: j['title'] ?? '',
-        body: j['body'],
-        category: j['category'],
-        pinned: j['pinned'] ?? false,
-        publishedAt: j['published_at'],
-      );
+    id: j['id'],
+    title: j['title'] ?? '',
+    body: j['body'],
+    category: j['category'],
+    pinned: j['pinned'] ?? false,
+    publishedAt: j['published_at'],
+  );
 }
 
 class DocumentItem {
@@ -148,16 +224,25 @@ class DocumentItem {
   final int size;
   final String? uploadedAt;
 
-  DocumentItem({required this.id, required this.name, required this.size, this.type, this.url, this.uploadedAt});
+  DocumentItem({
+    required this.id,
+    required this.name,
+    required this.size,
+    this.type,
+    this.url,
+    this.uploadedAt,
+  });
 
   factory DocumentItem.fromJson(Map<String, dynamic> j) => DocumentItem(
-        id: j['id'],
-        name: j['name'] ?? '',
-        type: j['type'],
-        url: j['url'],
-        size: (j['size'] ?? 0) is int ? j['size'] : int.tryParse('${j['size']}') ?? 0,
-        uploadedAt: j['uploaded_at'],
-      );
+    id: j['id'],
+    name: j['name'] ?? '',
+    type: j['type'],
+    url: j['url'],
+    size: (j['size'] ?? 0) is int
+        ? j['size']
+        : int.tryParse('${j['size']}') ?? 0,
+    uploadedAt: j['uploaded_at'],
+  );
 }
 
 class FieldVisitItem {
@@ -182,15 +267,15 @@ class FieldVisitItem {
   });
 
   factory FieldVisitItem.fromJson(Map<String, dynamic> j) => FieldVisitItem(
-        id: j['id'],
-        visitDate: j['visit_date'] ?? '',
-        location: j['location'] ?? '',
-        clientName: j['client_name'],
-        purpose: j['purpose'],
-        notes: j['notes'],
-        photoUrl: Env.resolveMedia(j['photo_url'] as String?),
-        status: j['status'] ?? '',
-      );
+    id: j['id'],
+    visitDate: fmtDate(j['visit_date']),
+    location: j['location'] ?? '',
+    clientName: j['client_name'],
+    purpose: j['purpose'],
+    notes: j['notes'],
+    photoUrl: Env.resolveMedia(j['photo_url'] as String?),
+    status: j['status'] ?? '',
+  );
 }
 
 class ShiftSwapItem {
@@ -213,14 +298,14 @@ class ShiftSwapItem {
   });
 
   factory ShiftSwapItem.fromJson(Map<String, dynamic> j) => ShiftSwapItem(
-        id: j['id'],
-        date: j['date'] ?? '',
-        requester: j['requester'],
-        target: j['target'],
-        direction: j['direction'] ?? 'outgoing',
-        reason: j['reason'],
-        status: j['status'] ?? '',
-      );
+    id: j['id'],
+    date: fmtDate(j['date']),
+    requester: j['requester'],
+    target: j['target'],
+    direction: j['direction'] ?? 'outgoing',
+    reason: j['reason'],
+    status: j['status'] ?? '',
+  );
 }
 
 class Colleague {
@@ -231,8 +316,8 @@ class Colleague {
   Colleague({required this.id, required this.name, this.employeeNumber});
 
   factory Colleague.fromJson(Map<String, dynamic> j) => Colleague(
-        id: j['id'],
-        name: j['name'] ?? '',
-        employeeNumber: j['employee_number'],
-      );
+    id: j['id'],
+    name: j['name'] ?? '',
+    employeeNumber: j['employee_number'],
+  );
 }

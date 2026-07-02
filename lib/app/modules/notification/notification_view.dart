@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
-import 'package:iconsax/iconsax.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:get/get.dart';
+import 'package:iconsax/iconsax.dart';
 
 import '../../core/theme/app_colors.dart';
+import '../../core/widgets/app_page.dart';
+import '../../core/widgets/ui.dart';
 import 'notification_controller.dart';
 
 class NotificationView extends GetView<NotificationController> {
@@ -11,81 +13,88 @@ class NotificationView extends GetView<NotificationController> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppColors.muted,
-      appBar: AppBar(
-        title: const Text('Notifikasi'),
-        actions: [
-          Obx(
-            () => controller.unread.value > 0
-                ? TextButton(
-                    onPressed: controller.markAllRead,
-                    child: const Text('Tandai dibaca'),
-                  )
-                : const SizedBox.shrink(),
-          ),
-        ],
-      ),
-      body: Obx(() {
+    return AppPage(
+      title: 'Notifikasi',
+      subtitle: 'Pemberitahuan',
+      actions: [HeaderAction(Iconsax.tick_circle, controller.markAllRead)],
+      child: Obx(() {
         if (controller.isLoading.value) {
-          return const Center(child: CircularProgressIndicator());
+          return const Loading();
         }
-        if (controller.items.isEmpty) {
-          return const Center(child: Text('Tidak ada notifikasi.'));
-        }
-        return Center(
-          child: ConstrainedBox(
-            constraints: BoxConstraints(maxWidth: 600),
-            child: RefreshIndicator(
-              onRefresh: controller.load,
-              child: ListView.separated(
-                padding: EdgeInsets.all(16.w),
-                itemCount: controller.items.length,
-                separatorBuilder: (_, i) => SizedBox(height: 10.h),
-                itemBuilder: (_, i) {
-                  final n = controller.items[i];
-                  return Container(
-                    padding: EdgeInsets.all(14.w),
-                    decoration: BoxDecoration(
-                      color: n.isRead ? AppColors.background : AppColors.primary.withValues(alpha: 0.05),
-                      borderRadius: BorderRadius.circular(14.r),
-                      border: Border.all(color: n.isRead ? AppColors.border : AppColors.primary.withValues(alpha: 0.3)),
+        return RefreshIndicator(
+          onRefresh: controller.load,
+          color: AppColors.primary,
+          child: controller.items.isEmpty
+              ? ListView(
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  children: [
+                    SizedBox(height: 80.h),
+                    const EmptyState(
+                      icon: Iconsax.notification,
+                      message: 'Belum ada notifikasi.',
                     ),
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Container(
-                          padding: EdgeInsets.all(8.w),
-                          decoration: BoxDecoration(
-                            color: AppColors.primary.withValues(alpha: 0.1),
-                            borderRadius: BorderRadius.circular(10.r),
+                  ],
+                )
+              : ListView.separated(
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  padding: EdgeInsets.fromLTRB(20.w, 20.h, 20.w, 20.h),
+                  itemCount: controller.items.length,
+                  separatorBuilder: (_, i) => SizedBox(height: 10.h),
+                  itemBuilder: (_, i) {
+                    final n = controller.items[i];
+                    return ContentCard(
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const IconBubble(
+                            Iconsax.notification,
+                            AppColors.primary,
                           ),
-                          child: Icon(Iconsax.notification, color: AppColors.primary, size: 18.sp),
-                        ),
-                        SizedBox(width: 12.w),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(n.title, style: TextStyle(fontWeight: FontWeight.w600, color: AppColors.navy, fontSize: 14.sp)),
-                              if (n.createdAt != null)
-                                Text(n.createdAt!, style: TextStyle(color: AppColors.textMuted, fontSize: 11.sp)),
-                            ],
+                          SizedBox(width: 12.w),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  n.title,
+                                  style: TextStyle(
+                                    fontWeight: n.isRead
+                                        ? FontWeight.w500
+                                        : FontWeight.w700,
+                                    color: AppColors.navy,
+                                    fontSize: 13.5.sp,
+                                  ),
+                                ),
+                                if (n.createdAt != null) ...[
+                                  SizedBox(height: 2.h),
+                                  Text(
+                                    n.createdAt!,
+                                    style: TextStyle(
+                                      color: AppColors.textMuted,
+                                      fontSize: 11.5.sp,
+                                    ),
+                                  ),
+                                ],
+                              ],
+                            ),
                           ),
-                        ),
-                        if (!n.isRead)
-                          Container(
-                            width: 8.w,
-                            height: 8.w,
-                            decoration: const BoxDecoration(color: AppColors.destructive, shape: BoxShape.circle),
-                          ),
-                      ],
-                    ),
-                  );
-                },
-              ),
-            ),
-          ),
+                          if (!n.isRead) ...[
+                            SizedBox(width: 8.w),
+                            Container(
+                              width: 8.w,
+                              height: 8.w,
+                              margin: EdgeInsets.only(top: 4.h),
+                              decoration: const BoxDecoration(
+                                color: AppColors.primary,
+                                shape: BoxShape.circle,
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
+                    );
+                  },
+                ),
         );
       }),
     );
