@@ -1,6 +1,7 @@
 import 'package:dio/dio.dart';
 import 'package:get/get.dart' hide Response, FormData, MultipartFile;
 
+import '../models/activity.dart';
 import '../models/app_config.dart';
 import '../models/app_notification.dart';
 import '../models/attendance.dart';
@@ -109,6 +110,14 @@ class AvanaApi {
         if (isRooted != null) 'is_rooted': isRooted,
         if (clockedAt != null) 'clocked_at': clockedAt,
       });
+
+  // ---- Activity feed (Riwayat) ----
+  Future<List<ActivityItem>> activities() async {
+    final res = await _dio.get('/me/activities');
+    final list = (res.data['data'] as List?) ?? [];
+
+    return list.map((e) => ActivityItem.fromJson(Map<String, dynamic>.from(e))).toList();
+  }
 
   // ---- Face recognition ----
   Future<Response> faceStatus() => _dio.get('/me/face');

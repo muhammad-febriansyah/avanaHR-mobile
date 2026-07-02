@@ -5,10 +5,11 @@ import 'package:iconsax/iconsax.dart';
 
 import '../../core/theme/app_colors.dart';
 import '../../data/services/connectivity_service.dart';
+import '../../routes/app_pages.dart';
 import '../announcement/announcement_view.dart';
-import '../attendance/attendance_view.dart';
 import '../home/views/home_tab.dart';
 import '../profile/profile_view.dart';
+import '../riwayat/riwayat_view.dart';
 import 'main_controller.dart';
 
 /// App shell: an IndexedStack of the four primary tabs behind a custom bottom
@@ -16,9 +17,10 @@ import 'main_controller.dart';
 class MainView extends GetView<MainController> {
   const MainView({super.key});
 
+  // Four side tabs; Absensi lives in the center floating action button.
   static const _tabs = <_NavItem>[
     _NavItem('Beranda', Iconsax.home_2),
-    _NavItem('Kehadiran', Iconsax.finger_scan),
+    _NavItem('Riwayat', Iconsax.clock),
     _NavItem('Pengumuman', Iconsax.volume_high),
     _NavItem('Profil', Iconsax.user),
   ];
@@ -36,7 +38,7 @@ class MainView extends GetView<MainController> {
                 index: controller.tab.value,
                 children: const [
                   HomeTab(),
-                  AttendanceView(),
+                  RiwayatView(),
                   AnnouncementView(),
                   ProfileView(),
                 ],
@@ -45,7 +47,33 @@ class MainView extends GetView<MainController> {
           ),
         ],
       ),
+      floatingActionButton: _absensiFab(),
+      floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
       bottomNavigationBar: _bottomNav(),
+    );
+  }
+
+  /// Prominent center button that opens the attendance (clock-in/out) screen.
+  Widget _absensiFab() {
+    return GestureDetector(
+      onTap: () => Get.toNamed(Routes.ATTENDANCE),
+      child: Container(
+        width: 62.w,
+        height: 62.w,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          gradient: const LinearGradient(colors: [AppColors.primary, AppColors.accent]),
+          border: Border.all(color: Colors.white, width: 4),
+          boxShadow: [
+            BoxShadow(
+              color: AppColors.primary.withValues(alpha: 0.4),
+              blurRadius: 16,
+              offset: const Offset(0, 6),
+            ),
+          ],
+        ),
+        child: Icon(Iconsax.finger_scan, color: Colors.white, size: 26.sp),
+      ),
     );
   }
 
@@ -94,45 +122,52 @@ class MainView extends GetView<MainController> {
           padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 8.h),
           child: Obx(
             () => Row(
-              mainAxisAlignment: MainAxisAlignment.spaceAround,
-              children: List.generate(_tabs.length, (i) {
-                final item = _tabs[i];
-                final active = controller.tab.value == i;
-                return Expanded(
-                  child: InkWell(
-                    onTap: () => controller.changeTab(i),
-                    borderRadius: BorderRadius.circular(14.r),
-                    child: AnimatedContainer(
-                      duration: const Duration(milliseconds: 200),
-                      padding: EdgeInsets.symmetric(vertical: 6.h),
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          AnimatedContainer(
-                            duration: const Duration(milliseconds: 200),
-                            padding: EdgeInsets.symmetric(horizontal: 18.w, vertical: 5.h),
-                            decoration: BoxDecoration(
-                              color: active ? AppColors.primary.withValues(alpha: 0.12) : Colors.transparent,
-                              borderRadius: BorderRadius.circular(100.r),
-                            ),
-                            child: Icon(item.icon, size: 22.sp, color: active ? AppColors.primary : AppColors.textMuted),
-                          ),
-                          SizedBox(height: 4.h),
-                          Text(
-                            item.label,
-                            style: TextStyle(
-                              fontSize: 10.5.sp,
-                              fontWeight: active ? FontWeight.w700 : FontWeight.w500,
-                              color: active ? AppColors.primary : AppColors.textMuted,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                );
-              }),
+              children: [
+                _navTab(0),
+                _navTab(1),
+                SizedBox(width: 64.w), // gap for the center Absensi FAB
+                _navTab(2),
+                _navTab(3),
+              ],
             ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _navTab(int i) {
+    final item = _tabs[i];
+    final active = controller.tab.value == i;
+
+    return Expanded(
+      child: InkWell(
+        onTap: () => controller.changeTab(i),
+        borderRadius: BorderRadius.circular(14.r),
+        child: Padding(
+          padding: EdgeInsets.symmetric(vertical: 6.h),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              AnimatedContainer(
+                duration: const Duration(milliseconds: 200),
+                padding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 5.h),
+                decoration: BoxDecoration(
+                  color: active ? AppColors.primary.withValues(alpha: 0.12) : Colors.transparent,
+                  borderRadius: BorderRadius.circular(100.r),
+                ),
+                child: Icon(item.icon, size: 22.sp, color: active ? AppColors.primary : AppColors.textMuted),
+              ),
+              SizedBox(height: 4.h),
+              Text(
+                item.label,
+                style: TextStyle(
+                  fontSize: 10.5.sp,
+                  fontWeight: active ? FontWeight.w700 : FontWeight.w500,
+                  color: active ? AppColors.primary : AppColors.textMuted,
+                ),
+              ),
+            ],
           ),
         ),
       ),
