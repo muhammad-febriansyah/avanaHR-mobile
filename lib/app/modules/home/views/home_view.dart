@@ -198,6 +198,7 @@ class HomeView extends GetView<HomeController> {
       _Action('Dokumen', Iconsax.document_text, Routes.DOKUMEN, const Color(0xFF9333EA)),
       _Action('Visiting', Iconsax.location, Routes.VISITING, const Color(0xFFE11D48)),
       _Action('Pengumuman', Iconsax.volume_high, Routes.ANNOUNCEMENT, const Color(0xFFEA580C)),
+      _Action('Daftar Wajah', Iconsax.scan, Routes.FACE_ENROLL, const Color(0xFF4F46E5)),
       _Action('Profil', Iconsax.user, Routes.PROFILE, const Color(0xFF475569)),
     ];
     return GridView.count(

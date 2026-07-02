@@ -12,6 +12,7 @@ import 'app/data/services/auth_service.dart';
 import 'app/data/services/config_service.dart';
 import 'app/data/services/connectivity_service.dart';
 import 'app/data/services/device_service.dart';
+import 'app/data/services/face_embedder_service.dart';
 import 'app/data/services/storage_service.dart';
 import 'app/routes/app_pages.dart';
 
@@ -26,6 +27,7 @@ Future<void> main() async {
   Get.put(ConnectivityService(), permanent: true);
   Get.put(DeviceService(), permanent: true);
   Get.put(AttendanceQueueService(), permanent: true);
+  Get.put(FaceEmbedderService(), permanent: true);
   Get.put(AuthService(), permanent: true);
   Get.put(ConfigService(), permanent: true);
   // Warm branding in the background so any entry point (deep link too) has it.

@@ -110,6 +110,12 @@ class AvanaApi {
         if (clockedAt != null) 'clocked_at': clockedAt,
       });
 
+  // ---- Face recognition ----
+  Future<Response> faceStatus() => _dio.get('/me/face');
+
+  Future<Response> enrollFace(List<double> embedding) =>
+      _dio.post('/me/face/enroll', data: {'embedding': embedding});
+
   Future<Response> submitLeave({
     required int leaveTypeId,
     required String startDate,
