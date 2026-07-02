@@ -83,8 +83,8 @@ class FaceEnrollView extends GetView<FaceEnrollController> {
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   color: Colors.white,
-                  fontSize: 13.5.sp,
-                  height: 1.4,
+                  fontSize: 12.sp,
+                  height: 1.35,
                 ),
               )),
           SizedBox(height: 18.h),
@@ -113,7 +113,7 @@ class FaceEnrollView extends GetView<FaceEnrollController> {
                     controller.isBusy.value ? 'Memproses...' : 'Ambil Wajah',
                     style: TextStyle(
                       color: Colors.white,
-                      fontSize: 14.sp,
+                      fontSize: 13.sp,
                       fontWeight: FontWeight.w700,
                     ),
                   ),
@@ -123,11 +123,13 @@ class FaceEnrollView extends GetView<FaceEnrollController> {
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(Iconsax.shield_tick, size: 13.sp, color: Colors.white54),
+              Icon(Iconsax.shield_tick, size: 12.sp, color: Colors.white54),
               SizedBox(width: 6.w),
-              Text(
-                'Hanya data wajah (bukan foto) yang dikirim.',
-                style: TextStyle(color: Colors.white54, fontSize: 10.5.sp),
+              Flexible(
+                child: Text(
+                  'Hanya data wajah (bukan foto) yang dikirim.',
+                  style: TextStyle(color: Colors.white54, fontSize: 9.5.sp),
+                ),
               ),
             ],
           ),

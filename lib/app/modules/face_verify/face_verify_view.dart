@@ -79,7 +79,7 @@ class FaceVerifyView extends GetView<FaceVerifyController> {
           Text(
             'Posisikan wajah di dalam bingkai, lalu tekan Verifikasi.',
             textAlign: TextAlign.center,
-            style: TextStyle(color: Colors.white, fontSize: 13.5.sp, height: 1.4),
+            style: TextStyle(color: Colors.white, fontSize: 12.sp, height: 1.35),
           ),
           SizedBox(height: 18.h),
           Obx(() => SizedBox(
@@ -107,7 +107,7 @@ class FaceVerifyView extends GetView<FaceVerifyController> {
                     controller.isBusy.value ? 'Memproses...' : 'Verifikasi',
                     style: TextStyle(
                       color: Colors.white,
-                      fontSize: 14.sp,
+                      fontSize: 13.sp,
                       fontWeight: FontWeight.w700,
                     ),
                   ),
