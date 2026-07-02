@@ -51,12 +51,18 @@ dependencies:
   flutter_secure_storage: ^10.3.1
   flutter_jailbreak_detection: ^1.10.0
   connectivity_plus: ^7.2.0
-  file_picker: ^3.0.4
+  file_selector: ^1.0.3
   image_picker: ^1.2.3
   google_mlkit_face_detection: ^0.13.2
   tflite_flutter: ^0.12.1
   image: ^4.8.0
   camera: ^0.12.0+1
+
+# file_picker (Windows impl) pins win32 ^5, but geolocator/device_info_plus
+# need win32 ^6. win32 is Windows-only; on Android/iOS it never compiles, so we
+# force a single ^6 version to let version solving succeed.
+dependency_overrides:
+  win32: ^6.0.1
 
 dev_dependencies:
   flutter_test:

@@ -1,4 +1,4 @@
-import 'package:file_picker/file_picker.dart';
+import 'package:file_selector/file_selector.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:get/get.dart';
@@ -90,10 +90,13 @@ class DokumenView extends GetView<DokumenController> {
           SizedBox(height: 12.h),
           Obx(() => OutlinedButton.icon(
                 onPressed: () async {
-                  final result = await FilePicker.platform.pickFiles(type: FileType.custom, allowedExtensions: ['pdf', 'jpg', 'jpeg', 'png']);
-                  final picked = result?.files.single;
-                  if (picked?.path != null) {
-                    path.value = picked!.path;
+                  const typeGroup = XTypeGroup(
+                    label: 'Dokumen',
+                    extensions: ['pdf', 'jpg', 'jpeg', 'png'],
+                  );
+                  final picked = await openFile(acceptedTypeGroups: [typeGroup]);
+                  if (picked != null) {
+                    path.value = picked.path;
                     fileName.value = picked.name;
                   }
                 },
