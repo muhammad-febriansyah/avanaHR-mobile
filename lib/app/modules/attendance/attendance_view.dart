@@ -4,6 +4,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:get/get.dart';
 
 import '../../core/theme/app_colors.dart';
+import '../../data/services/attendance_queue_service.dart';
 import 'attendance_controller.dart';
 
 class AttendanceView extends GetView<AttendanceController> {
@@ -14,7 +15,35 @@ class AttendanceView extends GetView<AttendanceController> {
     return Scaffold(
       backgroundColor: AppColors.muted,
       appBar: AppBar(title: const Text('Absensi')),
-      body: Obx(() {
+      body: Column(children: [_pendingBanner(), Expanded(child: _body())]),
+    );
+  }
+
+  /// A slim amber bar shown while queued clock actions await sync.
+  Widget _pendingBanner() {
+    final queue = Get.find<AttendanceQueueService>();
+    return Obx(() {
+      if (queue.pendingCount.value == 0) return const SizedBox.shrink();
+      return Container(
+        width: double.infinity,
+        color: const Color(0xFFFEF3C7),
+        padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 8.h),
+        child: Row(children: [
+          Icon(Iconsax.clock, size: 15.sp, color: const Color(0xFFB45309)),
+          SizedBox(width: 8.w),
+          Expanded(
+            child: Text(
+              '${queue.pendingCount.value} absen menunggu sinkron — terkirim otomatis saat online',
+              style: TextStyle(fontSize: 11.5.sp, color: const Color(0xFFB45309), fontWeight: FontWeight.w600),
+            ),
+          ),
+        ]),
+      );
+    });
+  }
+
+  Widget _body() {
+    return Obx(() {
         if (controller.isLoading.value) {
           return const Center(child: CircularProgressIndicator());
         }
@@ -104,8 +133,7 @@ class AttendanceView extends GetView<AttendanceController> {
             ),
           ),
         );
-      }),
-    );
+      });
   }
 
   Widget _stat(String label, String value) {

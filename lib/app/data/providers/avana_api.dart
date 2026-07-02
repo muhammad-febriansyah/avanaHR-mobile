@@ -97,6 +97,7 @@ class AvanaApi {
     String? deviceId,
     bool? isMockLocation,
     bool? isRooted,
+    String? clockedAt,
   }) =>
       _dio.post('/me/attendance/clock', data: {
         'type': type,
@@ -106,6 +107,7 @@ class AvanaApi {
         if (deviceId != null) 'device_id': deviceId,
         if (isMockLocation != null) 'is_mock_location': isMockLocation,
         if (isRooted != null) 'is_rooted': isRooted,
+        if (clockedAt != null) 'clocked_at': clockedAt,
       });
 
   Future<Response> submitLeave({

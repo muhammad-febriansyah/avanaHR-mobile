@@ -7,6 +7,7 @@ import 'package:toastification/toastification.dart';
 
 import 'app/core/theme/app_theme.dart';
 import 'app/data/providers/api_client.dart';
+import 'app/data/services/attendance_queue_service.dart';
 import 'app/data/services/auth_service.dart';
 import 'app/data/services/config_service.dart';
 import 'app/data/services/connectivity_service.dart';
@@ -24,6 +25,7 @@ Future<void> main() async {
   Get.put(ApiClient(), permanent: true);
   Get.put(ConnectivityService(), permanent: true);
   Get.put(DeviceService(), permanent: true);
+  Get.put(AttendanceQueueService(), permanent: true);
   Get.put(AuthService(), permanent: true);
   Get.put(ConfigService(), permanent: true);
   // Warm branding in the background so any entry point (deep link too) has it.
