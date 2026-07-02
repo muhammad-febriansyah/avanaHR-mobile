@@ -1,0 +1,39 @@
+part of 'app_pages.dart';
+
+abstract class Routes {
+  Routes._();
+  static const SPLASH = _Paths.SPLASH;
+  static const ONBOARDING = _Paths.ONBOARDING;
+  static const LOGIN = _Paths.LOGIN;
+  static const MAIN = _Paths.MAIN;
+  static const HOME = _Paths.HOME;
+  static const PROFILE = _Paths.PROFILE;
+  static const ATTENDANCE = _Paths.ATTENDANCE;
+  static const PAYSLIP = _Paths.PAYSLIP;
+  static const NOTIFICATION = _Paths.NOTIFICATION;
+  static const LEAVE = _Paths.LEAVE;
+  static const OVERTIME = _Paths.OVERTIME;
+  static const PERMISSION = _Paths.PERMISSION;
+  static const WFH = _Paths.WFH;
+  static const REIMBURSEMENT = _Paths.REIMBURSEMENT;
+  static const ANNOUNCEMENT = _Paths.ANNOUNCEMENT;
+}
+
+abstract class _Paths {
+  _Paths._();
+  static const SPLASH = '/splash';
+  static const ONBOARDING = '/onboarding';
+  static const LOGIN = '/login';
+  static const MAIN = '/main';
+  static const HOME = '/home';
+  static const PROFILE = '/profile';
+  static const ATTENDANCE = '/attendance';
+  static const PAYSLIP = '/payslip';
+  static const NOTIFICATION = '/notification';
+  static const LEAVE = '/leave';
+  static const OVERTIME = '/overtime';
+  static const PERMISSION = '/permission';
+  static const WFH = '/wfh';
+  static const REIMBURSEMENT = '/reimbursement';
+  static const ANNOUNCEMENT = '/announcement';
+}

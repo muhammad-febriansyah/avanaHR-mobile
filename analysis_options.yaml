@@ -1,0 +1,5 @@
+include: package:flutter_lints/flutter.yaml
+linter:
+  rules:
+    # get_cli generates UPPER_CASE route name constants by convention.
+    constant_identifier_names: false
