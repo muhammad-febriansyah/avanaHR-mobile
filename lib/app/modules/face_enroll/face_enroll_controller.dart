@@ -1,11 +1,6 @@
-import 'dart:io';
-import 'dart:ui' show Rect;
-
 import 'package:camera/camera.dart';
 import 'package:dio/dio.dart';
 import 'package:get/get.dart' hide Response;
-import 'package:google_mlkit_face_detection/google_mlkit_face_detection.dart';
-import 'package:image/image.dart' as img;
 
 import '../../core/utils/vector_math.dart';
 import '../../core/widgets/app_toast.dart';
@@ -104,7 +99,7 @@ class FaceEnrollController extends GetxController {
       }
 
       final face = faces.first;
-      if (!_isFrontal(face)) {
+      if (!_detector.isFrontalOpenEyes(face)) {
         AppToast.warning('Hadapkan wajah lurus ke kamera dan buka mata.');
 
         return;
@@ -122,7 +117,7 @@ class FaceEnrollController extends GetxController {
         return;
       }
 
-      final embedding = await _embedFrom(shot.path, face.boundingBox);
+      final embedding = await _embedder.embedFromFile(shot.path, face.boundingBox);
       if (embedding == null) {
         AppToast.error('Model wajah tidak tersedia. Hubungi admin.');
 
@@ -141,25 +136,6 @@ class FaceEnrollController extends GetxController {
     } finally {
       isBusy.value = false;
     }
-  }
-
-  Future<List<double>?> _embedFrom(String path, Rect box) async {
-    final bytes = await File(path).readAsBytes();
-    final decoded = img.decodeImage(bytes);
-    if (decoded == null) {
-      return null;
-    }
-
-    return _embedder.embed(img.bakeOrientation(decoded), box);
-  }
-
-  bool _isFrontal(Face f) {
-    final yaw = (f.headEulerAngleY ?? 0).abs();
-    final roll = (f.headEulerAngleZ ?? 0).abs();
-    final leftEye = f.leftEyeOpenProbability ?? 1;
-    final rightEye = f.rightEyeOpenProbability ?? 1;
-
-    return yaw <= 18 && roll <= 18 && leftEye > 0.4 && rightEye > 0.4;
   }
 
   Future<void> _submit() async {

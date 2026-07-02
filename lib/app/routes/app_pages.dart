@@ -6,6 +6,8 @@ import '../modules/dokumen/dokumen_binding.dart';
 import '../modules/dokumen/dokumen_view.dart';
 import '../modules/face_enroll/face_enroll_binding.dart';
 import '../modules/face_enroll/face_enroll_view.dart';
+import '../modules/face_verify/face_verify_binding.dart';
+import '../modules/face_verify/face_verify_view.dart';
 import '../modules/shift_swap/shift_swap_binding.dart';
 import '../modules/shift_swap/shift_swap_view.dart';
 import '../modules/visiting/visiting_binding.dart';
@@ -131,6 +133,11 @@ class AppPages {
       name: _Paths.FACE_ENROLL,
       page: () => const FaceEnrollView(),
       binding: FaceEnrollBinding(),
+    ),
+    GetPage(
+      name: _Paths.FACE_VERIFY,
+      page: () => const FaceVerifyView(),
+      binding: FaceVerifyBinding(),
     ),
   ];
 }

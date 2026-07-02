@@ -21,6 +21,7 @@ abstract class Routes {
   static const VISITING = _Paths.VISITING;
   static const SHIFT_SWAP = _Paths.SHIFT_SWAP;
   static const FACE_ENROLL = _Paths.FACE_ENROLL;
+  static const FACE_VERIFY = _Paths.FACE_VERIFY;
 }
 
 abstract class _Paths {
@@ -44,4 +45,5 @@ abstract class _Paths {
   static const VISITING = '/visiting';
   static const SHIFT_SWAP = '/shift-swap';
   static const FACE_ENROLL = '/face-enroll';
+  static const FACE_VERIFY = '/face-verify';
 }

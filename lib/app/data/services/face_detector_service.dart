@@ -19,6 +19,17 @@ class FaceDetectorService {
     return _detector.processImage(InputImage.fromFilePath(path));
   }
 
+  /// Whether [f] is a usable capture: roughly frontal (small yaw/roll) with both
+  /// eyes open. Rejects profiles, tilted heads, and closed-eye frames.
+  bool isFrontalOpenEyes(Face f) {
+    final yaw = (f.headEulerAngleY ?? 0).abs();
+    final roll = (f.headEulerAngleZ ?? 0).abs();
+    final leftEye = f.leftEyeOpenProbability ?? 1;
+    final rightEye = f.rightEyeOpenProbability ?? 1;
+
+    return yaw <= 18 && roll <= 18 && leftEye > 0.4 && rightEye > 0.4;
+  }
+
   void dispose() {
     _detector.close();
   }

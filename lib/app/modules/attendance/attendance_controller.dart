@@ -1,6 +1,7 @@
 import 'package:dio/dio.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:get/get.dart' hide Response;
+import 'package:get_storage/get_storage.dart';
 
 import '../../core/widgets/app_toast.dart';
 import '../../data/models/attendance.dart';
@@ -9,6 +10,7 @@ import '../../data/providers/avana_api.dart';
 import '../../data/services/attendance_queue_service.dart';
 import '../../data/services/connectivity_service.dart';
 import '../../data/services/device_service.dart';
+import '../../routes/app_pages.dart';
 
 class AttendanceController extends GetxController {
   final AvanaApi _api = AvanaApi();
@@ -17,9 +19,16 @@ class AttendanceController extends GetxController {
   final isClocking = false.obs;
   final today = Rxn<AttendanceToday>();
 
+  /// Whether the employee has enrolled a face and must verify before clocking.
+  /// Cached so an offline launch still knows to prompt for the capture.
+  final requiresFace = false.obs;
+  final GetStorage _box = GetStorage();
+  static const _faceKey = 'face_required';
+
   @override
   void onInit() {
     super.onInit();
+    requiresFace.value = _box.read<bool>(_faceKey) ?? false;
     load();
   }
 
@@ -31,10 +40,37 @@ class AttendanceController extends GetxController {
       today.value = null;
     }
     isLoading.value = false;
+    _refreshFaceRequirement();
+  }
+
+  /// Best-effort refresh of the face-enrollment flag from the API.
+  Future<void> _refreshFaceRequirement() async {
+    try {
+      final res = await _api.faceStatus();
+      final enrolled = (res.data['data']?['enrolled'] as bool?) ?? false;
+      requiresFace.value = enrolled;
+      _box.write(_faceKey, enrolled);
+    } catch (_) {
+      // Offline / error: keep the cached value.
+    }
   }
 
   Future<void> clock() async {
     final type = today.value?.canClockIn ?? true ? 'in' : 'out';
+
+    // Face gate: enrolled employees must pass on-device verification first.
+    // Capture + embedding both run locally, so this works offline too.
+    List<double>? faceEmbedding;
+    if (requiresFace.value) {
+      final result = await Get.toNamed(Routes.FACE_VERIFY);
+      if (result is! List) {
+        AppToast.warning('Verifikasi wajah dibatalkan.');
+
+        return;
+      }
+      faceEmbedding = List<double>.from(result);
+    }
+
     isClocking.value = true;
     try {
       final pos = await _currentPosition();
@@ -50,6 +86,7 @@ class AttendanceController extends GetxController {
         'is_mock_location': pos?.isMocked ?? false,
         'is_rooted': isRooted,
         'clocked_at': DateTime.now().toIso8601String(),
+        if (faceEmbedding != null) 'face_embedding': faceEmbedding,
       };
 
       // No internet → queue it and reflect the action locally.
@@ -63,7 +100,7 @@ class AttendanceController extends GetxController {
           type: type,
           latitude: pos?.latitude,
           longitude: pos?.longitude,
-          faceConfidence: 0.95, // placeholder until on-device face match lands
+          faceEmbedding: faceEmbedding,
           deviceId: device.deviceId,
           isMockLocation: pos?.isMocked ?? false,
           isRooted: isRooted,

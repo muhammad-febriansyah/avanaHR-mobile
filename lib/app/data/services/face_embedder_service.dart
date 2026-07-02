@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'dart:ui' show Rect;
 
 import 'package:get/get.dart';
@@ -49,6 +50,19 @@ class FaceEmbedderService extends GetxService {
     _interpreter!.run(input, output);
 
     return VectorMath.l2normalize(output[0]);
+  }
+
+  /// Decode the photo at [path], normalize EXIF orientation, and embed the face
+  /// at [box]. Returns null when the image can't be decoded or the model is
+  /// unavailable.
+  Future<List<double>?> embedFromFile(String path, Rect box) async {
+    final bytes = await File(path).readAsBytes();
+    final decoded = img.decodeImage(bytes);
+    if (decoded == null) {
+      return null;
+    }
+
+    return embed(img.bakeOrientation(decoded), box);
   }
 
   img.Image _cropFace(img.Image full, Rect box) {

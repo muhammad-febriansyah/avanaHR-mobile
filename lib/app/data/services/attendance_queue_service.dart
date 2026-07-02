@@ -67,6 +67,9 @@ class AttendanceQueueService extends GetxService {
             type: entry['type'] as String,
             latitude: (entry['latitude'] as num?)?.toDouble(),
             longitude: (entry['longitude'] as num?)?.toDouble(),
+            faceEmbedding: (entry['face_embedding'] as List?)
+                ?.map((e) => (e as num).toDouble())
+                .toList(),
             deviceId: entry['device_id'] as String?,
             isMockLocation: entry['is_mock_location'] as bool?,
             isRooted: entry['is_rooted'] as bool?,
