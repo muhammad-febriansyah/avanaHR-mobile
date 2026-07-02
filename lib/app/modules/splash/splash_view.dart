@@ -33,12 +33,14 @@ class _SplashViewState extends State<SplashView> {
       Future.delayed(const Duration(milliseconds: 700)),
     ]);
 
-    if (!storage.onboarded) {
-      Get.offAllNamed(Routes.ONBOARDING);
-      return;
-    }
+    // Logged in → straight into the app (splash only, skip onboarding).
     if (auth.isLoggedIn && await auth.loadMe()) {
       Get.offAllNamed(Routes.MAIN);
+      return;
+    }
+    // Not logged in → show the intro once, then the login screen.
+    if (!storage.onboarded) {
+      Get.offAllNamed(Routes.ONBOARDING);
       return;
     }
     Get.offAllNamed(Routes.LOGIN);

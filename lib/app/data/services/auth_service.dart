@@ -51,6 +51,8 @@ class AuthService extends GetxService {
       // Ignore network errors on logout — clear the session regardless.
     }
     await _storage.clearToken();
+    // Reset onboarding so a logged-out user sees the intro again on next launch.
+    await _storage.clearOnboarded();
     user.value = null;
   }
 }
