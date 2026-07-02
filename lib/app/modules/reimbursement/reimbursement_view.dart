@@ -85,7 +85,7 @@ class ReimbursementView extends GetView<ReimbursementController> {
                       : () async {
                           final amount = int.tryParse(amountC.text.trim().replaceAll(RegExp(r'[^0-9]'), ''));
                           if (categoryC.text.trim().isEmpty || amount == null || amount <= 0) {
-                            AppToast.error('Lengkapi kategori & nominal.');
+                            AppToast.warning('Lengkapi kategori & nominal.');
                             return;
                           }
                           final ok = await controller.submit(category: categoryC.text.trim(), amount: amount);

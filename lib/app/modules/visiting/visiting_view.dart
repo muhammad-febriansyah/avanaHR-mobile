@@ -125,7 +125,7 @@ class VisitingView extends GetView<VisitingController> {
                         ? null
                         : () async {
                             if (date.value == null || locC.text.trim().isEmpty) {
-                              AppToast.error('Isi tanggal & lokasi.');
+                              AppToast.warning('Isi tanggal & lokasi.');
                               return;
                             }
                             final pos = await controller.currentPosition();

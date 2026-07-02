@@ -103,7 +103,7 @@ class PermissionView extends GetView<PermissionController> {
                       ? null
                       : () async {
                           if (date.value == null || typeC.text.trim().isEmpty) {
-                            AppToast.error('Lengkapi tanggal & jenis izin.');
+                            AppToast.warning('Lengkapi tanggal & jenis izin.');
                             return;
                           }
                           final ok = await controller.submit(

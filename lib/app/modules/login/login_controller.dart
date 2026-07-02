@@ -29,7 +29,7 @@ class LoginController extends GetxController {
 
   Future<void> submit() async {
     if (emailC.text.trim().isEmpty || passwordC.text.isEmpty) {
-      AppToast.error('Email dan kata sandi wajib diisi.');
+      AppToast.warning('Email dan kata sandi wajib diisi.');
       return;
     }
 

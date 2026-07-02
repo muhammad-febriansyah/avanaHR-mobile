@@ -133,7 +133,7 @@ class LeaveView extends GetView<LeaveController> {
                         ? null
                         : () async {
                             if (typeId.value == 0 || start.value == null || end.value == null) {
-                              AppToast.error('Lengkapi jenis cuti & tanggal.');
+                              AppToast.warning('Lengkapi jenis cuti & tanggal.');
                               return;
                             }
                             final ok = await controller.submit(

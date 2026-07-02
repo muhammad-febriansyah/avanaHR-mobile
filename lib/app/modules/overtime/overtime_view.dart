@@ -94,7 +94,7 @@ class OvertimeView extends GetView<OvertimeController> {
                       : () async {
                           final hours = double.tryParse(hoursC.text.trim());
                           if (date.value == null || hours == null || hours <= 0) {
-                            AppToast.error('Lengkapi tanggal & jam.');
+                            AppToast.warning('Lengkapi tanggal & jam.');
                             return;
                           }
                           final ok = await controller.submit(date: fmt(date.value!), hours: hours, reason: reasonC.text.trim().isEmpty ? null : reasonC.text.trim());

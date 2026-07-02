@@ -5,6 +5,7 @@ import 'package:toastification/toastification.dart';
 class AppToast {
   static void success(String message) => _show(message, ToastificationType.success);
   static void error(String message) => _show(message, ToastificationType.error);
+  static void warning(String message) => _show(message, ToastificationType.warning);
   static void info(String message) => _show(message, ToastificationType.info);
 
   static void _show(String message, ToastificationType type) {

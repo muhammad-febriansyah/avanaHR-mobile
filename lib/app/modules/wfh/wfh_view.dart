@@ -97,7 +97,7 @@ class WfhView extends GetView<WfhController> {
                       ? null
                       : () async {
                           if (start.value == null || end.value == null) {
-                            AppToast.error('Lengkapi tanggal.');
+                            AppToast.warning('Lengkapi tanggal.');
                             return;
                           }
                           final ok = await controller.submit(startDate: fmt(start.value!), endDate: fmt(end.value!), reason: reasonC.text.trim().isEmpty ? null : reasonC.text.trim());

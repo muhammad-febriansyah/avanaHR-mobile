@@ -109,7 +109,7 @@ class DokumenView extends GetView<DokumenController> {
                       ? null
                       : () async {
                           if (nameC.text.trim().isEmpty || path.value == null) {
-                            AppToast.error('Isi nama & pilih file.');
+                            AppToast.warning('Isi nama & pilih file.');
                             return;
                           }
                           final ok = await controller.upload(name: nameC.text.trim(), type: typeC.text.trim().isEmpty ? null : typeC.text.trim(), filePath: path.value!);

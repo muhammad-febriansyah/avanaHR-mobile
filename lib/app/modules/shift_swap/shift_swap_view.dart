@@ -63,7 +63,7 @@ class ShiftSwapView extends GetView<ShiftSwapController> {
 
   void _openSheet(BuildContext context) {
     if (controller.colleagues.isEmpty) {
-      AppToast.error('Belum ada rekan untuk tukar shift.');
+      AppToast.warning('Belum ada rekan untuk tukar shift.');
       return;
     }
     final target = Rxn<int>();
@@ -112,7 +112,7 @@ class ShiftSwapView extends GetView<ShiftSwapController> {
                       ? null
                       : () async {
                           if (target.value == null || date.value == null) {
-                            AppToast.error('Pilih rekan & tanggal.');
+                            AppToast.warning('Pilih rekan & tanggal.');
                             return;
                           }
                           final ok = await controller.submit(targetId: target.value!, date: fmt(date.value!), reason: reasonC.text.trim().isEmpty ? null : reasonC.text.trim());
