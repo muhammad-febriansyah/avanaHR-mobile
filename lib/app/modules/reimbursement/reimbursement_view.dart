@@ -7,6 +7,7 @@ import '../../core/theme/app_colors.dart';
 import '../../core/utils/formats.dart';
 import '../../core/widgets/app_page.dart';
 import '../../core/widgets/app_toast.dart';
+import '../../core/widgets/form_fields.dart';
 import '../../core/widgets/status_chip.dart';
 import '../../core/widgets/ui.dart';
 import 'reimbursement_controller.dart';
@@ -108,82 +109,46 @@ class ReimbursementView extends GetView<ReimbursementController> {
         padding: EdgeInsets.only(
           left: 20.w,
           right: 20.w,
-          top: 20.h,
-          bottom: MediaQuery.of(ctx).viewInsets.bottom + 20.h,
+          top: 14.h,
+          bottom: MediaQuery.of(ctx).viewInsets.bottom + 24.h,
         ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              'Ajukan Reimbursement',
-              style: TextStyle(
-                fontWeight: FontWeight.w700,
-                color: AppColors.navy,
-                fontSize: 16.sp,
-              ),
-            ),
-            SizedBox(height: 16.h),
-            TextField(
-              controller: categoryC,
-              decoration: const InputDecoration(
-                labelText: 'Kategori (mis. transport, medis)',
-                border: OutlineInputBorder(),
-              ),
-            ),
-            SizedBox(height: 12.h),
-            TextField(
-              controller: amountC,
-              keyboardType: TextInputType.number,
-              decoration: const InputDecoration(
-                labelText: 'Nominal (Rp)',
-                border: OutlineInputBorder(),
-              ),
-            ),
+            const SheetHeader('Ajukan Reimbursement'),
             SizedBox(height: 18.h),
-            SizedBox(
-              width: double.infinity,
-              child: Obx(
-                () => ElevatedButton(
-                  onPressed: controller.submitting.value
-                      ? null
-                      : () async {
-                          final amount = int.tryParse(
-                            amountC.text.trim().replaceAll(
-                              RegExp(r'[^0-9]'),
-                              '',
-                            ),
-                          );
-                          if (categoryC.text.trim().isEmpty ||
-                              amount == null ||
-                              amount <= 0) {
-                            AppToast.warning('Lengkapi kategori & nominal.');
-                            return;
-                          }
-                          final ok = await controller.submit(
-                            category: categoryC.text.trim(),
-                            amount: amount,
-                          );
-                          if (ok) Get.back();
-                        },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.primary,
-                    padding: EdgeInsets.symmetric(vertical: 14.h),
-                  ),
-                  child: controller.submitting.value
-                      ? const SizedBox(
-                          height: 20,
-                          width: 20,
-                          child: CircularProgressIndicator(
-                            color: Colors.white,
-                            strokeWidth: 2,
-                          ),
-                        )
-                      : const Text(
-                          'Kirim',
-                          style: TextStyle(color: Colors.white),
-                        ),
-                ),
+            AppTextField(
+              controller: categoryC,
+              label: 'Kategori',
+              hint: 'mis. transport, medis',
+              icon: Iconsax.category,
+            ),
+            SizedBox(height: 14.h),
+            AppTextField(
+              controller: amountC,
+              label: 'Nominal',
+              hint: '0',
+              prefixText: 'Rp ',
+              keyboardType: TextInputType.number,
+              formatters: [RupiahInputFormatter()],
+            ),
+            SizedBox(height: 22.h),
+            Obx(
+              () => AppSubmitButton(
+                loading: controller.submitting.value,
+                onPressed: () async {
+                  final amount = parseRupiah(amountC.text);
+                  if (categoryC.text.trim().isEmpty || amount <= 0) {
+                    AppToast.warning('Lengkapi kategori & nominal.');
+                    return;
+                  }
+                  final ok = await controller.submit(
+                    category: categoryC.text.trim(),
+                    amount: amount,
+                  );
+                  if (ok) Get.back();
+                },
               ),
             ),
           ],

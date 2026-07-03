@@ -6,6 +6,7 @@ import 'package:iconsax/iconsax.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/widgets/app_page.dart';
 import '../../core/widgets/app_toast.dart';
+import '../../core/widgets/form_fields.dart';
 import '../../core/widgets/status_chip.dart';
 import '../../core/widgets/ui.dart';
 import 'wfh_controller.dart';
@@ -101,37 +102,6 @@ class WfhView extends GetView<WfhController> {
     String fmt(DateTime d) =>
         '${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
 
-    Widget dateField(
-      BuildContext ctx,
-      String label,
-      DateTime? v,
-      void Function(DateTime) onPick,
-    ) => InkWell(
-      onTap: () async {
-        final now = DateTime.now();
-        final d = await showDatePicker(
-          context: ctx,
-          initialDate: v ?? now,
-          firstDate: now,
-          lastDate: now.add(const Duration(days: 180)),
-        );
-        if (d != null) onPick(d);
-      },
-      child: InputDecorator(
-        decoration: InputDecoration(
-          labelText: label,
-          border: const OutlineInputBorder(),
-        ),
-        child: Text(
-          v == null ? 'Pilih' : fmt(v),
-          style: TextStyle(
-            fontSize: 13.sp,
-            color: v == null ? AppColors.textMuted : AppColors.navy,
-          ),
-        ),
-      ),
-    );
-
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -143,95 +113,63 @@ class WfhView extends GetView<WfhController> {
         padding: EdgeInsets.only(
           left: 20.w,
           right: 20.w,
-          top: 20.h,
-          bottom: MediaQuery.of(ctx).viewInsets.bottom + 20.h,
+          top: 14.h,
+          bottom: MediaQuery.of(ctx).viewInsets.bottom + 24.h,
         ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              'Ajukan WFH',
-              style: TextStyle(
-                fontWeight: FontWeight.w700,
-                color: AppColors.navy,
-                fontSize: 16.sp,
-              ),
-            ),
-            SizedBox(height: 16.h),
+            const SheetHeader('Ajukan WFH'),
+            SizedBox(height: 18.h),
             Row(
               children: [
                 Expanded(
                   child: Obx(
-                    () => dateField(
-                      ctx,
-                      'Mulai',
-                      start.value,
-                      (d) => start.value = d,
+                    () => AppDateField(
+                      label: 'Mulai',
+                      value: start.value,
+                      onPick: (d) => start.value = d,
                     ),
                   ),
                 ),
                 SizedBox(width: 12.w),
                 Expanded(
                   child: Obx(
-                    () => dateField(
-                      ctx,
-                      'Selesai',
-                      end.value,
-                      (d) => end.value = d,
+                    () => AppDateField(
+                      label: 'Selesai',
+                      value: end.value,
+                      onPick: (d) => end.value = d,
                     ),
                   ),
                 ),
               ],
             ),
-            SizedBox(height: 12.h),
-            TextField(
+            SizedBox(height: 14.h),
+            AppTextField(
               controller: reasonC,
-              decoration: const InputDecoration(
-                labelText: 'Alasan (opsional)',
-                border: OutlineInputBorder(),
-              ),
+              label: 'Alasan (opsional)',
+              hint: 'Tulis alasan…',
               maxLines: 2,
             ),
-            SizedBox(height: 18.h),
-            SizedBox(
-              width: double.infinity,
-              child: Obx(
-                () => ElevatedButton(
-                  onPressed: controller.submitting.value
-                      ? null
-                      : () async {
-                          if (start.value == null || end.value == null) {
-                            AppToast.warning('Lengkapi tanggal.');
-                            return;
-                          }
-                          final ok = await controller.submit(
-                            startDate: fmt(start.value!),
-                            endDate: fmt(end.value!),
-                            reason: reasonC.text.trim().isEmpty
-                                ? null
-                                : reasonC.text.trim(),
-                          );
-                          if (ok) Get.back();
-                        },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.primary,
-                    padding: EdgeInsets.symmetric(vertical: 14.h),
-                  ),
-                  child: controller.submitting.value
-                      ? const SizedBox(
-                          height: 20,
-                          width: 20,
-                          child: CircularProgressIndicator(
-                            color: Colors.white,
-                            strokeWidth: 2,
-                          ),
-                        )
-                      : const Text(
-                          'Kirim',
-                          style: TextStyle(color: Colors.white),
-                        ),
-                ),
+            SizedBox(height: 22.h),
+            Obx(
+              () => AppSubmitButton(
+                loading: controller.submitting.value,
+                onPressed: () async {
+                  if (start.value == null || end.value == null) {
+                    AppToast.warning('Lengkapi tanggal.');
+                    return;
+                  }
+                  final ok = await controller.submit(
+                    startDate: fmt(start.value!),
+                    endDate: fmt(end.value!),
+                    reason: reasonC.text.trim().isEmpty
+                        ? null
+                        : reasonC.text.trim(),
+                  );
+                  if (ok) Get.back();
+                },
               ),
             ),
           ],

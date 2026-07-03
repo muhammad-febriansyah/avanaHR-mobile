@@ -7,6 +7,7 @@ import 'package:iconsax/iconsax.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/widgets/app_page.dart';
 import '../../core/widgets/app_toast.dart';
+import '../../core/widgets/form_fields.dart';
 import '../../core/widgets/ui.dart';
 import 'dokumen_controller.dart';
 
@@ -113,40 +114,27 @@ class DokumenView extends GetView<DokumenController> {
         padding: EdgeInsets.only(
           left: 20.w,
           right: 20.w,
-          top: 20.h,
-          bottom: MediaQuery.of(ctx).viewInsets.bottom + 20.h,
+          top: 14.h,
+          bottom: MediaQuery.of(ctx).viewInsets.bottom + 24.h,
         ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              'Unggah Dokumen',
-              style: TextStyle(
-                fontWeight: FontWeight.w700,
-                color: AppColors.navy,
-                fontSize: 16.sp,
-              ),
-            ),
-            SizedBox(height: 16.h),
-            TextField(
+            const SheetHeader('Unggah Dokumen'),
+            SizedBox(height: 18.h),
+            AppTextField(
               controller: nameC,
-              decoration: const InputDecoration(
-                labelText: 'Nama dokumen',
-                hintText: 'cth. KTP',
-                border: OutlineInputBorder(),
-              ),
+              label: 'Nama Dokumen',
+              hint: 'cth. KTP',
             ),
-            SizedBox(height: 12.h),
-            TextField(
+            SizedBox(height: 14.h),
+            AppTextField(
               controller: typeC,
-              decoration: const InputDecoration(
-                labelText: 'Jenis (opsional)',
-                hintText: 'cth. identitas',
-                border: OutlineInputBorder(),
-              ),
+              label: 'Jenis (opsional)',
+              hint: 'cth. identitas',
             ),
-            SizedBox(height: 12.h),
+            SizedBox(height: 14.h),
             Obx(
               () => OutlinedButton.icon(
                 onPressed: () async {
@@ -170,48 +158,29 @@ class DokumenView extends GetView<DokumenController> {
                 style: OutlinedButton.styleFrom(
                   padding: EdgeInsets.symmetric(vertical: 14.h),
                   minimumSize: Size(double.infinity, 0),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(14.r),
+                  ),
                 ),
               ),
             ),
-            SizedBox(height: 18.h),
-            SizedBox(
-              width: double.infinity,
-              child: Obx(
-                () => ElevatedButton(
-                  onPressed: controller.submitting.value
-                      ? null
-                      : () async {
-                          if (nameC.text.trim().isEmpty || path.value == null) {
-                            AppToast.warning('Isi nama & pilih file.');
-                            return;
-                          }
-                          final ok = await controller.upload(
-                            name: nameC.text.trim(),
-                            type: typeC.text.trim().isEmpty
-                                ? null
-                                : typeC.text.trim(),
-                            filePath: path.value!,
-                          );
-                          if (ok) Get.back();
-                        },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.primary,
-                    padding: EdgeInsets.symmetric(vertical: 14.h),
-                  ),
-                  child: controller.submitting.value
-                      ? const SizedBox(
-                          height: 20,
-                          width: 20,
-                          child: CircularProgressIndicator(
-                            color: Colors.white,
-                            strokeWidth: 2,
-                          ),
-                        )
-                      : const Text(
-                          'Unggah',
-                          style: TextStyle(color: Colors.white),
-                        ),
-                ),
+            SizedBox(height: 22.h),
+            Obx(
+              () => AppSubmitButton(
+                label: 'Unggah',
+                loading: controller.submitting.value,
+                onPressed: () async {
+                  if (nameC.text.trim().isEmpty || path.value == null) {
+                    AppToast.warning('Isi nama & pilih file.');
+                    return;
+                  }
+                  final ok = await controller.upload(
+                    name: nameC.text.trim(),
+                    type: typeC.text.trim().isEmpty ? null : typeC.text.trim(),
+                    filePath: path.value!,
+                  );
+                  if (ok) Get.back();
+                },
               ),
             ),
           ],

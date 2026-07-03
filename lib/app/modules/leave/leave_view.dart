@@ -6,6 +6,7 @@ import 'package:iconsax/iconsax.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/widgets/app_page.dart';
 import '../../core/widgets/app_toast.dart';
+import '../../core/widgets/form_fields.dart';
 import '../../core/widgets/status_chip.dart';
 import '../../core/widgets/ui.dart';
 import 'leave_controller.dart';
@@ -156,111 +157,44 @@ class LeaveView extends GetView<LeaveController> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              'Ajukan Cuti',
-              style: TextStyle(
-                fontWeight: FontWeight.w700,
-                color: AppColors.navy,
-                fontSize: 16.sp,
-              ),
-            ),
-            SizedBox(height: 16.h),
+            const SheetHeader('Ajukan Cuti'),
+            SizedBox(height: 18.h),
             Obx(
-              () => DropdownButtonFormField<int>(
-                value: controller.types.any((t) => t.id == typeId.value)
-                    ? typeId.value
-                    : null,
-                decoration: const InputDecoration(
-                  labelText: 'Jenis Cuti',
-                  border: OutlineInputBorder(),
-                ),
-                items: controller.types
-                    .map(
-                      (t) => DropdownMenuItem(value: t.id, child: Text(t.name)),
-                    )
-                    .toList(),
+              () => AppDropdownField<int>(
+                label: 'Jenis Cuti',
+                hint: 'Pilih jenis cuti',
+                value: controller.types.any((t) => t.id == typeId.value) ? typeId.value : null,
+                items: controller.types.map((t) => DropdownMenuItem(value: t.id, child: Text(t.name))).toList(),
                 onChanged: (v) => typeId.value = v ?? 0,
               ),
             ),
-            SizedBox(height: 12.h),
+            SizedBox(height: 14.h),
             Row(
               children: [
-                Expanded(
-                  child: Obx(
-                    () => _dateField(
-                      ctx,
-                      'Mulai',
-                      start.value,
-                      (d) => start.value = d,
-                      fmt,
-                    ),
-                  ),
-                ),
+                Expanded(child: Obx(() => AppDateField(label: 'Mulai', value: start.value, onPick: (d) => start.value = d))),
                 SizedBox(width: 12.w),
-                Expanded(
-                  child: Obx(
-                    () => _dateField(
-                      ctx,
-                      'Selesai',
-                      end.value,
-                      (d) => end.value = d,
-                      fmt,
-                    ),
-                  ),
-                ),
+                Expanded(child: Obx(() => AppDateField(label: 'Selesai', value: end.value, onPick: (d) => end.value = d))),
               ],
             ),
-            SizedBox(height: 12.h),
-            TextField(
-              controller: reasonC,
-              decoration: const InputDecoration(
-                labelText: 'Alasan (opsional)',
-                border: OutlineInputBorder(),
-              ),
-              maxLines: 2,
-            ),
-            SizedBox(height: 18.h),
-            SizedBox(
-              width: double.infinity,
-              child: Obx(
-                () => ElevatedButton(
-                  onPressed: controller.submitting.value
-                      ? null
-                      : () async {
-                          if (typeId.value == 0 ||
-                              start.value == null ||
-                              end.value == null) {
-                            AppToast.warning('Lengkapi jenis cuti & tanggal.');
-                            return;
-                          }
-                          final ok = await controller.submit(
-                            leaveTypeId: typeId.value,
-                            startDate: fmt(start.value!),
-                            endDate: fmt(end.value!),
-                            reason: reasonC.text.trim().isEmpty
-                                ? null
-                                : reasonC.text.trim(),
-                          );
-                          if (ok) Get.back();
-                        },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.primary,
-                    padding: EdgeInsets.symmetric(vertical: 14.h),
-                  ),
-                  child: controller.submitting.value
-                      ? const SizedBox(
-                          height: 20,
-                          width: 20,
-                          child: CircularProgressIndicator(
-                            color: Colors.white,
-                            strokeWidth: 2,
-                          ),
-                        )
-                      : const Text(
-                          'Kirim',
-                          style: TextStyle(color: Colors.white),
-                        ),
-                ),
+            SizedBox(height: 14.h),
+            AppTextField(controller: reasonC, label: 'Alasan (opsional)', hint: 'Tulis alasan…', maxLines: 2),
+            SizedBox(height: 22.h),
+            Obx(
+              () => AppSubmitButton(
+                loading: controller.submitting.value,
+                onPressed: () async {
+                  if (typeId.value == 0 || start.value == null || end.value == null) {
+                    AppToast.warning('Lengkapi jenis cuti & tanggal.');
+                    return;
+                  }
+                  final ok = await controller.submit(
+                    leaveTypeId: typeId.value,
+                    startDate: fmt(start.value!),
+                    endDate: fmt(end.value!),
+                    reason: reasonC.text.trim().isEmpty ? null : reasonC.text.trim(),
+                  );
+                  if (ok) Get.back();
+                },
               ),
             ),
           ],
@@ -269,37 +203,4 @@ class LeaveView extends GetView<LeaveController> {
     );
   }
 
-  Widget _dateField(
-    BuildContext ctx,
-    String label,
-    DateTime? value,
-    void Function(DateTime) onPick,
-    String Function(DateTime) fmt,
-  ) {
-    return InkWell(
-      onTap: () async {
-        final now = DateTime.now();
-        final d = await showDatePicker(
-          context: ctx,
-          initialDate: value ?? now,
-          firstDate: now.subtract(const Duration(days: 1)),
-          lastDate: now.add(const Duration(days: 365)),
-        );
-        if (d != null) onPick(d);
-      },
-      child: InputDecorator(
-        decoration: InputDecoration(
-          labelText: label,
-          border: const OutlineInputBorder(),
-        ),
-        child: Text(
-          value == null ? 'Pilih' : fmt(value),
-          style: TextStyle(
-            fontSize: 13.sp,
-            color: value == null ? AppColors.textMuted : AppColors.navy,
-          ),
-        ),
-      ),
-    );
-  }
 }

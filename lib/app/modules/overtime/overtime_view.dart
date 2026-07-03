@@ -6,6 +6,7 @@ import 'package:iconsax/iconsax.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/widgets/app_page.dart';
 import '../../core/widgets/app_toast.dart';
+import '../../core/widgets/form_fields.dart';
 import '../../core/widgets/status_chip.dart';
 import '../../core/widgets/ui.dart';
 import 'overtime_controller.dart';
@@ -106,6 +107,7 @@ class OvertimeView extends GetView<OvertimeController> {
     final date = Rxn<DateTime>();
     final hoursC = TextEditingController();
     final reasonC = TextEditingController();
+    final now = DateTime.now();
     String fmt(DateTime d) =>
         '${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
 
@@ -120,113 +122,59 @@ class OvertimeView extends GetView<OvertimeController> {
         padding: EdgeInsets.only(
           left: 20.w,
           right: 20.w,
-          top: 20.h,
-          bottom: MediaQuery.of(ctx).viewInsets.bottom + 20.h,
+          top: 14.h,
+          bottom: MediaQuery.of(ctx).viewInsets.bottom + 24.h,
         ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              'Ajukan Lembur',
-              style: TextStyle(
-                fontWeight: FontWeight.w700,
-                color: AppColors.navy,
-                fontSize: 16.sp,
-              ),
-            ),
-            SizedBox(height: 16.h),
+            const SheetHeader('Ajukan Lembur'),
+            SizedBox(height: 18.h),
             Obx(
-              () => InkWell(
-                onTap: () async {
-                  final now = DateTime.now();
-                  final d = await showDatePicker(
-                    context: ctx,
-                    initialDate: date.value ?? now,
-                    firstDate: now.subtract(const Duration(days: 30)),
-                    lastDate: now.add(const Duration(days: 30)),
-                  );
-                  if (d != null) date.value = d;
-                },
-                child: InputDecorator(
-                  decoration: const InputDecoration(
-                    labelText: 'Tanggal',
-                    border: OutlineInputBorder(),
-                  ),
-                  child: Text(
-                    date.value == null ? 'Pilih' : fmt(date.value!),
-                    style: TextStyle(
-                      fontSize: 13.sp,
-                      color: date.value == null
-                          ? AppColors.textMuted
-                          : AppColors.navy,
-                    ),
-                  ),
-                ),
+              () => AppDateField(
+                label: 'Tanggal',
+                value: date.value,
+                onPick: (d) => date.value = d,
+                firstDate: now.subtract(const Duration(days: 30)),
+                lastDate: now.add(const Duration(days: 30)),
               ),
             ),
-            SizedBox(height: 12.h),
-            TextField(
+            SizedBox(height: 14.h),
+            AppTextField(
               controller: hoursC,
+              label: 'Jumlah Jam',
+              hint: '0',
               keyboardType: const TextInputType.numberWithOptions(
                 decimal: true,
               ),
-              decoration: const InputDecoration(
-                labelText: 'Jumlah jam',
-                border: OutlineInputBorder(),
-              ),
             ),
-            SizedBox(height: 12.h),
-            TextField(
+            SizedBox(height: 14.h),
+            AppTextField(
               controller: reasonC,
-              decoration: const InputDecoration(
-                labelText: 'Alasan (opsional)',
-                border: OutlineInputBorder(),
-              ),
+              label: 'Alasan (opsional)',
+              hint: 'Tulis alasan…',
               maxLines: 2,
             ),
-            SizedBox(height: 18.h),
-            SizedBox(
-              width: double.infinity,
-              child: Obx(
-                () => ElevatedButton(
-                  onPressed: controller.submitting.value
-                      ? null
-                      : () async {
-                          final hours = double.tryParse(hoursC.text.trim());
-                          if (date.value == null ||
-                              hours == null ||
-                              hours <= 0) {
-                            AppToast.warning('Lengkapi tanggal & jam.');
-                            return;
-                          }
-                          final ok = await controller.submit(
-                            date: fmt(date.value!),
-                            hours: hours,
-                            reason: reasonC.text.trim().isEmpty
-                                ? null
-                                : reasonC.text.trim(),
-                          );
-                          if (ok) Get.back();
-                        },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.primary,
-                    padding: EdgeInsets.symmetric(vertical: 14.h),
-                  ),
-                  child: controller.submitting.value
-                      ? const SizedBox(
-                          height: 20,
-                          width: 20,
-                          child: CircularProgressIndicator(
-                            color: Colors.white,
-                            strokeWidth: 2,
-                          ),
-                        )
-                      : const Text(
-                          'Kirim',
-                          style: TextStyle(color: Colors.white),
-                        ),
-                ),
+            SizedBox(height: 22.h),
+            Obx(
+              () => AppSubmitButton(
+                loading: controller.submitting.value,
+                onPressed: () async {
+                  final hours = double.tryParse(hoursC.text.trim());
+                  if (date.value == null || hours == null || hours <= 0) {
+                    AppToast.warning('Lengkapi tanggal & jam.');
+                    return;
+                  }
+                  final ok = await controller.submit(
+                    date: fmt(date.value!),
+                    hours: hours,
+                    reason: reasonC.text.trim().isEmpty
+                        ? null
+                        : reasonC.text.trim(),
+                  );
+                  if (ok) Get.back();
+                },
               ),
             ),
           ],

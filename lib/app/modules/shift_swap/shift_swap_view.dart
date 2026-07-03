@@ -6,6 +6,7 @@ import 'package:iconsax/iconsax.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/widgets/app_page.dart';
 import '../../core/widgets/app_toast.dart';
+import '../../core/widgets/form_fields.dart';
 import '../../core/widgets/status_chip.dart';
 import '../../core/widgets/ui.dart';
 import 'shift_swap_controller.dart';
@@ -131,30 +132,20 @@ class ShiftSwapView extends GetView<ShiftSwapController> {
         padding: EdgeInsets.only(
           left: 20.w,
           right: 20.w,
-          top: 20.h,
-          bottom: MediaQuery.of(ctx).viewInsets.bottom + 20.h,
+          top: 14.h,
+          bottom: MediaQuery.of(ctx).viewInsets.bottom + 24.h,
         ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              'Ajukan Tukar Shift',
-              style: TextStyle(
-                fontWeight: FontWeight.w700,
-                color: AppColors.navy,
-                fontSize: 16.sp,
-              ),
-            ),
-            SizedBox(height: 16.h),
+            const SheetHeader('Ajukan Tukar Shift'),
+            SizedBox(height: 18.h),
             Obx(
-              () => DropdownButtonFormField<int>(
-                initialValue: target.value,
-                isExpanded: true,
-                decoration: const InputDecoration(
-                  labelText: 'Rekan',
-                  border: OutlineInputBorder(),
-                ),
+              () => AppDropdownField<int>(
+                label: 'Rekan (tukar dengan)',
+                hint: 'Pilih rekan',
+                value: target.value,
                 items: controller.colleagues
                     .map(
                       (c) => DropdownMenuItem(
@@ -171,84 +162,41 @@ class ShiftSwapView extends GetView<ShiftSwapController> {
                 onChanged: (v) => target.value = v,
               ),
             ),
-            SizedBox(height: 12.h),
+            SizedBox(height: 14.h),
             Obx(
-              () => InkWell(
-                onTap: () async {
-                  final now = DateTime.now();
-                  final d = await showDatePicker(
-                    context: ctx,
-                    initialDate: date.value ?? now,
-                    firstDate: now,
-                    lastDate: now.add(const Duration(days: 60)),
-                  );
-                  if (d != null) date.value = d;
-                },
-                child: InputDecorator(
-                  decoration: const InputDecoration(
-                    labelText: 'Tanggal shift',
-                    border: OutlineInputBorder(),
-                  ),
-                  child: Text(
-                    date.value == null ? 'Pilih' : fmt(date.value!),
-                    style: TextStyle(
-                      fontSize: 13.sp,
-                      color: date.value == null
-                          ? AppColors.textMuted
-                          : AppColors.navy,
-                    ),
-                  ),
-                ),
+              () => AppDateField(
+                label: 'Tanggal Shift',
+                value: date.value,
+                onPick: (d) => date.value = d,
+                firstDate: DateTime.now(),
+                lastDate: DateTime.now().add(const Duration(days: 60)),
               ),
             ),
-            SizedBox(height: 12.h),
-            TextField(
+            SizedBox(height: 14.h),
+            AppTextField(
               controller: reasonC,
-              decoration: const InputDecoration(
-                labelText: 'Alasan (opsional)',
-                border: OutlineInputBorder(),
-              ),
+              label: 'Alasan (opsional)',
+              hint: 'Tulis alasan…',
               maxLines: 2,
             ),
-            SizedBox(height: 18.h),
-            SizedBox(
-              width: double.infinity,
-              child: Obx(
-                () => ElevatedButton(
-                  onPressed: controller.submitting.value
-                      ? null
-                      : () async {
-                          if (target.value == null || date.value == null) {
-                            AppToast.warning('Pilih rekan & tanggal.');
-                            return;
-                          }
-                          final ok = await controller.submit(
-                            targetId: target.value!,
-                            date: fmt(date.value!),
-                            reason: reasonC.text.trim().isEmpty
-                                ? null
-                                : reasonC.text.trim(),
-                          );
-                          if (ok) Get.back();
-                        },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.primary,
-                    padding: EdgeInsets.symmetric(vertical: 14.h),
-                  ),
-                  child: controller.submitting.value
-                      ? const SizedBox(
-                          height: 20,
-                          width: 20,
-                          child: CircularProgressIndicator(
-                            color: Colors.white,
-                            strokeWidth: 2,
-                          ),
-                        )
-                      : const Text(
-                          'Kirim',
-                          style: TextStyle(color: Colors.white),
-                        ),
-                ),
+            SizedBox(height: 22.h),
+            Obx(
+              () => AppSubmitButton(
+                loading: controller.submitting.value,
+                onPressed: () async {
+                  if (target.value == null || date.value == null) {
+                    AppToast.warning('Pilih rekan & tanggal.');
+                    return;
+                  }
+                  final ok = await controller.submit(
+                    targetId: target.value!,
+                    date: fmt(date.value!),
+                    reason: reasonC.text.trim().isEmpty
+                        ? null
+                        : reasonC.text.trim(),
+                  );
+                  if (ok) Get.back();
+                },
               ),
             ),
           ],
