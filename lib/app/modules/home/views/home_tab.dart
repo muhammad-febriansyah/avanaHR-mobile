@@ -123,6 +123,8 @@ class HomeTab extends GetView<HomeController> {
         child: ListView(
           padding: EdgeInsets.fromLTRB(20.w, 22.h, 20.w, 24.h),
           children: [
+            _moodCard(),
+            SizedBox(height: 16.h),
             _attendanceCard(),
             SizedBox(height: 14.h),
             _locationCard(),
@@ -229,6 +231,83 @@ class HomeTab extends GetView<HomeController> {
             ],
           ),
         ],
+      ),
+    );
+  }
+
+  static const _moods = <(String, String, String)>[
+    ('sangat_baik', '😄', 'Sangat baik'),
+    ('baik', '🙂', 'Baik'),
+    ('biasa', '😐', 'Biasa'),
+    ('kurang', '🙁', 'Kurang'),
+    ('buruk', '😣', 'Buruk'),
+  ];
+
+  /// Anonymous daily mood check-in.
+  Widget _moodCard() {
+    return Obx(() {
+      final done = controller.moodCheckedIn.value;
+      final selected = controller.selectedMood.value;
+
+      return Container(
+        width: double.infinity,
+        padding: EdgeInsets.all(16.w),
+        decoration: BoxDecoration(
+          gradient: const LinearGradient(
+            colors: [AppColors.primary, AppColors.accent],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+          borderRadius: BorderRadius.circular(20.r),
+          boxShadow: [BoxShadow(color: AppColors.primary.withValues(alpha: 0.3), blurRadius: 20, offset: const Offset(0, 8))],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Bagaimana perasaanmu hari ini?', style: TextStyle(color: Colors.white, fontSize: 15.sp, fontWeight: FontWeight.w700)),
+            SizedBox(height: 4.h),
+            Text(
+              done ? 'Terima kasih, perasaanmu tercatat. Ketuk untuk ganti.' : 'Sekali ketuk. Hanya untukmu & HR, anonim.',
+              style: TextStyle(color: Colors.white.withValues(alpha: 0.8), fontSize: 11.5.sp),
+            ),
+            SizedBox(height: 14.h),
+            Row(children: _moods.map((m) => _moodButton(m, selected == m.$1)).toList()),
+          ],
+        ),
+      );
+    });
+  }
+
+  Widget _moodButton((String, String, String) m, bool selected) {
+    return Expanded(
+      child: GestureDetector(
+        onTap: controller.moodSubmitting.value ? null : () => controller.submitMood(m.$1),
+        child: Padding(
+          padding: EdgeInsets.symmetric(horizontal: 3.w),
+          child: Column(
+            children: [
+              Container(
+                width: double.infinity,
+                padding: EdgeInsets.symmetric(vertical: 9.h),
+                decoration: BoxDecoration(
+                  color: selected ? Colors.white : Colors.white.withValues(alpha: 0.16),
+                  borderRadius: BorderRadius.circular(14.r),
+                  border: selected ? Border.all(color: Colors.white, width: 2) : null,
+                ),
+                alignment: Alignment.center,
+                child: Text(m.$2, style: TextStyle(fontSize: 22.sp)),
+              ),
+              SizedBox(height: 6.h),
+              Text(
+                m.$3,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                textAlign: TextAlign.center,
+                style: TextStyle(color: Colors.white.withValues(alpha: 0.95), fontSize: 9.5.sp, fontWeight: selected ? FontWeight.w700 : FontWeight.w500),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -371,14 +450,14 @@ class HomeTab extends GetView<HomeController> {
 
   Widget _actionsGrid() {
     final items = [
-      _Action('Cuti', Iconsax.sun_1, Routes.LEAVE, const Color(0xFF16A34A)),
-      _Action('Lembur', Iconsax.timer_1, Routes.OVERTIME, const Color(0xFFD97706)),
-      _Action('Izin', Iconsax.calendar_remove, Routes.PERMISSION, const Color(0xFF7C3AED)),
-      _Action('WFH', Iconsax.house, Routes.WFH, const Color(0xFF0EA5E9)),
-      _Action('Reimburse', Iconsax.wallet_money, Routes.REIMBURSEMENT, const Color(0xFFDB2777)),
-      _Action('Slip Gaji', Iconsax.receipt_2, Routes.PAYSLIP, const Color(0xFF0891B2)),
-      _Action('Absensi', Iconsax.finger_scan, Routes.ATTENDANCE, const Color(0xFF2F54C9)),
-      _Action('Notifikasi', Iconsax.notification, Routes.NOTIFICATION, const Color(0xFF475569)),
+      _Action('Feeling', Iconsax.emoji_happy, const Color(0xFF2F54C9), _openMoodSheet),
+      _Action('Slip Gaji', Iconsax.receipt_2, const Color(0xFF0891B2), () => Get.toNamed(Routes.PAYSLIP)),
+      _Action('Cuti', Iconsax.sun_1, const Color(0xFF16A34A), () => Get.toNamed(Routes.LEAVE)),
+      _Action('Dashboard', Iconsax.category, const Color(0xFF7C3AED), () => Get.find<MainController>().changeTab(1)),
+      _Action('Lembur', Iconsax.timer_1, const Color(0xFFD97706), () => Get.toNamed(Routes.OVERTIME)),
+      _Action('Izin', Iconsax.calendar_remove, const Color(0xFF9333EA), () => Get.toNamed(Routes.PERMISSION)),
+      _Action('Reimburse', Iconsax.wallet_money, const Color(0xFFDB2777), () => Get.toNamed(Routes.REIMBURSEMENT)),
+      _Action('Lainnya', Iconsax.category_2, const Color(0xFF475569), _openMoreSheet),
     ];
     // Chunk into rows of 4 (Column of Rows avoids GridView's phantom height
     // inside a scroll view).
@@ -406,7 +485,7 @@ class HomeTab extends GetView<HomeController> {
   Widget _actionTile(_Action a) {
     return InkWell(
       borderRadius: BorderRadius.circular(16.r),
-      onTap: () => Get.toNamed(a.route),
+      onTap: a.onTap,
       child: Column(
         children: [
           Container(
@@ -420,6 +499,101 @@ class HomeTab extends GetView<HomeController> {
               style: TextStyle(fontWeight: FontWeight.w600, color: AppColors.navy, fontSize: 11.sp)),
         ],
       ),
+    );
+  }
+
+  /// Quick mood check-in in a bottom sheet (mirrors the home mood card).
+  void _openMoodSheet() {
+    Get.bottomSheet(
+      Container(
+        padding: EdgeInsets.fromLTRB(20.w, 18.h, 20.w, 28.h),
+        decoration: BoxDecoration(
+          color: AppColors.background,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(24.r)),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Bagaimana perasaanmu hari ini?', style: TextStyle(fontWeight: FontWeight.w700, color: AppColors.navy, fontSize: 15.sp)),
+            SizedBox(height: 4.h),
+            Text('Sekali ketuk. Hanya untukmu & HR, anonim.', style: TextStyle(color: AppColors.textMuted, fontSize: 12.sp)),
+            SizedBox(height: 18.h),
+            Row(
+              children: _moods.map((m) {
+                return Expanded(
+                  child: GestureDetector(
+                    onTap: () {
+                      Get.back();
+                      controller.submitMood(m.$1);
+                    },
+                    child: Padding(
+                      padding: EdgeInsets.symmetric(horizontal: 4.w),
+                      child: Column(
+                        children: [
+                          Container(
+                            width: double.infinity,
+                            padding: EdgeInsets.symmetric(vertical: 12.h),
+                            decoration: BoxDecoration(color: AppColors.muted, borderRadius: BorderRadius.circular(14.r)),
+                            alignment: Alignment.center,
+                            child: Text(m.$2, style: TextStyle(fontSize: 24.sp)),
+                          ),
+                          SizedBox(height: 6.h),
+                          Text(m.$3, maxLines: 1, overflow: TextOverflow.ellipsis, textAlign: TextAlign.center,
+                              style: TextStyle(color: AppColors.textMuted, fontSize: 9.5.sp)),
+                        ],
+                      ),
+                    ),
+                  ),
+                );
+              }).toList(),
+            ),
+          ],
+        ),
+      ),
+      isScrollControlled: true,
+    );
+  }
+
+  /// "Lainnya" — the remaining features not on the quick grid.
+  void _openMoreSheet() {
+    final more = [
+      _Action('WFH', Iconsax.house, const Color(0xFF0EA5E9), () => Get.toNamed(Routes.WFH)),
+      _Action('Dokumen', Iconsax.document_text, const Color(0xFF9333EA), () => Get.toNamed(Routes.DOKUMEN)),
+      _Action('Visiting', Iconsax.location, const Color(0xFFE11D48), () => Get.toNamed(Routes.VISITING)),
+      _Action('Tukar Shift', Iconsax.arrow_swap_horizontal, const Color(0xFF0D9488), () => Get.toNamed(Routes.SHIFT_SWAP)),
+      _Action('Pengumuman', Iconsax.volume_high, const Color(0xFFEA580C), () => Get.find<MainController>().changeTab(2)),
+      _Action('Notifikasi', Iconsax.notification, const Color(0xFF475569), () => Get.toNamed(Routes.NOTIFICATION)),
+    ];
+    Get.bottomSheet(
+      Container(
+        padding: EdgeInsets.fromLTRB(20.w, 18.h, 20.w, 28.h),
+        decoration: BoxDecoration(
+          color: AppColors.background,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(24.r)),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Menu Lainnya', style: TextStyle(fontWeight: FontWeight.w700, color: AppColors.navy, fontSize: 15.sp)),
+            SizedBox(height: 16.h),
+            Wrap(
+              runSpacing: 18.h,
+              children: more.map((a) {
+                return SizedBox(
+                  width: (1.sw - 40.w) / 4,
+                  child: _actionTile(_Action(a.label, a.icon, a.color, () {
+                    Get.back();
+                    a.onTap();
+                  })),
+                );
+              }).toList(),
+            ),
+          ],
+        ),
+      ),
+      isScrollControlled: true,
     );
   }
 
@@ -489,7 +663,7 @@ class HomeTab extends GetView<HomeController> {
 class _Action {
   final String label;
   final IconData icon;
-  final String route;
   final Color color;
-  _Action(this.label, this.icon, this.route, this.color);
+  final VoidCallback onTap;
+  _Action(this.label, this.icon, this.color, this.onTap);
 }

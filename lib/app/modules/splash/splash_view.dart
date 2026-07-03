@@ -60,19 +60,12 @@ class _SplashViewState extends State<SplashView> {
             mainAxisSize: MainAxisSize.min,
             children: [
               _logo(cfg),
-              SizedBox(height: 24.h),
-              Text(
-                cfg.siteName,
-                style: TextStyle(color: AppColors.navy, fontSize: 26.sp, fontWeight: FontWeight.w800, letterSpacing: -0.4),
+              SizedBox(height: 40.h),
+              SizedBox(
+                width: 22.w,
+                height: 22.w,
+                child: const CircularProgressIndicator(color: AppColors.primary, strokeWidth: 2.2),
               ),
-              SizedBox(height: 8.h),
-              Text(
-                cfg.tagline,
-                style: TextStyle(color: AppColors.textMuted, fontSize: 13.sp),
-                textAlign: TextAlign.center,
-              ),
-              SizedBox(height: 32.h),
-              const CircularProgressIndicator(color: AppColors.primary, strokeWidth: 2.4),
             ],
           );
         }),
@@ -86,12 +79,12 @@ class _SplashViewState extends State<SplashView> {
     final url = cfg.logoUrl;
     if (url != null && url.isNotEmpty) {
       if (url.toLowerCase().endsWith('.svg')) {
-        return SvgPicture.network(url, height: 90.h, placeholderBuilder: (_) => SizedBox(height: 90.h));
+        return SvgPicture.network(url, height: 120.h, placeholderBuilder: (_) => SizedBox(height: 120.h));
       }
 
       return Image.network(
         url,
-        height: 90.h,
+        height: 120.h,
         fit: BoxFit.contain,
         errorBuilder: (_, _, _) => _fallbackLogo(),
       );
@@ -102,7 +95,7 @@ class _SplashViewState extends State<SplashView> {
 
   Widget _fallbackLogo() => SvgPicture.asset(
         'assets/avanahr_onboarding_growth.svg',
-        height: 110.h,
-        placeholderBuilder: (_) => SizedBox(height: 110.h),
+        height: 130.h,
+        placeholderBuilder: (_) => SizedBox(height: 130.h),
       );
 }

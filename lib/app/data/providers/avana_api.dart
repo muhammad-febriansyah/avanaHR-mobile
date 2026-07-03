@@ -119,6 +119,10 @@ class AvanaApi {
     return DashboardSummary.fromJson(Map<String, dynamic>.from(res.data['data']));
   }
 
+  Future<Response> moodToday() => _dio.get('/me/mood');
+
+  Future<Response> submitMood(String mood) => _dio.post('/me/mood', data: {'mood': mood});
+
   Future<List<WorkLocationItem>> workLocations() async {
     final res = await _dio.get('/me/work-locations');
     final list = (res.data['data'] as List?) ?? [];

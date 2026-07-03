@@ -1,9 +1,12 @@
+import 'package:dio/dio.dart';
 import 'package:geolocator/geolocator.dart';
-import 'package:get/get.dart';
+import 'package:get/get.dart' hide Response;
 
+import '../../../core/widgets/app_toast.dart';
 import '../../../data/models/attendance.dart';
 import '../../../data/models/dashboard.dart';
 import '../../../data/models/ess_models.dart';
+import '../../../data/providers/api_client.dart';
 import '../../../data/providers/avana_api.dart';
 import '../../../data/services/auth_service.dart';
 import '../../../routes/app_pages.dart';
@@ -20,6 +23,11 @@ class HomeController extends GetxController {
   final unread = 0.obs;
   final announcements = <AnnouncementItem>[].obs;
   final summary = Rxn<DashboardSummary>();
+
+  // Daily mood check-in.
+  final moodCheckedIn = false.obs;
+  final selectedMood = RxnString();
+  final moodSubmitting = false.obs;
 
   // Auto-detected location status.
   final locState = LocState.loading.obs;
@@ -63,8 +71,38 @@ class HomeController extends GetxController {
 
   Future<void> refreshAll() async {
     isLoading.value = true;
-    await Future.wait([_loadToday(), _loadUnread(), _loadAnnouncements(), _loadSummary()]);
+    await Future.wait([_loadToday(), _loadUnread(), _loadAnnouncements(), _loadSummary(), _loadMood()]);
     isLoading.value = false;
+  }
+
+  Future<void> _loadMood() async {
+    try {
+      final res = await _api.moodToday();
+      final data = res.data['data'];
+      moodCheckedIn.value = (data?['checked_in'] as bool?) ?? false;
+      selectedMood.value = data?['mood'] as String?;
+    } catch (_) {
+      // Non-fatal.
+    }
+  }
+
+  Future<void> submitMood(String mood) async {
+    moodSubmitting.value = true;
+    try {
+      final res = await _api.submitMood(mood);
+      final code = res.statusCode ?? 0;
+      if (code >= 200 && code < 300) {
+        selectedMood.value = mood;
+        moodCheckedIn.value = true;
+        AppToast.success(ApiClient.messageFrom(res, 'Terima kasih, perasaanmu tercatat.'));
+      } else {
+        AppToast.error(ApiClient.messageFrom(res, 'Gagal menyimpan perasaan.'));
+      }
+    } on DioException catch (e) {
+      AppToast.error(ApiClient.errorMessage(e));
+    } finally {
+      moodSubmitting.value = false;
+    }
   }
 
   Future<void> _loadSummary() async {
