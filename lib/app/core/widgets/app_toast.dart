@@ -12,9 +12,17 @@ class AppToast {
     toastification.show(
       type: type,
       style: ToastificationStyle.fillColored,
-      title: Text(message),
+      // Let long messages (e.g. device-binding errors) wrap fully instead of
+      // truncating to one line.
+      title: Text(
+        message,
+        maxLines: 5,
+        softWrap: true,
+        overflow: TextOverflow.visible,
+        style: const TextStyle(fontWeight: FontWeight.w600, height: 1.3),
+      ),
       alignment: Alignment.topCenter,
-      autoCloseDuration: const Duration(seconds: 3),
+      autoCloseDuration: const Duration(seconds: 4),
       borderRadius: BorderRadius.circular(12),
     );
   }
