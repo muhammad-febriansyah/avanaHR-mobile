@@ -162,7 +162,13 @@ class AttendanceController extends GetxController {
       if (permission == LocationPermission.denied || permission == LocationPermission.deniedForever) {
         return null;
       }
-      return await Geolocator.getCurrentPosition();
+      try {
+        return await Geolocator.getCurrentPosition(
+          locationSettings: const LocationSettings(accuracy: LocationAccuracy.high, timeLimit: Duration(seconds: 8)),
+        );
+      } catch (_) {
+        return await Geolocator.getLastKnownPosition();
+      }
     } catch (_) {
       return null;
     }

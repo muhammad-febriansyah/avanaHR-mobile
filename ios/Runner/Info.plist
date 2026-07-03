@@ -4,6 +4,8 @@
 <dict>
 	<key>NSCameraUsageDescription</key>
 	<string>Kamera digunakan untuk verifikasi wajah saat absensi.</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>Lokasi digunakan untuk memverifikasi Anda berada di area kantor saat absensi.</string>
 	<key>CADisableMinimumFrameDurationOnPhone</key>
 	<true/>
 	<key>CFBundleDevelopmentRegion</key>

@@ -4,6 +4,7 @@ import 'package:get/get.dart' hide Response, FormData, MultipartFile;
 import '../models/activity.dart';
 import '../models/app_config.dart';
 import '../models/app_notification.dart';
+import '../models/dashboard.dart';
 import '../models/attendance.dart';
 import '../models/ess_models.dart';
 import '../models/leave_balance.dart';
@@ -110,6 +111,20 @@ class AvanaApi {
         if (isRooted != null) 'is_rooted': isRooted,
         if (clockedAt != null) 'clocked_at': clockedAt,
       });
+
+  // ---- Home dashboard ----
+  Future<DashboardSummary> dashboard() async {
+    final res = await _dio.get('/me/dashboard');
+
+    return DashboardSummary.fromJson(Map<String, dynamic>.from(res.data['data']));
+  }
+
+  Future<List<WorkLocationItem>> workLocations() async {
+    final res = await _dio.get('/me/work-locations');
+    final list = (res.data['data'] as List?) ?? [];
+
+    return list.map((e) => WorkLocationItem.fromJson(Map<String, dynamic>.from(e))).toList();
+  }
 
   // ---- Activity feed (Riwayat) ----
   Future<List<ActivityItem>> activities() async {

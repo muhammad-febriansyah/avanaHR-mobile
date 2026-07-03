@@ -61,13 +61,15 @@ class HomeTab extends GetView<HomeController> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('Selamat datang,', style: TextStyle(color: Colors.white.withValues(alpha: 0.82), fontSize: 12.5.sp)),
+                  Text('${controller.greeting},', style: TextStyle(color: Colors.white.withValues(alpha: 0.82), fontSize: 12.5.sp)),
                   Obx(() => Text(
                         controller.name.isEmpty ? '—' : controller.name,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: TextStyle(fontSize: 18.sp, fontWeight: FontWeight.w700, color: Colors.white, letterSpacing: -0.3),
                       )),
+                  SizedBox(height: 2.h),
+                  Text(controller.todayLabel, style: TextStyle(color: Colors.white.withValues(alpha: 0.7), fontSize: 11.sp)),
                 ],
               ),
             ),
@@ -122,6 +124,10 @@ class HomeTab extends GetView<HomeController> {
           padding: EdgeInsets.fromLTRB(20.w, 22.h, 20.w, 24.h),
           children: [
             _attendanceCard(),
+            SizedBox(height: 14.h),
+            _locationCard(),
+            SizedBox(height: 14.h),
+            _statsRow(),
             SizedBox(height: 26.h),
             _sectionHeader('Menu Cepat'),
             SizedBox(height: 14.h),
@@ -222,6 +228,142 @@ class HomeTab extends GetView<HomeController> {
               Text(value, style: TextStyle(color: Colors.white, fontSize: 18.sp, fontWeight: FontWeight.w700)),
             ],
           ),
+        ],
+      ),
+    );
+  }
+
+  /// Auto-detected geofence status card.
+  Widget _locationCard() {
+    return Obx(() {
+      final state = controller.locState.value;
+      final IconData icon;
+      final Color color;
+      final String title;
+      final String sub;
+
+      switch (state) {
+        case LocState.loading:
+          icon = Iconsax.location;
+          color = AppColors.textMuted;
+          title = 'Mendeteksi lokasi…';
+          sub = 'Mohon tunggu';
+        case LocState.inside:
+          icon = Iconsax.location_tick;
+          color = AppColors.success;
+          title = controller.nearestOffice.value;
+          sub = 'Dalam radius kantor · ${controller.distanceMeters.value.round()} m';
+        case LocState.outside:
+          icon = Iconsax.location_cross;
+          color = AppColors.warning;
+          title = controller.nearestOffice.value;
+          sub = '${controller.distanceMeters.value.round()} m di luar area kantor';
+        case LocState.denied:
+          icon = Iconsax.location_slash;
+          color = AppColors.destructive;
+          title = 'Izin lokasi ditolak';
+          sub = 'Aktifkan izin lokasi untuk absen';
+        case LocState.gpsOff:
+          icon = Iconsax.gps_slash;
+          color = AppColors.destructive;
+          title = 'GPS nonaktif';
+          sub = 'Nyalakan GPS untuk absen';
+        case LocState.noOffice:
+          icon = Iconsax.location;
+          color = AppColors.textMuted;
+          title = 'Lokasi kerja belum diatur';
+          sub = 'Hubungi HR';
+        case LocState.error:
+          icon = Iconsax.location;
+          color = AppColors.textMuted;
+          title = 'Gagal deteksi lokasi';
+          sub = 'Ketuk untuk coba lagi';
+      }
+
+      return InkWell(
+        onTap: controller.detectLocation,
+        borderRadius: BorderRadius.circular(16.r),
+        child: Container(
+          padding: EdgeInsets.all(14.w),
+          decoration: BoxDecoration(
+            color: color.withValues(alpha: 0.07),
+            borderRadius: BorderRadius.circular(16.r),
+            border: Border.all(color: color.withValues(alpha: 0.25)),
+          ),
+          child: Row(
+            children: [
+              Container(
+                width: 42.w,
+                height: 42.w,
+                decoration: BoxDecoration(color: color.withValues(alpha: 0.14), borderRadius: BorderRadius.circular(12.r)),
+                child: Icon(icon, color: color, size: 21.sp),
+              ),
+              SizedBox(width: 12.w),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('Lokasi Anda', style: TextStyle(color: AppColors.textMuted, fontSize: 10.5.sp)),
+                    SizedBox(height: 1.h),
+                    Text(
+                      title.isEmpty ? '—' : title,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(fontWeight: FontWeight.w700, color: AppColors.navy, fontSize: 13.5.sp),
+                    ),
+                    SizedBox(height: 1.h),
+                    Text(sub, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(color: color, fontSize: 11.5.sp, fontWeight: FontWeight.w600)),
+                  ],
+                ),
+              ),
+              if (state == LocState.loading)
+                SizedBox(width: 16.w, height: 16.w, child: const CircularProgressIndicator(strokeWidth: 2))
+              else
+                Icon(Iconsax.refresh, size: 16.sp, color: AppColors.textMuted),
+            ],
+          ),
+        ),
+      );
+    });
+  }
+
+  /// Three at-a-glance dashboard stats.
+  Widget _statsRow() {
+    return Obx(() {
+      final s = controller.summary.value;
+
+      return Row(
+        children: [
+          Expanded(child: _statCard(Iconsax.sun_1, const Color(0xFF16A34A), 'Sisa Cuti', s == null ? '—' : '${s.leaveAvailable.toInt()} hari')),
+          SizedBox(width: 10.w),
+          Expanded(child: _statCard(Iconsax.clock, AppColors.primary, 'Jam Bln Ini', s == null ? '—' : '${s.workHoursMonth.toStringAsFixed(0)} jam')),
+          SizedBox(width: 10.w),
+          Expanded(child: _statCard(Iconsax.task_square, AppColors.warning, 'Pending', s == null ? '—' : '${s.pendingCount}')),
+        ],
+      );
+    });
+  }
+
+  Widget _statCard(IconData icon, Color color, String label, String value) {
+    return Container(
+      padding: EdgeInsets.symmetric(vertical: 14.h, horizontal: 10.w),
+      decoration: BoxDecoration(
+        color: AppColors.background,
+        borderRadius: BorderRadius.circular(14.r),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Column(
+        children: [
+          Container(
+            width: 34.w,
+            height: 34.w,
+            decoration: BoxDecoration(color: color.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(10.r)),
+            child: Icon(icon, color: color, size: 17.sp),
+          ),
+          SizedBox(height: 8.h),
+          Text(value, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontWeight: FontWeight.w800, color: AppColors.navy, fontSize: 15.sp)),
+          SizedBox(height: 2.h),
+          Text(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(color: AppColors.textMuted, fontSize: 10.sp)),
         ],
       ),
     );
