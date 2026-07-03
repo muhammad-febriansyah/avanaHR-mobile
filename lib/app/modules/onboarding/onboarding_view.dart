@@ -5,7 +5,6 @@ import 'package:get/get.dart';
 import 'package:iconsax/iconsax.dart';
 
 import '../../core/theme/app_colors.dart';
-import '../../core/widgets/brand_logo.dart';
 import '../../data/services/config_service.dart';
 import '../../data/services/storage_service.dart';
 import '../../routes/app_pages.dart';
@@ -97,19 +96,21 @@ class _OnboardingViewState extends State<OnboardingView> {
             constraints: const BoxConstraints(maxWidth: 520),
             child: Column(
               children: [
-                // Top bar: brand mark + skip
+                // Top bar: skip only (clean, illustration-first).
                 Padding(
-                  padding: EdgeInsets.fromLTRB(20.w, 8.h, 8.w, 0),
+                  padding: EdgeInsets.fromLTRB(20.w, 4.h, 12.w, 0),
                   child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    mainAxisAlignment: MainAxisAlignment.end,
                     children: [
-                      BrandLogo(height: 30.w),
                       AnimatedOpacity(
                         opacity: _isLast ? 0 : 1,
                         duration: const Duration(milliseconds: 200),
                         child: TextButton(
                           onPressed: _isLast ? null : _finish,
-                          child: Text('Lewati', style: TextStyle(color: AppColors.textMuted, fontSize: 14.sp)),
+                          child: Text(
+                            'Lewati',
+                            style: TextStyle(color: AppColors.textMuted, fontSize: 14.sp, fontWeight: FontWeight.w600),
+                          ),
                         ),
                       ),
                     ],
@@ -196,36 +197,32 @@ class _SlideContent extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: EdgeInsets.symmetric(horizontal: 24.w),
+      padding: EdgeInsets.symmetric(horizontal: 28.w),
       child: Column(
         children: [
-          SizedBox(height: 12.h),
-          // Illustration on a soft brand-tinted panel
+          // Illustration floats large on the white background — no card.
           Expanded(
-            child: Container(
-              width: double.infinity,
-              clipBehavior: Clip.antiAlias,
-              decoration: BoxDecoration(
-                color: AppColors.primary.withValues(alpha: 0.06),
-                borderRadius: BorderRadius.circular(28.r),
+            flex: 6,
+            child: Center(
+              child: Padding(
+                padding: EdgeInsets.symmetric(horizontal: 8.w),
+                child: _illustration(),
               ),
-              padding: EdgeInsets.all(28.w),
-              child: Center(child: _illustration()),
             ),
           ),
-          SizedBox(height: 32.h),
+          SizedBox(height: 12.h),
           Text(
             slide.title,
             textAlign: TextAlign.center,
-            style: TextStyle(fontSize: 24.sp, fontWeight: FontWeight.w700, color: AppColors.navy, height: 1.2),
+            style: TextStyle(fontSize: 24.sp, fontWeight: FontWeight.w800, color: AppColors.navy, height: 1.2, letterSpacing: -0.4),
           ),
-          SizedBox(height: 12.h),
+          SizedBox(height: 14.h),
           Text(
             slide.body,
             textAlign: TextAlign.center,
             style: TextStyle(fontSize: 14.sp, color: AppColors.textMuted, height: 1.6),
           ),
-          SizedBox(height: 16.h),
+          SizedBox(height: 12.h),
         ],
       ),
     );
