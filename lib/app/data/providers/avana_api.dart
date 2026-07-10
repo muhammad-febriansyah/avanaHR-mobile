@@ -282,6 +282,24 @@ class AvanaApi {
     return MssMemberDetail.fromJson(Map<String, dynamic>.from(res.data['data']));
   }
 
+  Future<List<ShiftOption>> mssShifts() async {
+    final res = await _dio.get('/mss/shifts');
+    final list = (res.data['data'] as List?) ?? [];
+
+    return list.map((e) => ShiftOption.fromJson(Map<String, dynamic>.from(e))).toList();
+  }
+
+  Future<Response> mssAssignShift({
+    required int employeeId,
+    required String date,
+    int? shiftId,
+  }) =>
+      _dio.post('/mss/schedule', data: {
+        'employee_id': employeeId,
+        'date': date,
+        'shift_id': shiftId,
+      });
+
   // ---- Documents ----
   Future<List<DocumentItem>> documents() async {
     final res = await _dio.get('/me/documents');
