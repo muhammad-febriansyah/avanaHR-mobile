@@ -21,6 +21,8 @@ import '../modules/leave/leave_binding.dart';
 import '../modules/leave/leave_view.dart';
 import '../modules/mss/mss_binding.dart';
 import '../modules/mss/mss_view.dart';
+import '../modules/mss_member/mss_member_binding.dart';
+import '../modules/mss_member/mss_member_view.dart';
 import '../modules/overtime/overtime_binding.dart';
 import '../modules/overtime/overtime_view.dart';
 import '../modules/permission/permission_binding.dart';
@@ -159,6 +161,11 @@ class AppPages {
       name: _Paths.SCHEDULE,
       page: () => const ScheduleView(),
       binding: ScheduleBinding(),
+    ),
+    GetPage(
+      name: _Paths.MSS_MEMBER,
+      page: () => const MssMemberView(),
+      binding: MssMemberBinding(),
     ),
   ];
 }

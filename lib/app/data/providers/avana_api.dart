@@ -8,6 +8,7 @@ import '../models/dashboard.dart';
 import '../models/attendance.dart';
 import '../models/ess_models.dart';
 import '../models/leave_balance.dart';
+import '../models/mss.dart';
 import '../models/onboarding_slide.dart';
 import '../models/payslip.dart';
 import '../models/profile.dart';
@@ -274,6 +275,11 @@ class AvanaApi {
   Future<List<dynamic>> team() async {
     final res = await _dio.get('/mss/team');
     return (res.data['data'] as List?) ?? [];
+  }
+
+  Future<MssMemberDetail> mssMember(int id) async {
+    final res = await _dio.get('/mss/team/$id');
+    return MssMemberDetail.fromJson(Map<String, dynamic>.from(res.data['data']));
   }
 
   // ---- Documents ----
