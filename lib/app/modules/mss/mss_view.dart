@@ -23,7 +23,7 @@ class MssView extends GetView<MssController> {
   @override
   Widget build(BuildContext context) {
     return DefaultTabController(
-      length: 2,
+      length: 3,
       child: AppPage(
         title: 'Persetujuan Tim',
         subtitle: 'Manager Self-Service',
@@ -36,7 +36,7 @@ class MssView extends GetView<MssController> {
                   return const Center(child: CircularProgressIndicator());
                 }
                 return TabBarView(
-                  children: [_approvalsTab(), _teamTab()],
+                  children: [_approvalsTab(), _historyTab(), _teamTab()],
                 );
               }),
             ),
@@ -80,6 +80,7 @@ class MssView extends GetView<MssController> {
                     ? 'Persetujuan'
                     : 'Persetujuan (${controller.approvals.length})'),
               )),
+          const Tab(height: 38, child: Text('Riwayat')),
           const Tab(height: 38, child: Text('Tim')),
         ],
       ),
@@ -392,6 +393,109 @@ class MssView extends GetView<MssController> {
                   reason: ctrl.text.trim().isEmpty ? null : ctrl.text.trim());
             },
             child: const Text('Tolak'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ---- History --------------------------------------------------------------
+
+  Widget _historyTab() {
+    return Obx(() {
+      final items = controller.history;
+      return RefreshIndicator(
+        onRefresh: controller.load,
+        child: items.isEmpty
+            ? _empty(
+                Iconsax.clock,
+                'Belum ada riwayat',
+                'Keputusan yang kamu buat akan tampil di sini.',
+              )
+            : ListView.separated(
+                physics: const AlwaysScrollableScrollPhysics(),
+                padding: EdgeInsets.fromLTRB(16.w, 8.h, 16.w, 24.h),
+                itemCount: items.length,
+                separatorBuilder: (_, __) => SizedBox(height: 10.h),
+                itemBuilder: (_, i) => _historyCard(items[i]),
+              ),
+      );
+    });
+  }
+
+  Widget _historyCard(MssApproval a) {
+    final typeColor = _typeColors[a.type] ?? AppColors.primary;
+    final approved = a.status == 'approved';
+    final statusColor = approved ? AppColors.success : AppColors.destructive;
+
+    return Container(
+      padding: EdgeInsets.all(14.w),
+      decoration: BoxDecoration(
+        color: AppColors.background,
+        borderRadius: BorderRadius.circular(16.r),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: 44.w,
+            height: 44.w,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(shape: BoxShape.circle, color: a.avatarColor),
+            child: Text(a.initials,
+                style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 14.sp)),
+          ),
+          SizedBox(width: 12.w),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(a.employeeName,
+                          style: TextStyle(
+                              fontSize: 13.5.sp, fontWeight: FontWeight.w700, color: AppColors.navy)),
+                    ),
+                    _typeChip(a.typeLabel, typeColor),
+                  ],
+                ),
+                SizedBox(height: 4.h),
+                Text(a.title,
+                    style: TextStyle(fontSize: 13.sp, fontWeight: FontWeight.w600, color: AppColors.textPrimary)),
+                SizedBox(height: 2.h),
+                Text(a.detail, style: TextStyle(fontSize: 12.sp, color: AppColors.textMuted)),
+                SizedBox(height: 8.h),
+                Row(
+                  children: [
+                    Container(
+                      padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 3.h),
+                      decoration: BoxDecoration(
+                        color: statusColor.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(999),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(approved ? Iconsax.tick_circle : Iconsax.close_circle,
+                              size: 12.sp, color: statusColor),
+                          SizedBox(width: 4.w),
+                          Text(approved ? 'Disetujui' : 'Ditolak',
+                              style: TextStyle(
+                                  fontSize: 10.5.sp, fontWeight: FontWeight.w700, color: statusColor)),
+                        ],
+                      ),
+                    ),
+                    if (a.decidedAt != null) ...[
+                      const Spacer(),
+                      Text(a.decidedAt!,
+                          style: TextStyle(fontSize: 10.5.sp, color: AppColors.textMuted)),
+                    ],
+                  ],
+                ),
+              ],
+            ),
           ),
         ],
       ),

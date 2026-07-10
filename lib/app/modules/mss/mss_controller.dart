@@ -12,6 +12,7 @@ class MssController extends GetxController {
   final isLoading = true.obs;
   final acting = false.obs;
   final approvals = <MssApproval>[].obs;
+  final history = <MssApproval>[].obs;
   final team = <MssTeamMember>[].obs;
 
   /// Composite keys currently selected for a bulk decision.
@@ -27,12 +28,15 @@ class MssController extends GetxController {
   Future<void> load() async {
     isLoading.value = true;
     try {
-      final results = await Future.wait([_api.approvals(), _api.team()]);
+      final results = await Future.wait([_api.approvals(), _api.team(), _api.mssHistory()]);
       approvals.assignAll((results[0])
           .map((e) => MssApproval.fromJson(Map<String, dynamic>.from(e)))
           .toList());
       team.assignAll((results[1])
           .map((e) => MssTeamMember.fromJson(Map<String, dynamic>.from(e)))
+          .toList());
+      history.assignAll((results[2])
+          .map((e) => MssApproval.fromJson(Map<String, dynamic>.from(e)))
           .toList());
     } catch (_) {
       // keep whatever loaded
@@ -59,6 +63,7 @@ class MssController extends GetxController {
         approvals.removeWhere((a) => a.id == id);
         selected.remove(id);
         AppToast.success(action == 'approve' ? 'Disetujui' : 'Ditolak');
+        await _refreshHistory();
       } else {
         AppToast.error(ApiClient.messageFrom(res, 'Gagal memproses.'));
       }
@@ -80,6 +85,7 @@ class MssController extends GetxController {
         approvals.removeWhere((a) => ids.contains(a.id));
         selected.clear();
         AppToast.success('${ids.length} permintaan ${action == 'approve' ? 'disetujui' : 'ditolak'}');
+        await _refreshHistory();
       } else {
         AppToast.error(ApiClient.messageFrom(res, 'Gagal memproses.'));
       }
@@ -87,6 +93,15 @@ class MssController extends GetxController {
       AppToast.error(ApiClient.messageFrom(e.response, 'Gagal terhubung ke server.'));
     } finally {
       acting.value = false;
+    }
+  }
+
+  Future<void> _refreshHistory() async {
+    try {
+      final list = await _api.mssHistory();
+      history.assignAll(list.map((e) => MssApproval.fromJson(Map<String, dynamic>.from(e))).toList());
+    } catch (_) {
+      // leave prior history on failure
     }
   }
 }
