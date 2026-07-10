@@ -59,6 +59,9 @@ dependencies:
   tflite_flutter: ^0.12.1
   image: ^4.8.0
   camera: ^0.12.0+1
+  path_provider: ^2.1.6
+  open_filex: ^4.7.0
+  share_plus: ^13.2.0
 
 # file_picker (Windows impl) pins win32 ^5, but geolocator/device_info_plus
 # need win32 ^6. win32 is Windows-only; on Android/iOS it never compiles, so we
