@@ -25,6 +25,8 @@ import '../modules/overtime/overtime_binding.dart';
 import '../modules/overtime/overtime_view.dart';
 import '../modules/permission/permission_binding.dart';
 import '../modules/permission/permission_view.dart';
+import '../modules/schedule/schedule_binding.dart';
+import '../modules/schedule/schedule_view.dart';
 import '../modules/reimbursement/reimbursement_binding.dart';
 import '../modules/reimbursement/reimbursement_view.dart';
 import '../modules/wfh/wfh_binding.dart';
@@ -152,6 +154,11 @@ class AppPages {
       name: _Paths.ATTENDANCE_CORRECTION,
       page: () => const AttendanceCorrectionView(),
       binding: AttendanceCorrectionBinding(),
+    ),
+    GetPage(
+      name: _Paths.SCHEDULE,
+      page: () => const ScheduleView(),
+      binding: ScheduleBinding(),
     ),
   ];
 }

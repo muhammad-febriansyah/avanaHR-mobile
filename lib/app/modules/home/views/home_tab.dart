@@ -127,6 +127,7 @@ class HomeTab extends GetView<HomeController> {
             SizedBox(height: 16.h),
             _attendanceCard(),
             SizedBox(height: 14.h),
+            _shiftCard(),
             _locationCard(),
             SizedBox(height: 14.h),
             _statsRow(),
@@ -312,6 +313,68 @@ class HomeTab extends GetView<HomeController> {
     );
   }
 
+  /// Today's shift, from the dashboard summary. Hidden when the day is not
+  /// scheduled.
+  Widget _shiftCard() {
+    return Obx(() {
+      final shift = controller.summary.value?.todayShift;
+      if (shift == null) {
+        return const SizedBox.shrink();
+      }
+
+      final off = shift.isOff;
+      final color = off ? const Color(0xFF0EA5E9) : const Color(0xFF0D9488);
+      final title = off ? 'Libur' : (shift.shiftName ?? 'Shift');
+      final sub = off
+          ? 'Tidak ada jadwal kerja hari ini'
+          : '${shift.start ?? '--'} – ${shift.end ?? '--'}';
+
+      return Column(
+        children: [
+          InkWell(
+            onTap: () => Get.toNamed(Routes.SCHEDULE),
+            borderRadius: BorderRadius.circular(16.r),
+            child: Container(
+              padding: EdgeInsets.all(14.w),
+              decoration: BoxDecoration(
+                color: color.withValues(alpha: 0.07),
+                borderRadius: BorderRadius.circular(16.r),
+                border: Border.all(color: color.withValues(alpha: 0.25)),
+              ),
+              child: Row(
+                children: [
+                  Container(
+                    width: 42.w,
+                    height: 42.w,
+                    decoration: BoxDecoration(color: color.withValues(alpha: 0.14), borderRadius: BorderRadius.circular(12.r)),
+                    child: Icon(off ? Iconsax.coffee : Iconsax.clock, color: color, size: 21.sp),
+                  ),
+                  SizedBox(width: 12.w),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text('Shift Hari Ini', style: TextStyle(color: AppColors.textMuted, fontSize: 10.5.sp)),
+                        SizedBox(height: 1.h),
+                        Text(title, maxLines: 1, overflow: TextOverflow.ellipsis,
+                            style: TextStyle(fontWeight: FontWeight.w700, color: AppColors.navy, fontSize: 13.5.sp)),
+                        SizedBox(height: 1.h),
+                        Text(sub, maxLines: 1, overflow: TextOverflow.ellipsis,
+                            style: TextStyle(color: color, fontSize: 11.5.sp, fontWeight: FontWeight.w600)),
+                      ],
+                    ),
+                  ),
+                  Icon(Iconsax.arrow_right_3, size: 16.sp, color: AppColors.textMuted),
+                ],
+              ),
+            ),
+          ),
+          SizedBox(height: 14.h),
+        ],
+      );
+    });
+  }
+
   /// Auto-detected geofence status card.
   Widget _locationCard() {
     return Obx(() {
@@ -455,6 +518,7 @@ class HomeTab extends GetView<HomeController> {
       _Action('Feeling', Iconsax.emoji_happy, const Color(0xFF2F54C9), _openMoodSheet),
       _Action('Slip Gaji', Iconsax.receipt_2, const Color(0xFF0891B2), () => Get.toNamed(Routes.PAYSLIP)),
       _Action('Cuti', Iconsax.sun_1, const Color(0xFF16A34A), () => Get.toNamed(Routes.LEAVE)),
+      _Action('Jadwal', Iconsax.calendar_1, const Color(0xFF0D9488), () => Get.toNamed(Routes.SCHEDULE)),
       _Action('Dashboard', Iconsax.category, const Color(0xFF7C3AED), () => Get.find<MainController>().changeTab(1)),
       _Action('Lembur', Iconsax.timer_1, const Color(0xFFD97706), () => Get.toNamed(Routes.OVERTIME)),
       _Action('Izin', Iconsax.calendar_remove, const Color(0xFF9333EA), () => Get.toNamed(Routes.PERMISSION)),
