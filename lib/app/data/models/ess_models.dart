@@ -159,6 +159,33 @@ class WfhItem {
   );
 }
 
+class AttendanceCorrectionItem {
+  final int id;
+  final String date;
+  final String? clockIn;
+  final String? clockOut;
+  final String? reason;
+  final String status;
+
+  AttendanceCorrectionItem({
+    required this.id,
+    required this.date,
+    required this.status,
+    this.clockIn,
+    this.clockOut,
+    this.reason,
+  });
+
+  factory AttendanceCorrectionItem.fromJson(Map<String, dynamic> j) => AttendanceCorrectionItem(
+    id: j['id'],
+    date: fmtDate(j['date']),
+    clockIn: j['requested_clock_in'],
+    clockOut: j['requested_clock_out'],
+    reason: j['reason'],
+    status: j['status'] ?? '',
+  );
+}
+
 class ReimbursementItem {
   final int id;
   final String category;

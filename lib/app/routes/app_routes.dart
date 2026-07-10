@@ -23,6 +23,7 @@ abstract class Routes {
   static const FACE_ENROLL = _Paths.FACE_ENROLL;
   static const FACE_VERIFY = _Paths.FACE_VERIFY;
   static const MSS = _Paths.MSS;
+  static const ATTENDANCE_CORRECTION = _Paths.ATTENDANCE_CORRECTION;
 }
 
 abstract class _Paths {
@@ -48,4 +49,5 @@ abstract class _Paths {
   static const FACE_ENROLL = '/face-enroll';
   static const FACE_VERIFY = '/face-verify';
   static const MSS = '/mss';
+  static const ATTENDANCE_CORRECTION = '/attendance-correction';
 }

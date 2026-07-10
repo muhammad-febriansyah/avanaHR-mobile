@@ -561,6 +561,7 @@ class HomeTab extends GetView<HomeController> {
   void _openMoreSheet() {
     final more = [
       _Action('WFH', Iconsax.house, const Color(0xFF0EA5E9), () => Get.toNamed(Routes.WFH)),
+      _Action('Koreksi Absen', Iconsax.clock, const Color(0xFF4F46E5), () => Get.toNamed(Routes.ATTENDANCE_CORRECTION)),
       _Action('Dokumen', Iconsax.document_text, const Color(0xFF9333EA), () => Get.toNamed(Routes.DOKUMEN)),
       _Action('Visiting', Iconsax.location, const Color(0xFFE11D48), () => Get.toNamed(Routes.VISITING)),
       _Action('Tukar Shift', Iconsax.arrow_swap_horizontal, const Color(0xFF0D9488), () => Get.toNamed(Routes.SHIFT_SWAP)),

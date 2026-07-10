@@ -16,6 +16,7 @@ class MssView extends GetView<MssController> {
     'lembur': AppColors.warning,
     'izin': Color(0xFF9333EA),
     'wfh': Color(0xFF0EA5E9),
+    'koreksi': Color(0xFF4F46E5),
   };
 
   @override

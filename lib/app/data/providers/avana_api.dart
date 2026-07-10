@@ -112,6 +112,27 @@ class AvanaApi {
         if (clockedAt != null) 'clocked_at': clockedAt,
       });
 
+  // ---- Attendance corrections (koreksi absen) ----
+  Future<List<AttendanceCorrectionItem>> attendanceCorrections() async {
+    final res = await _dio.get('/me/attendance/corrections');
+    final list = (res.data['data'] as List?) ?? [];
+
+    return list.map((e) => AttendanceCorrectionItem.fromJson(Map<String, dynamic>.from(e))).toList();
+  }
+
+  Future<Response> submitCorrection({
+    required String date,
+    String? clockIn,
+    String? clockOut,
+    required String reason,
+  }) =>
+      _dio.post('/me/attendance/corrections', data: {
+        'date': date,
+        if (clockIn != null) 'requested_clock_in': clockIn,
+        if (clockOut != null) 'requested_clock_out': clockOut,
+        'reason': reason,
+      });
+
   // ---- Home dashboard ----
   Future<DashboardSummary> dashboard() async {
     final res = await _dio.get('/me/dashboard');
