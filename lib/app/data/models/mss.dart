@@ -14,6 +14,8 @@ class MssApproval {
   final String detail;
   final String? reason;
   final String? requestedAt;
+  final String? status;
+  final String? decidedAt;
 
   const MssApproval({
     required this.id,
@@ -27,6 +29,8 @@ class MssApproval {
     this.employeeNumber,
     this.reason,
     this.requestedAt,
+    this.status,
+    this.decidedAt,
   });
 
   factory MssApproval.fromJson(Map<String, dynamic> j) {
@@ -43,6 +47,8 @@ class MssApproval {
       detail: (j['detail'] ?? '').toString(),
       reason: j['reason']?.toString(),
       requestedAt: j['requested_at']?.toString(),
+      status: j['status']?.toString(),
+      decidedAt: j['decided_at']?.toString(),
     );
   }
 }

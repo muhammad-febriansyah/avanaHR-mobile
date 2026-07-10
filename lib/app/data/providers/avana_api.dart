@@ -260,6 +260,11 @@ class AvanaApi {
     return (res.data['data'] as List?) ?? [];
   }
 
+  Future<List<dynamic>> mssHistory() async {
+    final res = await _dio.get('/mss/history');
+    return (res.data['data'] as List?) ?? [];
+  }
+
   Future<Response> actApproval(String id, String action, {String? reason}) =>
       _dio.post('/mss/approvals/$id/act', data: {'action': action, if (reason != null) 'reason': reason});
 
