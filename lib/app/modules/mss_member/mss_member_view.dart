@@ -5,6 +5,7 @@ import 'package:iconsax/iconsax.dart';
 
 import '../../core/theme/app_colors.dart';
 import '../../core/widgets/app_page.dart';
+import '../../core/widgets/form_fields.dart';
 import '../../core/widgets/ui.dart';
 import '../../data/models/dashboard.dart';
 import '../../data/models/mss.dart';
@@ -28,6 +29,9 @@ class MssMemberView extends GetView<MssMemberController> {
     return AppPage(
       title: m.name,
       subtitle: [m.position, m.department].where((e) => e != null).join(' · '),
+      actions: [
+        HeaderAction(Iconsax.calendar_edit, () => _openAssign(context)),
+      ],
       child: Obx(() {
         if (controller.isLoading.value) {
           return const Loading();
@@ -50,6 +54,8 @@ class MssMemberView extends GetView<MssMemberController> {
                 _sectionTitle('Shift Hari Ini'),
                 SizedBox(height: 10.h),
                 _shift(d.todayShift),
+                SizedBox(height: 10.h),
+                _assignButton(context),
                 SizedBox(height: 20.h),
                 _sectionTitle('Request Pending (${d.pending.length})'),
                 SizedBox(height: 10.h),
@@ -273,8 +279,127 @@ class MssMemberView extends GetView<MssMemberController> {
     );
   }
 
+  Widget _assignButton(BuildContext context) {
+    return SizedBox(
+      width: double.infinity,
+      child: OutlinedButton.icon(
+        onPressed: () => _openAssign(context),
+        style: OutlinedButton.styleFrom(
+          foregroundColor: AppColors.primary,
+          side: BorderSide(color: AppColors.primary.withValues(alpha: 0.4)),
+          padding: EdgeInsets.symmetric(vertical: 12.h),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r)),
+        ),
+        icon: Icon(Iconsax.calendar_edit, size: 18.sp),
+        label: Text('Atur Shift', style: TextStyle(fontSize: 13.5.sp, fontWeight: FontWeight.w700)),
+      ),
+    );
+  }
+
   Widget _sectionTitle(String title) {
     return Text(title,
         style: TextStyle(fontSize: 14.sp, fontWeight: FontWeight.w700, color: AppColors.navy));
+  }
+
+  void _openAssign(BuildContext context) {
+    final date = Rxn<DateTime>(DateTime.now());
+    // Selected option key: 'off' for a day off, or a shift id as string.
+    final selectedKey = RxnString();
+    String fmt(DateTime d) =>
+        '${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.white,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20.r)),
+      ),
+      builder: (ctx) => Padding(
+        padding: EdgeInsets.only(
+          left: 20.w,
+          right: 20.w,
+          top: 14.h,
+          bottom: MediaQuery.of(ctx).viewInsets.bottom + 24.h,
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            SheetHeader('Atur Shift — ${controller.member.name}'),
+            SizedBox(height: 16.h),
+            Obx(() => AppDateField(
+                  label: 'Tanggal',
+                  value: date.value,
+                  onPick: (d) => date.value = d,
+                )),
+            SizedBox(height: 16.h),
+            Text('Pilih shift',
+                style: TextStyle(fontSize: 12.sp, fontWeight: FontWeight.w600, color: AppColors.textMuted)),
+            SizedBox(height: 8.h),
+            Obx(() => Column(
+                  children: [
+                    _optionTile('off', 'Libur', 'Tidak ada jadwal kerja', selectedKey),
+                    ...controller.shifts.map((s) =>
+                        _optionTile(s.id.toString(), s.name, s.label, selectedKey)),
+                  ],
+                )),
+            SizedBox(height: 20.h),
+            Obx(() => AppSubmitButton(
+                  loading: controller.assigning.value,
+                  onPressed: () async {
+                    if (date.value == null || selectedKey.value == null) {
+                      return;
+                    }
+                    final key = selectedKey.value!;
+                    final ok = await controller.assignShift(
+                      date: fmt(date.value!),
+                      shiftId: key == 'off' ? null : int.parse(key),
+                    );
+                    if (ok) Get.back();
+                  },
+                )),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _optionTile(String key, String title, String sub, RxnString selectedKey) {
+    final selected = selectedKey.value == key;
+    return GestureDetector(
+      onTap: () => selectedKey.value = key,
+      child: Container(
+        margin: EdgeInsets.only(bottom: 8.h),
+        padding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 12.h),
+        decoration: BoxDecoration(
+          color: selected ? AppColors.primary.withValues(alpha: 0.06) : AppColors.muted,
+          borderRadius: BorderRadius.circular(12.r),
+          border: Border.all(
+            color: selected ? AppColors.primary : Colors.transparent,
+            width: 1.5,
+          ),
+        ),
+        child: Row(
+          children: [
+            Icon(selected ? Iconsax.tick_circle : Iconsax.record_circle,
+                size: 20.sp, color: selected ? AppColors.primary : AppColors.textMuted),
+            SizedBox(width: 12.w),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(title,
+                      style: TextStyle(
+                          fontSize: 13.5.sp, fontWeight: FontWeight.w700, color: AppColors.navy)),
+                  SizedBox(height: 1.h),
+                  Text(sub, style: TextStyle(fontSize: 11.5.sp, color: AppColors.textMuted)),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }

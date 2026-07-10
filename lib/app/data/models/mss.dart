@@ -166,6 +166,36 @@ class MssPendingItem {
       );
 }
 
+/// A shift a manager can assign to a team member.
+class ShiftOption {
+  final int id;
+  final String name;
+  final String? code;
+  final String? start;
+  final String? end;
+
+  const ShiftOption({
+    required this.id,
+    required this.name,
+    this.code,
+    this.start,
+    this.end,
+  });
+
+  factory ShiftOption.fromJson(Map<String, dynamic> j) => ShiftOption(
+        id: j['id'] ?? 0,
+        name: (j['name'] ?? '').toString(),
+        code: j['code']?.toString(),
+        start: j['start']?.toString(),
+        end: j['end']?.toString(),
+      );
+
+  String get label {
+    final time = (start != null && end != null) ? ' · $start–$end' : '';
+    return '$name$time';
+  }
+}
+
 Color _hex(dynamic value) {
   final s = (value ?? '#2F54C9').toString().replaceAll('#', '');
   final v = int.tryParse(s.length == 6 ? 'FF$s' : s, radix: 16) ?? 0xFF2F54C9;
