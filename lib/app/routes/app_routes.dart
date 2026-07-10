@@ -25,6 +25,7 @@ abstract class Routes {
   static const MSS = _Paths.MSS;
   static const ATTENDANCE_CORRECTION = _Paths.ATTENDANCE_CORRECTION;
   static const SCHEDULE = _Paths.SCHEDULE;
+  static const MSS_MEMBER = _Paths.MSS_MEMBER;
 }
 
 abstract class _Paths {
@@ -52,4 +53,5 @@ abstract class _Paths {
   static const MSS = '/mss';
   static const ATTENDANCE_CORRECTION = '/attendance-correction';
   static const SCHEDULE = '/schedule';
+  static const MSS_MEMBER = '/mss-member';
 }

@@ -6,6 +6,7 @@ import 'package:iconsax/iconsax.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/widgets/app_page.dart';
 import '../../data/models/mss.dart';
+import '../../routes/app_pages.dart';
 import 'mss_controller.dart';
 
 class MssView extends GetView<MssController> {
@@ -525,15 +526,18 @@ class MssView extends GetView<MssController> {
   }
 
   Widget _teamCard(MssTeamMember m) {
-    return Container(
-      padding: EdgeInsets.all(14.w),
-      decoration: BoxDecoration(
-        color: AppColors.background,
-        borderRadius: BorderRadius.circular(16.r),
-        border: Border.all(color: AppColors.border),
-      ),
-      child: Row(
-        children: [
+    return InkWell(
+      onTap: () => Get.toNamed(Routes.MSS_MEMBER, arguments: m),
+      borderRadius: BorderRadius.circular(16.r),
+      child: Container(
+        padding: EdgeInsets.all(14.w),
+        decoration: BoxDecoration(
+          color: AppColors.background,
+          borderRadius: BorderRadius.circular(16.r),
+          border: Border.all(color: AppColors.border),
+        ),
+        child: Row(
+          children: [
           Container(
             width: 46.w,
             height: 46.w,
@@ -562,16 +566,19 @@ class MssView extends GetView<MssController> {
                   style: TextStyle(fontSize: 12.sp, color: AppColors.textMuted),
                 ),
                 if (m.employeeNumber != null) ...[
-                  SizedBox(height: 2.h),
-                  Text('NIK ${m.employeeNumber}',
-                      style:
-                          TextStyle(fontSize: 11.sp, color: AppColors.textMuted)),
+                    SizedBox(height: 2.h),
+                    Text('NIK ${m.employeeNumber}',
+                        style: TextStyle(
+                            fontSize: 11.sp, color: AppColors.textMuted)),
+                  ],
                 ],
-              ],
+              ),
             ),
-          ),
-          _statusChip(m.status),
-        ],
+            _statusChip(m.status),
+            SizedBox(width: 6.w),
+            Icon(Iconsax.arrow_right_3, size: 16.sp, color: AppColors.textMuted),
+          ],
+        ),
       ),
     );
   }

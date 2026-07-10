@@ -1,5 +1,7 @@
 import 'dart:ui';
 
+import 'dashboard.dart';
+
 /// One pending request routed to the manager (leave / overtime / permission /
 /// WFH) in the Manager Self-Service approvals list.
 class MssApproval {
@@ -84,6 +86,83 @@ class MssTeamMember {
         status: (j['status'] ?? 'active').toString(),
         initials: (j['initials'] ?? '?').toString(),
         avatarColor: _hex(j['avatar_color']),
+      );
+}
+
+/// A team member's detail for the manager: profile, this month's attendance
+/// recap, today's shift, and their pending requests.
+class MssMemberDetail {
+  final MssTeamMember member;
+  final AttendanceRecap attendance;
+  final TodayShift? todayShift;
+  final List<MssPendingItem> pending;
+
+  const MssMemberDetail({
+    required this.member,
+    required this.attendance,
+    required this.pending,
+    this.todayShift,
+  });
+
+  factory MssMemberDetail.fromJson(Map<String, dynamic> j) => MssMemberDetail(
+        member: MssTeamMember.fromJson(Map<String, dynamic>.from(j['member'] ?? {})),
+        attendance: AttendanceRecap.fromJson(Map<String, dynamic>.from(j['attendance'] ?? {})),
+        todayShift: j['today_shift'] is Map
+            ? TodayShift.fromJson(Map<String, dynamic>.from(j['today_shift']))
+            : null,
+        pending: ((j['pending'] as List?) ?? [])
+            .map((e) => MssPendingItem.fromJson(Map<String, dynamic>.from(e)))
+            .toList(),
+      );
+}
+
+/// A member's attendance tally for the current month.
+class AttendanceRecap {
+  final String month;
+  final int present;
+  final int late;
+  final int absent;
+  final double workHours;
+
+  const AttendanceRecap({
+    required this.month,
+    required this.present,
+    required this.late,
+    required this.absent,
+    required this.workHours,
+  });
+
+  factory AttendanceRecap.fromJson(Map<String, dynamic> j) => AttendanceRecap(
+        month: (j['month'] ?? '').toString(),
+        present: (j['present'] ?? 0) is int ? j['present'] : 0,
+        late: (j['late'] ?? 0) is int ? j['late'] : 0,
+        absent: (j['absent'] ?? 0) is int ? j['absent'] : 0,
+        workHours: (j['work_hours'] as num?)?.toDouble() ?? 0,
+      );
+}
+
+/// A compact pending request shown on the member detail (context, not actionable).
+class MssPendingItem {
+  final String id;
+  final String type;
+  final String typeLabel;
+  final String title;
+  final String detail;
+
+  const MssPendingItem({
+    required this.id,
+    required this.type,
+    required this.typeLabel,
+    required this.title,
+    required this.detail,
+  });
+
+  factory MssPendingItem.fromJson(Map<String, dynamic> j) => MssPendingItem(
+        id: (j['id'] ?? '').toString(),
+        type: (j['type'] ?? '').toString(),
+        typeLabel: (j['type_label'] ?? '').toString(),
+        title: (j['title'] ?? '').toString(),
+        detail: (j['detail'] ?? '').toString(),
       );
 }
 
