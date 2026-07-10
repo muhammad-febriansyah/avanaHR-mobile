@@ -11,6 +11,7 @@ import '../models/leave_balance.dart';
 import '../models/onboarding_slide.dart';
 import '../models/payslip.dart';
 import '../models/profile.dart';
+import '../models/schedule.dart';
 import '../models/user.dart';
 import 'api_client.dart';
 
@@ -132,6 +133,16 @@ class AvanaApi {
         if (clockOut != null) 'requested_clock_out': clockOut,
         'reason': reason,
       });
+
+  // ---- Schedule (jadwal shift) ----
+  Future<List<ShiftDay>> schedule({String? start}) async {
+    final res = await _dio.get('/me/schedule', queryParameters: {
+      if (start != null) 'start': start,
+    });
+    final list = (res.data['data'] as List?) ?? [];
+
+    return list.map((e) => ShiftDay.fromJson(Map<String, dynamic>.from(e))).toList();
+  }
 
   // ---- Home dashboard ----
   Future<DashboardSummary> dashboard() async {
