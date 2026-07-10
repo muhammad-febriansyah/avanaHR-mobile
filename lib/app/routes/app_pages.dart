@@ -14,6 +14,8 @@ import '../modules/visiting/visiting_binding.dart';
 import '../modules/visiting/visiting_view.dart';
 import '../modules/attendance/attendance_binding.dart';
 import '../modules/attendance/attendance_view.dart';
+import '../modules/attendance_correction/attendance_correction_binding.dart';
+import '../modules/attendance_correction/attendance_correction_view.dart';
 import '../modules/home/bindings/home_binding.dart';
 import '../modules/leave/leave_binding.dart';
 import '../modules/leave/leave_view.dart';
@@ -145,6 +147,11 @@ class AppPages {
       name: _Paths.MSS,
       page: () => const MssView(),
       binding: MssBinding(),
+    ),
+    GetPage(
+      name: _Paths.ATTENDANCE_CORRECTION,
+      page: () => const AttendanceCorrectionView(),
+      binding: AttendanceCorrectionBinding(),
     ),
   ];
 }
