@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:get/get.dart';
 import 'package:iconsax/iconsax.dart';
+import 'package:latlong2/latlong.dart';
 
 import '../../core/theme/app_colors.dart';
 import '../../core/widgets/app_page.dart';
@@ -59,141 +61,41 @@ class AttendanceView extends GetView<AttendanceController> {
       if (controller.isLoading.value) {
         return const Center(child: CircularProgressIndicator());
       }
-      final t = controller.today.value;
-      final isIn = t?.canClockIn ?? true;
       return RefreshIndicator(
-        onRefresh: controller.load,
-        child: LayoutBuilder(
-          builder: (context, constraints) => SingleChildScrollView(
-            physics: const AlwaysScrollableScrollPhysics(),
+        onRefresh: () async {
+          await controller.load();
+          await controller.detectLocation();
+        },
+        child: SingleChildScrollView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          padding: EdgeInsets.fromLTRB(20.w, 4.h, 20.w, 28.h),
+          child: Center(
             child: ConstrainedBox(
-              constraints: BoxConstraints(minHeight: constraints.maxHeight),
-              child: IntrinsicHeight(
-                child: Center(
-                  child: ConstrainedBox(
-                    constraints: const BoxConstraints(maxWidth: 480),
-                    child: Padding(
-                      padding: EdgeInsets.all(24.w),
-                      child: Column(
-                        children: [
-                          Container(
-                            width: double.infinity,
-                            padding: EdgeInsets.all(20.w),
-                            decoration: BoxDecoration(
-                              color: AppColors.background,
-                              borderRadius: BorderRadius.circular(18.r),
-                              border: Border.all(color: AppColors.border),
-                            ),
-                            child: Column(
-                              children: [
-                                Text(
-                                  t?.date ?? '-',
-                                  style: TextStyle(
-                                    color: AppColors.textMuted,
-                                    fontSize: 13.sp,
-                                  ),
-                                ),
-                                SizedBox(height: 16.h),
-                                Row(
-                                  mainAxisAlignment:
-                                      MainAxisAlignment.spaceEvenly,
-                                  children: [
-                                    _stat('Masuk', t?.clockIn ?? '--:--'),
-                                    Container(
-                                      width: 1,
-                                      height: 40.h,
-                                      color: AppColors.border,
-                                    ),
-                                    _stat('Pulang', t?.clockOut ?? '--:--'),
-                                  ],
-                                ),
-                                if (t?.status != null) ...[
-                                  SizedBox(height: 12.h),
-                                  Text(
-                                    'Status: ${t!.status}',
-                                    style: TextStyle(
-                                      color: AppColors.textMuted,
-                                      fontSize: 13.sp,
-                                    ),
-                                  ),
-                                ],
-                              ],
-                            ),
-                          ),
-                          const Spacer(),
-                          GestureDetector(
-                            onTap: controller.isClocking.value
-                                ? null
-                                : controller.clock,
-                            child: Container(
-                              height: 180.w,
-                              width: 180.w,
-                              decoration: BoxDecoration(
-                                shape: BoxShape.circle,
-                                gradient: LinearGradient(
-                                  colors: isIn
-                                      ? [AppColors.primary, AppColors.accent]
-                                      : [
-                                          AppColors.warning,
-                                          const Color(0xFFF59E0B),
-                                        ],
-                                ),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color:
-                                        (isIn
-                                                ? AppColors.primary
-                                                : AppColors.warning)
-                                            .withValues(alpha: 0.4),
-                                    blurRadius: 24,
-                                    offset: const Offset(0, 8),
-                                  ),
-                                ],
-                              ),
-                              child: Center(
-                                child: controller.isClocking.value
-                                    ? const CircularProgressIndicator(
-                                        color: Colors.white,
-                                      )
-                                    : Column(
-                                        mainAxisSize: MainAxisSize.min,
-                                        children: [
-                                          Icon(
-                                            isIn
-                                                ? Iconsax.login
-                                                : Iconsax.logout,
-                                            color: Colors.white,
-                                            size: 48.sp,
-                                          ),
-                                          SizedBox(height: 8.h),
-                                          Text(
-                                            isIn ? 'CLOCK IN' : 'CLOCK OUT',
-                                            style: TextStyle(
-                                              color: Colors.white,
-                                              fontWeight: FontWeight.w700,
-                                              fontSize: 16.sp,
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                              ),
-                            ),
-                          ),
-                          SizedBox(height: 16.h),
-                          Text(
-                            'Pastikan GPS aktif. Lokasi direkam saat absen.',
-                            style: TextStyle(
-                              color: AppColors.textMuted,
-                              fontSize: 12.sp,
-                            ),
-                            textAlign: TextAlign.center,
-                          ),
-                          const Spacer(),
-                        ],
-                      ),
-                    ),
+              constraints: const BoxConstraints(maxWidth: 480),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  const _GeofenceMap(),
+                  SizedBox(height: 12.h),
+                  _geoStatus(),
+                  SizedBox(height: 16.h),
+                  _todayCard(),
+                  Obx(() => controller.requiresFace.value
+                      ? Padding(
+                          padding: EdgeInsets.only(top: 12.h),
+                          child: _faceBadge(),
+                        )
+                      : const SizedBox.shrink()),
+                  SizedBox(height: 24.h),
+                  _clockButton(),
+                  SizedBox(height: 12.h),
+                  Text(
+                    'Lokasi & perangkat direkam saat absen.',
+                    style:
+                        TextStyle(color: AppColors.textMuted, fontSize: 11.5.sp),
+                    textAlign: TextAlign.center,
                   ),
-                ),
+                ],
               ),
             ),
           ),
@@ -202,23 +104,461 @@ class AttendanceView extends GetView<AttendanceController> {
     });
   }
 
-  Widget _stat(String label, String value) {
+  // ---- Geofence status chip -------------------------------------------------
+
+  Widget _geoStatus() {
+    return Obx(() {
+      final st = controller.geoState.value;
+      final dist = controller.distanceMeters.value.round();
+      final office = controller.nearest.value?.name;
+
+      late final Color color;
+      late final IconData icon;
+      late final String title;
+      String? sub;
+
+      switch (st) {
+        case GeoState.loading:
+          color = AppColors.textMuted;
+          icon = Iconsax.location;
+          title = 'Mendeteksi lokasi…';
+          break;
+        case GeoState.inside:
+          color = AppColors.success;
+          icon = Iconsax.tick_circle;
+          title = 'Dalam radius${office != null ? ' · $office' : ''}';
+          sub = '$dist m dari titik kantor';
+          break;
+        case GeoState.outside:
+          color = AppColors.destructive;
+          icon = Iconsax.close_circle;
+          title = 'Di luar radius${office != null ? ' · $office' : ''}';
+          sub = '$dist m — mendekat untuk absen';
+          break;
+        case GeoState.gpsOff:
+          color = AppColors.warning;
+          icon = Iconsax.gps_slash;
+          title = 'GPS mati';
+          sub = 'Aktifkan lokasi lalu tarik untuk memuat ulang';
+          break;
+        case GeoState.denied:
+          color = AppColors.warning;
+          icon = Iconsax.location_slash;
+          title = 'Izin lokasi ditolak';
+          sub = 'Beri izin lokasi untuk memvalidasi radius';
+          break;
+        case GeoState.noOffice:
+          color = AppColors.textMuted;
+          icon = Iconsax.building;
+          title = 'Belum ada titik kantor';
+          sub = 'Absen tetap bisa dilakukan';
+          break;
+        case GeoState.error:
+          color = AppColors.textMuted;
+          icon = Iconsax.info_circle;
+          title = 'Lokasi tak terbaca';
+          sub = 'Absen tetap bisa dilakukan';
+          break;
+      }
+
+      return Container(
+        padding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 12.h),
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: 0.08),
+          borderRadius: BorderRadius.circular(14.r),
+          border: Border.all(color: color.withValues(alpha: 0.28)),
+        ),
+        child: Row(
+          children: [
+            Icon(icon, color: color, size: 20.sp),
+            SizedBox(width: 12.w),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: TextStyle(
+                      color: color,
+                      fontSize: 13.5.sp,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  if (sub != null) ...[
+                    SizedBox(height: 2.h),
+                    Text(
+                      sub,
+                      style: TextStyle(
+                        color: AppColors.textMuted,
+                        fontSize: 11.5.sp,
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+            controller.isLocating.value
+                ? SizedBox(
+                    width: 18.w,
+                    height: 18.w,
+                    child:
+                        CircularProgressIndicator(strokeWidth: 2, color: color),
+                  )
+                : InkWell(
+                    onTap: controller.detectLocation,
+                    borderRadius: BorderRadius.circular(999),
+                    child: Padding(
+                      padding: EdgeInsets.all(8.w),
+                      child: Icon(Iconsax.refresh, color: color, size: 18.sp),
+                    ),
+                  ),
+          ],
+        ),
+      );
+    });
+  }
+
+  // ---- Today card -----------------------------------------------------------
+
+  Widget _todayCard() {
+    final t = controller.today.value;
+    return Container(
+      width: double.infinity,
+      padding: EdgeInsets.all(18.w),
+      decoration: BoxDecoration(
+        color: AppColors.background,
+        borderRadius: BorderRadius.circular(18.r),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Column(
+        children: [
+          Text(
+            t?.date ?? '-',
+            style: TextStyle(color: AppColors.textMuted, fontSize: 12.5.sp),
+          ),
+          SizedBox(height: 14.h),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+            children: [
+              _stat('Masuk', t?.clockIn ?? '--:--', Iconsax.login),
+              Container(width: 1, height: 42.h, color: AppColors.border),
+              _stat('Pulang', t?.clockOut ?? '--:--', Iconsax.logout),
+            ],
+          ),
+          if (t?.status != null) ...[
+            SizedBox(height: 12.h),
+            Container(
+              padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 5.h),
+              decoration: BoxDecoration(
+                color: AppColors.muted,
+                borderRadius: BorderRadius.circular(999),
+              ),
+              child: Text(
+                'Status: ${t!.status}',
+                style: TextStyle(color: AppColors.textMuted, fontSize: 12.sp),
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _stat(String label, String value, IconData icon) {
     return Column(
       children: [
-        Text(
-          label,
-          style: TextStyle(color: AppColors.textMuted, fontSize: 12.sp),
+        Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 13.sp, color: AppColors.textMuted),
+            SizedBox(width: 5.w),
+            Text(label,
+                style: TextStyle(color: AppColors.textMuted, fontSize: 12.sp)),
+          ],
         ),
-        SizedBox(height: 4.h),
+        SizedBox(height: 6.h),
         Text(
           value,
           style: TextStyle(
-            fontSize: 22.sp,
-            fontWeight: FontWeight.w700,
+            fontSize: 24.sp,
+            fontWeight: FontWeight.w800,
             color: AppColors.navy,
+            fontFeatures: const [FontFeature.tabularFigures()],
           ),
         ),
       ],
+    );
+  }
+
+  Widget _faceBadge() {
+    return Container(
+      padding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 11.h),
+      decoration: BoxDecoration(
+        color: AppColors.primary.withValues(alpha: 0.07),
+        borderRadius: BorderRadius.circular(14.r),
+        border: Border.all(color: AppColors.primary.withValues(alpha: 0.22)),
+      ),
+      child: Row(
+        children: [
+          Icon(Iconsax.scan, size: 18.sp, color: AppColors.primary),
+          SizedBox(width: 10.w),
+          Expanded(
+            child: Text(
+              'Verifikasi wajah diperlukan sebelum absen.',
+              style: TextStyle(
+                color: AppColors.primary,
+                fontSize: 12.5.sp,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ---- Clock button ---------------------------------------------------------
+
+  Widget _clockButton() {
+    return Obx(() {
+      final isIn = controller.today.value?.canClockIn ?? true;
+      final blocked = !controller.canClockByLocation;
+      final busy = controller.isClocking.value;
+
+      final gradient = blocked
+          ? [const Color(0xFFCBD5E1), const Color(0xFF94A3B8)]
+          : isIn
+              ? [AppColors.primary, AppColors.accent]
+              : [AppColors.warning, const Color(0xFFF59E0B)];
+
+      final glow = blocked
+          ? const Color(0xFF94A3B8)
+          : isIn
+              ? AppColors.primary
+              : AppColors.warning;
+
+      return Center(
+        child: Semantics(
+          button: true,
+          enabled: !busy && !blocked,
+          label: isIn ? 'Clock in' : 'Clock out',
+          child: GestureDetector(
+            onTap: busy ? null : controller.clock,
+            child: AnimatedScale(
+              scale: busy ? 0.97 : 1,
+              duration: const Duration(milliseconds: 150),
+              child: Container(
+                height: 176.w,
+                width: 176.w,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  gradient: LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: gradient,
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: glow.withValues(alpha: 0.35),
+                      blurRadius: 28,
+                      offset: const Offset(0, 10),
+                    ),
+                  ],
+                ),
+                child: Center(
+                  child: busy
+                      ? const CircularProgressIndicator(color: Colors.white)
+                      : Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              blocked
+                                  ? Iconsax.location_slash
+                                  : isIn
+                                      ? Iconsax.login
+                                      : Iconsax.logout,
+                              color: Colors.white,
+                              size: 46.sp,
+                            ),
+                            SizedBox(height: 8.h),
+                            Text(
+                              blocked
+                                  ? 'DI LUAR RADIUS'
+                                  : isIn
+                                      ? 'CLOCK IN'
+                                      : 'CLOCK OUT',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.w800,
+                                fontSize: blocked ? 13.sp : 16.sp,
+                                letterSpacing: 0.5,
+                              ),
+                            ),
+                          ],
+                        ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+    });
+  }
+}
+
+/// Interactive OpenStreetMap card showing the office geofence circle, the
+/// office marker, and the employee's live position, with a recenter control.
+class _GeofenceMap extends StatefulWidget {
+  const _GeofenceMap();
+
+  @override
+  State<_GeofenceMap> createState() => _GeofenceMapState();
+}
+
+class _GeofenceMapState extends State<_GeofenceMap> {
+  final MapController _map = MapController();
+
+  static const _fallback = LatLng(-6.2088, 106.8456); // Jakarta
+
+  LatLng? _officeOf(AttendanceController c) {
+    final o = c.nearest.value;
+    if (o?.latitude == null || o?.longitude == null) return null;
+    return LatLng(o!.latitude!, o.longitude!);
+  }
+
+  LatLng? _userOf(AttendanceController c) {
+    if (c.userLat.value == null || c.userLng.value == null) return null;
+    return LatLng(c.userLat.value!, c.userLng.value!);
+  }
+
+  void _recenter() {
+    final c = Get.find<AttendanceController>();
+    _map.move(_officeOf(c) ?? _userOf(c) ?? _fallback, 16);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final controller = Get.find<AttendanceController>();
+
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(18.r),
+      child: Container(
+        height: 220.h,
+        decoration: BoxDecoration(border: Border.all(color: AppColors.border)),
+        child: Obx(() {
+          final office = _officeOf(controller);
+          final user = _userOf(controller);
+          final center = office ?? user ?? _fallback;
+          final radius = (controller.nearest.value?.radius ?? 0).toDouble();
+
+          return Stack(
+            children: [
+              FlutterMap(
+                mapController: _map,
+                options: MapOptions(
+                  initialCenter: center,
+                  initialZoom: 16,
+                  minZoom: 3,
+                  maxZoom: 19,
+                  interactionOptions: const InteractionOptions(
+                    flags: InteractiveFlag.pinchZoom |
+                        InteractiveFlag.drag |
+                        InteractiveFlag.doubleTapZoom,
+                  ),
+                ),
+                children: [
+                  TileLayer(
+                    urlTemplate:
+                        'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                    userAgentPackageName: 'id.avanahr.mobile',
+                    tileProvider: NetworkTileProvider(),
+                  ),
+                  if (office != null && radius > 0)
+                    CircleLayer(
+                      circles: [
+                        CircleMarker(
+                          point: office,
+                          radius: radius,
+                          useRadiusInMeter: true,
+                          color: AppColors.primary.withValues(alpha: 0.12),
+                          borderColor: AppColors.primary.withValues(alpha: 0.6),
+                          borderStrokeWidth: 2,
+                        ),
+                      ],
+                    ),
+                  MarkerLayer(
+                    markers: [
+                      if (office != null)
+                        Marker(
+                          point: office,
+                          width: 40.w,
+                          height: 40.w,
+                          alignment: Alignment.topCenter,
+                          child: Icon(Iconsax.building_4,
+                              color: AppColors.primary, size: 30.sp),
+                        ),
+                      if (user != null)
+                        Marker(
+                          point: user,
+                          width: 24.w,
+                          height: 24.w,
+                          child: _pulseDot(),
+                        ),
+                    ],
+                  ),
+                ],
+              ),
+              Positioned(
+                right: 10.w,
+                bottom: 10.h,
+                child: Material(
+                  color: Colors.white,
+                  shape: const CircleBorder(),
+                  elevation: 3,
+                  child: InkWell(
+                    onTap: _recenter,
+                    customBorder: const CircleBorder(),
+                    child: SizedBox(
+                      width: 44.w,
+                      height: 44.w,
+                      child: Icon(Iconsax.gps,
+                          color: AppColors.primary, size: 22.sp),
+                    ),
+                  ),
+                ),
+              ),
+              Positioned(
+                left: 6.w,
+                bottom: 4.h,
+                child: Container(
+                  padding: EdgeInsets.symmetric(horizontal: 5.w, vertical: 1.h),
+                  color: Colors.white.withValues(alpha: 0.7),
+                  child: Text('© OpenStreetMap',
+                      style: TextStyle(
+                          fontSize: 8.5.sp, color: AppColors.textMuted)),
+                ),
+              ),
+            ],
+          );
+        }),
+      ),
+    );
+  }
+
+  Widget _pulseDot() {
+    return Container(
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        color: AppColors.primary,
+        border: Border.all(color: Colors.white, width: 3),
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.primary.withValues(alpha: 0.5),
+            blurRadius: 8,
+            spreadRadius: 2,
+          ),
+        ],
+      ),
     );
   }
 }

@@ -5,12 +5,16 @@ import 'package:get_storage/get_storage.dart';
 
 import '../../core/widgets/app_toast.dart';
 import '../../data/models/attendance.dart';
+import '../../data/models/dashboard.dart';
 import '../../data/providers/api_client.dart';
 import '../../data/providers/avana_api.dart';
 import '../../data/services/attendance_queue_service.dart';
 import '../../data/services/connectivity_service.dart';
 import '../../data/services/device_service.dart';
 import '../../routes/app_pages.dart';
+
+/// Geofence state for the attendance screen's map + clock gate.
+enum GeoState { loading, inside, outside, gpsOff, denied, noOffice, error }
 
 class AttendanceController extends GetxController {
   final AvanaApi _api = AvanaApi();
@@ -25,11 +29,29 @@ class AttendanceController extends GetxController {
   final GetStorage _box = GetStorage();
   static const _faceKey = 'face_required';
 
+  // Geofence / map state.
+  final geoState = GeoState.loading.obs;
+  final nearest = Rxn<WorkLocationItem>();
+  final distanceMeters = 0.0.obs;
+  final userLat = Rxn<double>();
+  final userLng = Rxn<double>();
+  final isLocating = false.obs;
+
+  /// Clock is allowed inside the radius, or when we cannot verify location
+  /// (no office configured / GPS unavailable) — so users are never trapped.
+  bool get canClockByLocation =>
+      geoState.value == GeoState.inside ||
+      geoState.value == GeoState.noOffice ||
+      geoState.value == GeoState.gpsOff ||
+      geoState.value == GeoState.denied ||
+      geoState.value == GeoState.error;
+
   @override
   void onInit() {
     super.onInit();
     requiresFace.value = _box.read<bool>(_faceKey) ?? false;
     load();
+    detectLocation();
   }
 
   Future<void> load() async {
@@ -55,8 +77,93 @@ class AttendanceController extends GetxController {
     }
   }
 
+  /// Resolve the nearest office geofence + the user's live position for the
+  /// map and the clock gate. Best-effort; never throws.
+  Future<void> detectLocation() async {
+    if (isLocating.value) return;
+    isLocating.value = true;
+    geoState.value = GeoState.loading;
+    try {
+      final locations = await _api.workLocations();
+      final withCoords =
+          locations.where((l) => l.latitude != null && l.longitude != null).toList();
+
+      if (!await Geolocator.isLocationServiceEnabled()) {
+        geoState.value = GeoState.gpsOff;
+
+        return;
+      }
+
+      var permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+      }
+      if (permission == LocationPermission.denied ||
+          permission == LocationPermission.deniedForever) {
+        geoState.value = GeoState.denied;
+
+        return;
+      }
+
+      Position pos;
+      try {
+        pos = await Geolocator.getCurrentPosition(
+          locationSettings: const LocationSettings(
+              accuracy: LocationAccuracy.high, timeLimit: Duration(seconds: 8)),
+        );
+      } catch (_) {
+        final last = await Geolocator.getLastKnownPosition();
+        if (last == null) {
+          geoState.value = GeoState.error;
+
+          return;
+        }
+        pos = last;
+      }
+
+      userLat.value = pos.latitude;
+      userLng.value = pos.longitude;
+
+      if (withCoords.isEmpty) {
+        geoState.value = GeoState.noOffice;
+
+        return;
+      }
+
+      WorkLocationItem? closest;
+      var closestDistance = double.infinity;
+      for (final loc in withCoords) {
+        final d = Geolocator.distanceBetween(
+            pos.latitude, pos.longitude, loc.latitude!, loc.longitude!);
+        if (d < closestDistance) {
+          closestDistance = d;
+          closest = loc;
+        }
+      }
+
+      nearest.value = closest;
+      distanceMeters.value = closestDistance;
+      final within = (closest!.radius <= 0) || closestDistance <= closest.radius;
+      geoState.value = within ? GeoState.inside : GeoState.outside;
+    } catch (_) {
+      geoState.value = GeoState.error;
+    } finally {
+      isLocating.value = false;
+    }
+  }
+
   Future<void> clock() async {
     final type = today.value?.canClockIn ?? true ? 'in' : 'out';
+
+    // Geofence gate: block only when we positively know the user is outside a
+    // real office radius. Unknown location never blocks (see canClockByLocation).
+    if (!canClockByLocation) {
+      final office = nearest.value?.name ?? 'kantor';
+      AppToast.warning(
+          'Di luar radius $office (${distanceMeters.value.round()} m). Mendekat ke lokasi untuk absen.');
+
+      return;
+    }
 
     // Face gate: enrolled employees must pass on-device verification first.
     // Capture + embedding both run locally, so this works offline too.
