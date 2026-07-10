@@ -450,6 +450,8 @@ class HomeTab extends GetView<HomeController> {
 
   Widget _actionsGrid() {
     final items = [
+      if (controller.isManager)
+        _Action('Persetujuan', Iconsax.people, const Color(0xFF4F46E5), () => Get.toNamed(Routes.MSS)),
       _Action('Feeling', Iconsax.emoji_happy, const Color(0xFF2F54C9), _openMoodSheet),
       _Action('Slip Gaji', Iconsax.receipt_2, const Color(0xFF0891B2), () => Get.toNamed(Routes.PAYSLIP)),
       _Action('Cuti', Iconsax.sun_1, const Color(0xFF16A34A), () => Get.toNamed(Routes.LEAVE)),

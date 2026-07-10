@@ -228,10 +228,10 @@ class AvanaApi {
     return (res.data['data'] as List?) ?? [];
   }
 
-  Future<Response> actApproval(int id, String action, {String? reason}) =>
+  Future<Response> actApproval(String id, String action, {String? reason}) =>
       _dio.post('/mss/approvals/$id/act', data: {'action': action, if (reason != null) 'reason': reason});
 
-  Future<Response> bulkApproval(List<int> ids, String action, {String? reason}) =>
+  Future<Response> bulkApproval(List<String> ids, String action, {String? reason}) =>
       _dio.post('/mss/approvals/bulk', data: {'ids': ids, 'action': action, if (reason != null) 'reason': reason});
 
   Future<List<dynamic>> team() async {
