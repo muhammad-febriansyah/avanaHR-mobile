@@ -74,6 +74,16 @@ class AvanaApi {
     return Payslip.fromJson(Map<String, dynamic>.from(res.data['data']));
   }
 
+  /// Raw PDF bytes for a payslip (password-protected server-side).
+  Future<List<int>> payslipPdf(int id) async {
+    final res = await _dio.get<List<int>>(
+      '/me/payslips/$id/pdf',
+      options: Options(responseType: ResponseType.bytes),
+    );
+
+    return res.data ?? <int>[];
+  }
+
   Future<List<LeaveBalance>> leaveBalances() async {
     final res = await _dio.get('/me/leave/balances');
     final list = (res.data['data'] as List?) ?? [];
