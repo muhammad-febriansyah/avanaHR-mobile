@@ -67,7 +67,7 @@ class AttendanceView extends GetView<AttendanceController> {
           await controller.detectLocation();
         },
         child: SingleChildScrollView(
-          physics: const AlwaysScrollableScrollPhysics(),
+          physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
           padding: EdgeInsets.fromLTRB(20.w, 4.h, 20.w, 28.h),
           child: Center(
             child: ConstrainedBox(
@@ -326,7 +326,7 @@ class AttendanceView extends GetView<AttendanceController> {
       final busy = controller.isClocking.value;
 
       final gradient = blocked
-          ? [const Color(0xFFCBD5E1), const Color(0xFF94A3B8)]
+          ? [const Color(0xFFE2E8F0), const Color(0xFFB8C2D0)]
           : isIn
               ? [AppColors.primary, AppColors.accent]
               : [AppColors.warning, const Color(0xFFF59E0B)];
@@ -348,8 +348,8 @@ class AttendanceView extends GetView<AttendanceController> {
               scale: busy ? 0.97 : 1,
               duration: const Duration(milliseconds: 150),
               child: Container(
-                height: 176.w,
-                width: 176.w,
+                height: 168.w,
+                width: 168.w,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
                   gradient: LinearGradient(
@@ -357,11 +357,12 @@ class AttendanceView extends GetView<AttendanceController> {
                     end: Alignment.bottomRight,
                     colors: gradient,
                   ),
+                  border: Border.all(color: Colors.white, width: 5),
                   boxShadow: [
                     BoxShadow(
-                      color: glow.withValues(alpha: 0.35),
-                      blurRadius: 28,
-                      offset: const Offset(0, 10),
+                      color: glow.withValues(alpha: blocked ? 0.25 : 0.4),
+                      blurRadius: 30,
+                      offset: const Offset(0, 12),
                     ),
                   ],
                 ),
@@ -440,12 +441,23 @@ class _GeofenceMapState extends State<_GeofenceMap> {
   Widget build(BuildContext context) {
     final controller = Get.find<AttendanceController>();
 
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(18.r),
-      child: Container(
-        height: 220.h,
-        decoration: BoxDecoration(border: Border.all(color: AppColors.border)),
-        child: Obx(() {
+    return Container(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(18.r),
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.navy.withValues(alpha: 0.08),
+            blurRadius: 18,
+            offset: const Offset(0, 8),
+          ),
+        ],
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(18.r),
+        child: Container(
+          height: 230.h,
+          decoration: BoxDecoration(border: Border.all(color: AppColors.border)),
+          child: Obx(() {
           final office = _officeOf(controller);
           final user = _userOf(controller);
           final center = office ?? user ?? _fallback;
@@ -491,17 +503,16 @@ class _GeofenceMapState extends State<_GeofenceMap> {
                       if (office != null)
                         Marker(
                           point: office,
-                          width: 40.w,
-                          height: 40.w,
-                          alignment: Alignment.topCenter,
-                          child: Icon(Iconsax.building_4,
-                              color: AppColors.primary, size: 30.sp),
+                          width: 48.w,
+                          height: 52.w,
+                          alignment: Alignment.bottomCenter,
+                          child: _officePin(),
                         ),
                       if (user != null)
                         Marker(
                           point: user,
-                          width: 24.w,
-                          height: 24.w,
+                          width: 26.w,
+                          height: 26.w,
                           child: _pulseDot(),
                         ),
                     ],
@@ -540,7 +551,45 @@ class _GeofenceMapState extends State<_GeofenceMap> {
               ),
             ],
           );
-        }),
+          }),
+        ),
+      ),
+    );
+  }
+
+  /// Office location pin — a teardrop whose tip sits on the office point, with
+  /// a white badge holding a building glyph. Uses Material icons so it always
+  /// renders (the old Iconsax glyph showed as a tofu box on some builds).
+  Widget _officePin() {
+    return SizedBox(
+      width: 48.w,
+      height: 52.w,
+      child: Stack(
+        alignment: Alignment.topCenter,
+        clipBehavior: Clip.none,
+        children: [
+          Icon(
+            Icons.location_on,
+            size: 50.sp,
+            color: AppColors.primary,
+            shadows: const [
+              Shadow(color: Color(0x40000000), blurRadius: 4, offset: Offset(0, 2)),
+            ],
+          ),
+          Positioned(
+            top: 6.w,
+            child: Container(
+              width: 22.w,
+              height: 22.w,
+              decoration: const BoxDecoration(
+                color: Colors.white,
+                shape: BoxShape.circle,
+              ),
+              child: Icon(Icons.business_rounded,
+                  size: 13.sp, color: AppColors.primary),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -549,12 +598,12 @@ class _GeofenceMapState extends State<_GeofenceMap> {
     return Container(
       decoration: BoxDecoration(
         shape: BoxShape.circle,
-        color: AppColors.primary,
-        border: Border.all(color: Colors.white, width: 3),
+        color: AppColors.accent,
+        border: Border.all(color: Colors.white, width: 3.5),
         boxShadow: [
           BoxShadow(
-            color: AppColors.primary.withValues(alpha: 0.5),
-            blurRadius: 8,
+            color: AppColors.accent.withValues(alpha: 0.55),
+            blurRadius: 10,
             spreadRadius: 2,
           ),
         ],

@@ -26,7 +26,7 @@ class ProfileView extends GetView<ProfileController> {
           return const Center(child: Text('Gagal memuat profil.'));
         }
         return ListView(
-          physics: const AlwaysScrollableScrollPhysics(),
+          physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
           padding: EdgeInsets.all(20.w),
           children: [
             Center(

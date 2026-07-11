@@ -27,7 +27,7 @@ class ScheduleView extends GetView<ScheduleController> {
               }
               if (controller.days.isEmpty) {
                 return ListView(
-                  physics: const AlwaysScrollableScrollPhysics(),
+                  physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
                   children: [
                     SizedBox(height: 80.h),
                     const EmptyState(
@@ -41,7 +41,7 @@ class ScheduleView extends GetView<ScheduleController> {
                 onRefresh: controller.load,
                 color: AppColors.primary,
                 child: ListView.separated(
-                  physics: const AlwaysScrollableScrollPhysics(),
+                  physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
                   padding: EdgeInsets.fromLTRB(20.w, 16.h, 20.w, 24.h),
                   itemCount: controller.days.length,
                   separatorBuilder: (_, __) => SizedBox(height: 10.h),

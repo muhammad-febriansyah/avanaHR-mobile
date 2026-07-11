@@ -41,7 +41,7 @@ class MssMemberView extends GetView<MssMemberController> {
           onRefresh: controller.load,
           color: AppColors.primary,
           child: ListView(
-            physics: const AlwaysScrollableScrollPhysics(),
+            physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
             padding: EdgeInsets.fromLTRB(20.w, 18.h, 20.w, 24.h),
             children: [
               _profile(m),
