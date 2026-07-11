@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:get/get.dart';
 import 'package:iconsax/iconsax.dart';
-import 'package:image_picker/image_picker.dart';
 
 import '../../core/theme/app_colors.dart';
 import '../../core/widgets/app_page.dart';
@@ -183,6 +182,8 @@ class VisitingView extends GetView<VisitingController> {
                 controller: locC,
                 label: 'Lokasi',
                 hint: 'Nama tempat/alamat',
+                icon: Iconsax.location,
+                required: true,
               ),
               SizedBox(height: 14.h),
               AppTextField(controller: clientC, label: 'Klien (opsional)'),
@@ -196,27 +197,12 @@ class VisitingView extends GetView<VisitingController> {
               ),
               SizedBox(height: 14.h),
               Obx(
-                () => OutlinedButton.icon(
-                  onPressed: () async {
-                    final img = await ImagePicker().pickImage(
-                      source: ImageSource.camera,
-                      imageQuality: 70,
-                    );
-                    if (img != null) photoPath.value = img.path;
-                  },
-                  icon: const Icon(Iconsax.camera),
-                  label: Text(
-                    photoPath.value == null
-                        ? 'Ambil foto (opsional)'
-                        : 'Foto siap ✓',
-                  ),
-                  style: OutlinedButton.styleFrom(
-                    padding: EdgeInsets.symmetric(vertical: 14.h),
-                    minimumSize: Size(double.infinity, 0),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(14.r),
-                    ),
-                  ),
+                () => AppImageField(
+                  label: 'Foto Kunjungan (opsional)',
+                  hint: 'Bukti kunjungan — kamera atau galeri',
+                  path: photoPath.value,
+                  onPick: (p) => photoPath.value = p,
+                  onClear: () => photoPath.value = null,
                 ),
               ),
               SizedBox(height: 22.h),

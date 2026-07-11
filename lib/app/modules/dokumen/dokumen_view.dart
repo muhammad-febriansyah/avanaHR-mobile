@@ -127,6 +127,7 @@ class DokumenView extends GetView<DokumenController> {
               controller: nameC,
               label: 'Nama Dokumen',
               hint: 'cth. KTP',
+              required: true,
             ),
             SizedBox(height: 14.h),
             AppTextField(
@@ -135,35 +136,82 @@ class DokumenView extends GetView<DokumenController> {
               hint: 'cth. identitas',
             ),
             SizedBox(height: 14.h),
-            Obx(
-              () => OutlinedButton.icon(
-                onPressed: () async {
-                  const typeGroup = XTypeGroup(
-                    label: 'Dokumen',
-                    extensions: ['pdf', 'jpg', 'jpeg', 'png'],
-                  );
-                  final picked = await openFile(
-                    acceptedTypeGroups: [typeGroup],
-                  );
-                  if (picked != null) {
-                    path.value = picked.path;
-                    fileName.value = picked.name;
-                  }
-                },
-                icon: const Icon(Iconsax.paperclip),
-                label: Text(
-                  fileName.value ?? 'Pilih file (PDF/JPG/PNG)',
-                  overflow: TextOverflow.ellipsis,
-                ),
-                style: OutlinedButton.styleFrom(
-                  padding: EdgeInsets.symmetric(vertical: 14.h),
-                  minimumSize: Size(double.infinity, 0),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(14.r),
-                  ),
-                ),
+            Text.rich(
+              TextSpan(
+                text: 'Berkas',
+                style: TextStyle(fontWeight: FontWeight.w600, color: AppColors.navy, fontSize: 12.5.sp),
+                children: [TextSpan(text: ' *', style: TextStyle(color: AppColors.destructive, fontSize: 12.5.sp))],
               ),
             ),
+            SizedBox(height: 6.h),
+            Obx(() {
+              final fname = fileName.value;
+              if (fname == null) {
+                return InkWell(
+                  borderRadius: BorderRadius.circular(14.r),
+                  onTap: () async {
+                    const typeGroup = XTypeGroup(label: 'Dokumen', extensions: ['pdf', 'jpg', 'jpeg', 'png']);
+                    final picked = await openFile(acceptedTypeGroups: [typeGroup]);
+                    if (picked != null) {
+                      path.value = picked.path;
+                      fileName.value = picked.name;
+                    }
+                  },
+                  child: Container(
+                    width: double.infinity,
+                    padding: EdgeInsets.symmetric(vertical: 22.h),
+                    decoration: BoxDecoration(
+                      color: AppColors.primary.withValues(alpha: 0.05),
+                      borderRadius: BorderRadius.circular(14.r),
+                      border: Border.all(color: AppColors.primary.withValues(alpha: 0.3)),
+                    ),
+                    child: Column(
+                      children: [
+                        Icon(Iconsax.document_upload, size: 26.sp, color: AppColors.primary),
+                        SizedBox(height: 8.h),
+                        Text('Pilih File', style: TextStyle(color: AppColors.primary, fontWeight: FontWeight.w700, fontSize: 13.sp)),
+                        SizedBox(height: 2.h),
+                        Text('PDF, JPG, atau PNG', style: TextStyle(color: AppColors.textMuted, fontSize: 11.5.sp)),
+                      ],
+                    ),
+                  ),
+                );
+              }
+              final isPdf = fname.toLowerCase().endsWith('.pdf');
+              return Container(
+                padding: EdgeInsets.all(12.w),
+                decoration: BoxDecoration(
+                  color: AppColors.muted,
+                  borderRadius: BorderRadius.circular(14.r),
+                  border: Border.all(color: AppColors.border),
+                ),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 40.w,
+                      height: 40.w,
+                      decoration: BoxDecoration(
+                        color: (isPdf ? AppColors.destructive : AppColors.primary).withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(10.r),
+                      ),
+                      child: Icon(isPdf ? Iconsax.document_text : Iconsax.gallery, size: 18.sp, color: isPdf ? AppColors.destructive : AppColors.primary),
+                    ),
+                    SizedBox(width: 12.w),
+                    Expanded(
+                      child: Text(fname, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontWeight: FontWeight.w600, color: AppColors.navy, fontSize: 13.sp)),
+                    ),
+                    InkWell(
+                      onTap: () {
+                        path.value = null;
+                        fileName.value = null;
+                      },
+                      customBorder: const CircleBorder(),
+                      child: Padding(padding: EdgeInsets.all(4.w), child: Icon(Iconsax.close_circle, size: 20.sp, color: AppColors.textMuted)),
+                    ),
+                  ],
+                ),
+              );
+            }),
             SizedBox(height: 22.h),
             Obx(
               () => AppSubmitButton(

@@ -1,7 +1,10 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:iconsax/iconsax.dart';
+import 'package:image_picker/image_picker.dart';
 
 import '../theme/app_colors.dart';
 
@@ -32,9 +35,23 @@ InputDecoration _decoration({String? hint, IconData? icon, String? prefixText}) 
   );
 }
 
-Widget _label(String text) => Padding(
+Widget _label(String text, {bool required = false}) => Padding(
       padding: EdgeInsets.only(bottom: 6.h),
-      child: Text(text, style: TextStyle(fontWeight: FontWeight.w600, color: AppColors.navy, fontSize: 12.5.sp)),
+      child: RichText(
+        text: TextSpan(
+          text: text,
+          style: TextStyle(fontWeight: FontWeight.w600, color: AppColors.navy, fontSize: 12.5.sp),
+          children: required
+              ? [TextSpan(text: ' *', style: TextStyle(color: AppColors.destructive, fontSize: 12.5.sp))]
+              : null,
+        ),
+      ),
+    );
+
+/// Small helper/error caption shown under a field.
+Widget _helper(String text) => Padding(
+      padding: EdgeInsets.only(top: 6.h, left: 2.w),
+      child: Text(text, style: TextStyle(color: AppColors.textMuted, fontSize: 11.5.sp)),
     );
 
 /// Labelled text input matching the app's card style.
@@ -48,6 +65,8 @@ class AppTextField extends StatelessWidget {
   final int maxLines;
   final bool obscure;
   final List<TextInputFormatter>? formatters;
+  final bool required;
+  final String? helper;
 
   const AppTextField({
     super.key,
@@ -60,6 +79,8 @@ class AppTextField extends StatelessWidget {
     this.maxLines = 1,
     this.obscure = false,
     this.formatters,
+    this.required = false,
+    this.helper,
   });
 
   @override
@@ -67,7 +88,7 @@ class AppTextField extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _label(label),
+        _label(label, required: required),
         TextField(
           controller: controller,
           keyboardType: keyboardType,
@@ -77,6 +98,7 @@ class AppTextField extends StatelessWidget {
           style: TextStyle(color: AppColors.navy, fontSize: 14.sp),
           decoration: _decoration(hint: hint, icon: icon, prefixText: prefixText),
         ),
+        if (helper != null) _helper(helper!),
       ],
     );
   }
@@ -89,6 +111,7 @@ class AppDateField extends StatelessWidget {
   final ValueChanged<DateTime> onPick;
   final DateTime? firstDate;
   final DateTime? lastDate;
+  final bool required;
 
   const AppDateField({
     super.key,
@@ -97,6 +120,7 @@ class AppDateField extends StatelessWidget {
     required this.onPick,
     this.firstDate,
     this.lastDate,
+    this.required = false,
   });
 
   @override
@@ -106,7 +130,7 @@ class AppDateField extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _label(label),
+        _label(label, required: required),
         InkWell(
           borderRadius: BorderRadius.circular(14.r),
           onTap: () async {
@@ -153,15 +177,16 @@ class AppTimeField extends StatelessWidget {
   final String label;
   final String? value;
   final ValueChanged<String> onPick;
+  final bool required;
 
-  const AppTimeField({super.key, required this.label, required this.value, required this.onPick});
+  const AppTimeField({super.key, required this.label, required this.value, required this.onPick, this.required = false});
 
   @override
   Widget build(BuildContext context) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _label(label),
+        _label(label, required: required),
         InkWell(
           borderRadius: BorderRadius.circular(14.r),
           onTap: () async {
@@ -207,6 +232,7 @@ class AppDropdownField<T> extends StatelessWidget {
   final List<DropdownMenuItem<T>> items;
   final ValueChanged<T?> onChanged;
   final String? hint;
+  final bool required;
 
   const AppDropdownField({
     super.key,
@@ -215,6 +241,7 @@ class AppDropdownField<T> extends StatelessWidget {
     required this.items,
     required this.onChanged,
     this.hint,
+    this.required = false,
   });
 
   @override
@@ -222,7 +249,7 @@ class AppDropdownField<T> extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _label(label),
+        _label(label, required: required),
         DropdownButtonFormField<T>(
           initialValue: value,
           isExpanded: true,
@@ -298,6 +325,140 @@ class SheetHeader extends StatelessWidget {
           ),
         ),
         Text(title, style: TextStyle(fontWeight: FontWeight.w800, color: AppColors.navy, fontSize: 17.sp, letterSpacing: -0.3)),
+      ],
+    );
+  }
+}
+
+/// Image picker field with an inline preview. Empty state is a tappable
+/// dropzone; once an image is chosen it previews full-width with change/remove
+/// controls. Sourced from the camera or the gallery.
+class AppImageField extends StatelessWidget {
+  final String label;
+  final String? path;
+  final ValueChanged<String> onPick;
+  final VoidCallback onClear;
+  final String? hint;
+  final bool required;
+
+  const AppImageField({
+    super.key,
+    required this.label,
+    required this.path,
+    required this.onPick,
+    required this.onClear,
+    this.hint,
+    this.required = false,
+  });
+
+  Future<void> _pick(ImageSource source) async {
+    final img = await ImagePicker().pickImage(source: source, imageQuality: 70, maxWidth: 1600);
+    if (img != null) onPick(img.path);
+  }
+
+  void _chooseSource(BuildContext context) {
+    showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: Colors.white,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20.r))),
+      builder: (ctx) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 40.w,
+              height: 4.h,
+              margin: EdgeInsets.symmetric(vertical: 12.h),
+              decoration: BoxDecoration(color: AppColors.border, borderRadius: BorderRadius.circular(4.r)),
+            ),
+            _sourceTile(ctx, Iconsax.camera, 'Kamera', ImageSource.camera),
+            _sourceTile(ctx, Iconsax.gallery, 'Galeri', ImageSource.gallery),
+            SizedBox(height: 8.h),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _sourceTile(BuildContext ctx, IconData icon, String text, ImageSource src) {
+    return ListTile(
+      leading: Container(
+        width: 40.w,
+        height: 40.w,
+        decoration: BoxDecoration(color: AppColors.primary.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(12.r)),
+        child: Icon(icon, color: AppColors.primary, size: 20.sp),
+      ),
+      title: Text(text, style: TextStyle(fontWeight: FontWeight.w600, color: AppColors.navy, fontSize: 14.sp)),
+      onTap: () {
+        Navigator.pop(ctx);
+        _pick(src);
+      },
+    );
+  }
+
+  Widget _circleButton(IconData icon, VoidCallback onTap) {
+    return InkWell(
+      onTap: onTap,
+      customBorder: const CircleBorder(),
+      child: Container(
+        padding: EdgeInsets.all(7.w),
+        decoration: BoxDecoration(color: Colors.black.withValues(alpha: 0.55), shape: BoxShape.circle),
+        child: Icon(icon, size: 15.sp, color: Colors.white),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _label(label, required: required),
+        if (path == null)
+          InkWell(
+            onTap: () => _chooseSource(context),
+            borderRadius: BorderRadius.circular(14.r),
+            child: Container(
+              width: double.infinity,
+              padding: EdgeInsets.symmetric(vertical: 22.h),
+              decoration: BoxDecoration(
+                color: AppColors.primary.withValues(alpha: 0.05),
+                borderRadius: BorderRadius.circular(14.r),
+                border: Border.all(color: AppColors.primary.withValues(alpha: 0.3)),
+              ),
+              child: Column(
+                children: [
+                  Icon(Iconsax.gallery_add, size: 26.sp, color: AppColors.primary),
+                  SizedBox(height: 8.h),
+                  Text('Tambah Foto', style: TextStyle(color: AppColors.primary, fontWeight: FontWeight.w700, fontSize: 13.sp)),
+                  if (hint != null) ...[
+                    SizedBox(height: 2.h),
+                    Text(hint!, style: TextStyle(color: AppColors.textMuted, fontSize: 11.5.sp)),
+                  ],
+                ],
+              ),
+            ),
+          )
+        else
+          ClipRRect(
+            borderRadius: BorderRadius.circular(14.r),
+            child: Stack(
+              children: [
+                Image.file(File(path!), width: double.infinity, height: 170.h, fit: BoxFit.cover),
+                Positioned(
+                  top: 8.h,
+                  right: 8.w,
+                  child: Row(
+                    children: [
+                      _circleButton(Iconsax.edit_2, () => _chooseSource(context)),
+                      SizedBox(width: 8.w),
+                      _circleButton(Iconsax.trash, onClear),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
       ],
     );
   }

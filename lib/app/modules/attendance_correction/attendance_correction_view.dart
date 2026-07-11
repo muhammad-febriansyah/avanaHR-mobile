@@ -147,6 +147,7 @@ class AttendanceCorrectionView extends GetView<AttendanceCorrectionController> {
                 label: 'Tanggal',
                 value: date.value,
                 onPick: (d) => date.value = d,
+                required: true,
               ),
             ),
             SizedBox(height: 14.h),
@@ -179,6 +180,7 @@ class AttendanceCorrectionView extends GetView<AttendanceCorrectionController> {
               label: 'Alasan',
               hint: 'Mis. lupa clock in',
               maxLines: 2,
+              required: true,
             ),
             SizedBox(height: 22.h),
             Obx(

@@ -29,10 +29,10 @@ class ReimbursementController extends GetxController {
     isLoading.value = false;
   }
 
-  Future<bool> submit({required String category, required int amount}) async {
+  Future<bool> submit({required String category, required int amount, String? receiptPath}) async {
     submitting.value = true;
     try {
-      final res = await _api.submitReimbursement(category: category, amount: amount);
+      final res = await _api.submitReimbursement(category: category, amount: amount, receiptPath: receiptPath);
       submitting.value = false;
       if (res.statusCode == 201) {
         AppToast.success('Reimbursement terkirim');

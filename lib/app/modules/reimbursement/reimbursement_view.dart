@@ -97,6 +97,7 @@ class ReimbursementView extends GetView<ReimbursementController> {
   void _openSheet(BuildContext context) {
     final categoryC = TextEditingController();
     final amountC = TextEditingController();
+    final receiptPath = RxnString();
 
     showModalBottomSheet(
       context: context,
@@ -112,46 +113,63 @@ class ReimbursementView extends GetView<ReimbursementController> {
           top: 14.h,
           bottom: MediaQuery.of(ctx).viewInsets.bottom + 24.h,
         ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const SheetHeader('Ajukan Reimbursement'),
-            SizedBox(height: 18.h),
-            AppTextField(
-              controller: categoryC,
-              label: 'Kategori',
-              hint: 'mis. transport, medis',
-              icon: Iconsax.category,
-            ),
-            SizedBox(height: 14.h),
-            AppTextField(
-              controller: amountC,
-              label: 'Nominal',
-              hint: '0',
-              prefixText: 'Rp ',
-              keyboardType: TextInputType.number,
-              formatters: [RupiahInputFormatter()],
-            ),
-            SizedBox(height: 22.h),
-            Obx(
-              () => AppSubmitButton(
-                loading: controller.submitting.value,
-                onPressed: () async {
-                  final amount = parseRupiah(amountC.text);
-                  if (categoryC.text.trim().isEmpty || amount <= 0) {
-                    AppToast.warning('Lengkapi kategori & nominal.');
-                    return;
-                  }
-                  final ok = await controller.submit(
-                    category: categoryC.text.trim(),
-                    amount: amount,
-                  );
-                  if (ok) Get.back();
-                },
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const SheetHeader('Ajukan Reimbursement'),
+              SizedBox(height: 18.h),
+              AppTextField(
+                controller: categoryC,
+                label: 'Kategori',
+                hint: 'mis. transport, medis',
+                icon: Iconsax.category,
+                required: true,
               ),
-            ),
-          ],
+              SizedBox(height: 14.h),
+              AppTextField(
+                controller: amountC,
+                label: 'Nominal',
+                hint: '0',
+                prefixText: 'Rp ',
+                keyboardType: TextInputType.number,
+                formatters: [RupiahInputFormatter()],
+                required: true,
+              ),
+              SizedBox(height: 14.h),
+              Obx(
+                () => AppImageField(
+                  label: 'Struk / Bukti (opsional)',
+                  hint: 'Foto struk — kamera atau galeri',
+                  path: receiptPath.value,
+                  onPick: (p) => receiptPath.value = p,
+                  onClear: () => receiptPath.value = null,
+                ),
+              ),
+              SizedBox(height: 22.h),
+              Obx(
+                () => AppSubmitButton(
+                  loading: controller.submitting.value,
+                  icon: Iconsax.send_2,
+                  label: 'Ajukan',
+                  onPressed: () async {
+                    final amount = parseRupiah(amountC.text);
+                    if (categoryC.text.trim().isEmpty || amount <= 0) {
+                      AppToast.warning('Lengkapi kategori & nominal.');
+                      return;
+                    }
+                    final ok = await controller.submit(
+                      category: categoryC.text.trim(),
+                      amount: amount,
+                      receiptPath: receiptPath.value,
+                    );
+                    if (ok) Get.back();
+                  },
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );

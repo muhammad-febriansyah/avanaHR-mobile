@@ -138,6 +138,7 @@ class OvertimeView extends GetView<OvertimeController> {
                 onPick: (d) => date.value = d,
                 firstDate: now.subtract(const Duration(days: 30)),
                 lastDate: now.add(const Duration(days: 30)),
+                required: true,
               ),
             ),
             SizedBox(height: 14.h),
@@ -148,6 +149,7 @@ class OvertimeView extends GetView<OvertimeController> {
               keyboardType: const TextInputType.numberWithOptions(
                 decimal: true,
               ),
+              required: true,
             ),
             SizedBox(height: 14.h),
             AppTextField(
