@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:get/get.dart';
+import 'package:iconsax/iconsax.dart';
 
 import '../../core/theme/app_colors.dart';
 import '../../core/widgets/app_page.dart';
+import '../../core/widgets/form_fields.dart';
 import '../../core/widgets/ui.dart';
+import '../../data/models/profile.dart';
 import 'profile_controller.dart';
 
 class ProfileView extends GetView<ProfileController> {
@@ -14,7 +17,7 @@ class ProfileView extends GetView<ProfileController> {
   Widget build(BuildContext context) {
     return AppPage(
       title: 'Profil Saya',
-      subtitle: 'Data karyawan',
+      subtitle: 'Akun & keamanan',
       showBack: false,
       onRefresh: controller.load,
       child: Obx(() {
@@ -27,103 +30,331 @@ class ProfileView extends GetView<ProfileController> {
         }
         return ListView(
           physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
-          padding: EdgeInsets.all(20.w),
+          padding: EdgeInsets.fromLTRB(20.w, 20.h, 20.w, 28.h),
           children: [
-            Center(
-              child: Column(
-                children: [
-                  CircleAvatar(
-                    radius: 44.r,
-                    backgroundColor: AppColors.primary.withValues(alpha: 0.12),
-                    backgroundImage: p.photoUrl != null
-                        ? NetworkImage(p.photoUrl!)
-                        : null,
-                    child: p.photoUrl == null
-                        ? Text(
-                            p.fullName.isNotEmpty ? p.fullName[0] : '?',
-                            style: TextStyle(
-                              fontSize: 32.sp,
-                              color: AppColors.primary,
-                              fontWeight: FontWeight.w700,
-                            ),
-                          )
-                        : null,
-                  ),
-                  SizedBox(height: 12.h),
-                  Text(
-                    p.fullName,
-                    style: TextStyle(
-                      fontSize: 20.sp,
-                      fontWeight: FontWeight.w700,
-                      color: AppColors.navy,
-                    ),
-                  ),
-                  Text(
-                    p.employeeNo,
-                    style: TextStyle(
-                      color: AppColors.textMuted,
-                      fontSize: 13.sp,
-                    ),
-                  ),
-                  SizedBox(height: 6.h),
-                  Container(
-                    padding: EdgeInsets.symmetric(
-                      horizontal: 12.w,
-                      vertical: 4.h,
-                    ),
-                    decoration: BoxDecoration(
-                      color: AppColors.success.withValues(alpha: 0.12),
-                      borderRadius: BorderRadius.circular(20.r),
-                    ),
-                    child: Text(
-                      p.status,
-                      style: TextStyle(
-                        color: AppColors.success,
-                        fontSize: 12.sp,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            SizedBox(height: 24.h),
-            _section('Pekerjaan', [
+            _header(p),
+            SizedBox(height: 16.h),
+            _actions(p),
+            SizedBox(height: 18.h),
+            _section('Pekerjaan', Iconsax.briefcase, [
               InfoRow('Departemen', p.employment?.department),
               InfoRow('Posisi', p.employment?.position),
+              InfoRow('Cabang', p.employment?.branch),
               InfoRow('Grade', p.employment?.jobGrade),
               InfoRow('Tipe', p.employment?.employmentType),
               InfoRow('Bergabung', p.joinDate),
             ]),
-            SizedBox(height: 16.h),
-            _section('Kontak', [
+            SizedBox(height: 14.h),
+            _section('Kontak', Iconsax.call, [
               InfoRow('Email', p.email),
               InfoRow('Telepon', p.phone),
               InfoRow('Alamat', p.address),
             ]),
+            SizedBox(height: 20.h),
+            _logoutButton(),
           ],
         );
       }),
     );
   }
 
-  Widget _section(String title, List<Widget> rows) {
+  // ---- Header ---------------------------------------------------------------
+
+  Widget _header(Profile p) {
+    return Container(
+      width: double.infinity,
+      padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 22.h),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          colors: [AppColors.primary, AppColors.accent],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(22.r),
+        boxShadow: [
+          BoxShadow(color: AppColors.primary.withValues(alpha: 0.3), blurRadius: 24, offset: const Offset(0, 12)),
+        ],
+      ),
+      child: Column(
+        children: [
+          Container(
+            padding: EdgeInsets.all(3.w),
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: Colors.white.withValues(alpha: 0.25),
+            ),
+            child: CircleAvatar(
+              radius: 40.r,
+              backgroundColor: Colors.white,
+              backgroundImage: p.photoUrl != null ? NetworkImage(p.photoUrl!) : null,
+              child: p.photoUrl == null
+                  ? Text(
+                      p.fullName.isNotEmpty ? p.fullName[0].toUpperCase() : '?',
+                      style: TextStyle(fontSize: 30.sp, color: AppColors.primary, fontWeight: FontWeight.w800),
+                    )
+                  : null,
+            ),
+          ),
+          SizedBox(height: 12.h),
+          Text(
+            p.fullName,
+            textAlign: TextAlign.center,
+            style: TextStyle(fontSize: 19.sp, fontWeight: FontWeight.w800, color: Colors.white),
+          ),
+          SizedBox(height: 3.h),
+          Text(
+            _subtitleOf(p),
+            textAlign: TextAlign.center,
+            style: TextStyle(fontSize: 12.5.sp, color: Colors.white.withValues(alpha: 0.9)),
+          ),
+          SizedBox(height: 12.h),
+          Wrap(
+            alignment: WrapAlignment.center,
+            spacing: 8.w,
+            runSpacing: 8.h,
+            children: [
+              _headerChip(Iconsax.card, p.employeeNo),
+              _headerChip(Iconsax.tick_circle, _statusLabel(p.status)),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _headerChip(IconData icon, String text) {
+    return Container(
+      padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 5.h),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.2),
+        borderRadius: BorderRadius.circular(999.r),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 13.sp, color: Colors.white),
+          SizedBox(width: 5.w),
+          Text(text, style: TextStyle(fontSize: 11.5.sp, color: Colors.white, fontWeight: FontWeight.w600)),
+        ],
+      ),
+    );
+  }
+
+  // ---- Action buttons -------------------------------------------------------
+
+  Widget _actions(Profile p) {
+    return Row(
+      children: [
+        Expanded(child: _actionButton('Edit Profil', Iconsax.edit, () => _openEditSheet(p))),
+        SizedBox(width: 12.w),
+        Expanded(child: _actionButton('Ubah Sandi', Iconsax.lock_1, _openPasswordSheet)),
+      ],
+    );
+  }
+
+  Widget _actionButton(String label, IconData icon, VoidCallback onTap) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(14.r),
+      child: Container(
+        padding: EdgeInsets.symmetric(vertical: 13.h),
+        decoration: BoxDecoration(
+          color: AppColors.primary.withValues(alpha: 0.06),
+          borderRadius: BorderRadius.circular(14.r),
+          border: Border.all(color: AppColors.primary.withValues(alpha: 0.25)),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(icon, size: 17.sp, color: AppColors.primary),
+            SizedBox(width: 8.w),
+            Text(label, style: TextStyle(fontSize: 13.sp, fontWeight: FontWeight.w700, color: AppColors.primary)),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // ---- Sections -------------------------------------------------------------
+
+  Widget _section(String title, IconData icon, List<Widget> rows) {
     return ContentCard(
+      padding: EdgeInsets.all(16.w),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            title,
-            style: TextStyle(
-              fontWeight: FontWeight.w700,
-              color: AppColors.navy,
-              fontSize: 15.sp,
-            ),
+          Row(
+            children: [
+              Icon(icon, size: 16.sp, color: AppColors.primary),
+              SizedBox(width: 8.w),
+              Text(title, style: TextStyle(fontWeight: FontWeight.w700, color: AppColors.navy, fontSize: 15.sp)),
+            ],
           ),
-          SizedBox(height: 8.h),
+          Divider(color: AppColors.border, height: 22.h),
           ...rows,
         ],
       ),
     );
+  }
+
+  Widget _logoutButton() {
+    return InkWell(
+      onTap: _confirmLogout,
+      borderRadius: BorderRadius.circular(14.r),
+      child: Container(
+        padding: EdgeInsets.symmetric(vertical: 14.h),
+        decoration: BoxDecoration(
+          color: AppColors.destructive.withValues(alpha: 0.06),
+          borderRadius: BorderRadius.circular(14.r),
+          border: Border.all(color: AppColors.destructive.withValues(alpha: 0.25)),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Iconsax.logout, size: 17.sp, color: AppColors.destructive),
+            SizedBox(width: 8.w),
+            Text('Keluar', style: TextStyle(fontSize: 13.5.sp, fontWeight: FontWeight.w700, color: AppColors.destructive)),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // ---- Sheets ---------------------------------------------------------------
+
+  void _openEditSheet(Profile p) {
+    final phone = TextEditingController(text: p.phone ?? '');
+    final address = TextEditingController(text: p.address ?? '');
+
+    _sheet(
+      title: 'Edit Profil',
+      subtitle: 'Perbarui nomor telepon dan alamat Anda.',
+      children: [
+        AppTextField(controller: phone, label: 'Telepon', hint: '0812xxxx', icon: Iconsax.call, keyboardType: TextInputType.phone),
+        SizedBox(height: 14.h),
+        AppTextField(controller: address, label: 'Alamat', hint: 'Alamat tempat tinggal', icon: Iconsax.location, maxLines: 3),
+        SizedBox(height: 20.h),
+        Obx(() => AppSubmitButton(
+              loading: controller.isSaving.value,
+              icon: Iconsax.save_2,
+              label: 'Simpan',
+              onPressed: () async {
+                final ok = await controller.updateProfile(phone: phone.text.trim(), address: address.text.trim());
+                if (ok) Get.back();
+              },
+            )),
+      ],
+    );
+  }
+
+  void _openPasswordSheet() {
+    final current = TextEditingController();
+    final next = TextEditingController();
+    final confirm = TextEditingController();
+
+    _sheet(
+      title: 'Ubah Kata Sandi',
+      subtitle: 'Minimal 8 karakter. Anda tetap masuk setelah diganti.',
+      children: [
+        AppTextField(controller: current, label: 'Sandi Saat Ini', icon: Iconsax.lock, obscure: true),
+        SizedBox(height: 14.h),
+        AppTextField(controller: next, label: 'Sandi Baru', icon: Iconsax.lock_1, obscure: true),
+        SizedBox(height: 14.h),
+        AppTextField(controller: confirm, label: 'Ulangi Sandi Baru', icon: Iconsax.lock_1, obscure: true),
+        SizedBox(height: 20.h),
+        Obx(() => AppSubmitButton(
+              loading: controller.isSaving.value,
+              icon: Iconsax.shield_tick,
+              label: 'Perbarui Sandi',
+              onPressed: () async {
+                final ok = await controller.changePassword(
+                  current: current.text,
+                  password: next.text,
+                  confirm: confirm.text,
+                );
+                if (ok) Get.back();
+              },
+            )),
+      ],
+    );
+  }
+
+  void _sheet({required String title, required String subtitle, required List<Widget> children}) {
+    Get.bottomSheet(
+      Builder(
+        builder: (context) => Padding(
+          padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
+          child: Container(
+            padding: EdgeInsets.fromLTRB(20.w, 12.h, 20.w, 24.h),
+            decoration: BoxDecoration(
+              color: AppColors.background,
+              borderRadius: BorderRadius.vertical(top: Radius.circular(24.r)),
+            ),
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Center(
+                    child: Container(
+                      width: 40.w,
+                      height: 4.h,
+                      margin: EdgeInsets.only(bottom: 16.h),
+                      decoration: BoxDecoration(color: AppColors.border, borderRadius: BorderRadius.circular(2.r)),
+                    ),
+                  ),
+                  Text(title, style: TextStyle(fontWeight: FontWeight.w800, color: AppColors.navy, fontSize: 17.sp)),
+                  SizedBox(height: 4.h),
+                  Text(subtitle, style: TextStyle(color: AppColors.textMuted, fontSize: 12.5.sp)),
+                  SizedBox(height: 18.h),
+                  ...children,
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+      isScrollControlled: true,
+    );
+  }
+
+  void _confirmLogout() {
+    Get.dialog(
+      AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18.r)),
+        title: Text('Keluar akun?', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16.sp, color: AppColors.navy)),
+        content: Text('Anda harus masuk kembali untuk mengakses aplikasi.', style: TextStyle(fontSize: 13.sp, color: AppColors.textMuted)),
+        actions: [
+          TextButton(onPressed: Get.back, child: Text('Batal', style: TextStyle(color: AppColors.textMuted))),
+          TextButton(
+            onPressed: () {
+              Get.back();
+              controller.logout();
+            },
+            child: Text('Keluar', style: TextStyle(color: AppColors.destructive, fontWeight: FontWeight.w700)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ---- Helpers --------------------------------------------------------------
+
+  String _subtitleOf(Profile p) {
+    final parts = [p.employment?.position, p.employment?.department]
+        .where((e) => e != null && e.isNotEmpty)
+        .toList();
+    return parts.isEmpty ? 'Karyawan' : parts.join(' · ');
+  }
+
+  String _statusLabel(String status) {
+    switch (status) {
+      case 'active':
+        return 'Aktif';
+      case 'inactive':
+        return 'Nonaktif';
+      default:
+        return status.isEmpty ? '-' : status;
+    }
   }
 }
