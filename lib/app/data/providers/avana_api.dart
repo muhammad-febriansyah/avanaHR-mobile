@@ -224,8 +224,21 @@ class AvanaApi {
         if (reason != null) 'reason': reason,
       });
 
-  Future<Response> submitReimbursement({required String category, required int amount}) =>
-      _dio.post('/me/reimbursements', data: {'category': category, 'amount': amount});
+  Future<Response> submitReimbursement({
+    required String category,
+    required int amount,
+    String? receiptPath,
+  }) async {
+    if (receiptPath == null) {
+      return _dio.post('/me/reimbursements', data: {'category': category, 'amount': amount});
+    }
+    final form = FormData.fromMap({
+      'category': category,
+      'amount': amount,
+      'receipt': await MultipartFile.fromFile(receiptPath, filename: receiptPath.split('/').last),
+    });
+    return _dio.post('/me/reimbursements', data: form);
+  }
 
   Future<List<ReimbursementItem>> reimbursements() async {
     final res = await _dio.get('/me/reimbursements');

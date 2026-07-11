@@ -166,14 +166,15 @@ class LeaveView extends GetView<LeaveController> {
                 value: controller.types.any((t) => t.id == typeId.value) ? typeId.value : null,
                 items: controller.types.map((t) => DropdownMenuItem(value: t.id, child: Text(t.name))).toList(),
                 onChanged: (v) => typeId.value = v ?? 0,
+                required: true,
               ),
             ),
             SizedBox(height: 14.h),
             Row(
               children: [
-                Expanded(child: Obx(() => AppDateField(label: 'Mulai', value: start.value, onPick: (d) => start.value = d))),
+                Expanded(child: Obx(() => AppDateField(label: 'Mulai', value: start.value, onPick: (d) => start.value = d, required: true))),
                 SizedBox(width: 12.w),
-                Expanded(child: Obx(() => AppDateField(label: 'Selesai', value: end.value, onPick: (d) => end.value = d))),
+                Expanded(child: Obx(() => AppDateField(label: 'Selesai', value: end.value, onPick: (d) => end.value = d, required: true))),
               ],
             ),
             SizedBox(height: 14.h),
