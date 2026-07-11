@@ -134,7 +134,7 @@ class HomeTab extends GetView<HomeController> {
             SizedBox(height: 26.h),
             _sectionHeader('Menu Cepat'),
             SizedBox(height: 14.h),
-            _actionsGrid(),
+            _MenuCarousel(_allActions()),
             SizedBox(height: 26.h),
             _sectionHeader('Pengumuman Terbaru', onTap: () => Get.find<MainController>().changeTab(2)),
             SizedBox(height: 12.h),
@@ -511,8 +511,9 @@ class HomeTab extends GetView<HomeController> {
     );
   }
 
-  Widget _actionsGrid() {
-    final items = [
+  /// Every quick action in priority order, paged 8-per-slide by the carousel.
+  List<_Action> _allActions() {
+    return [
       if (controller.isManager)
         _Action('Persetujuan', Iconsax.people, const Color(0xFF4F46E5), () => Get.toNamed(Routes.MSS)),
       _Action('Feeling', Iconsax.emoji_happy, const Color(0xFF2F54C9), _openMoodSheet),
@@ -523,49 +524,14 @@ class HomeTab extends GetView<HomeController> {
       _Action('Lembur', Iconsax.timer_1, const Color(0xFFD97706), () => Get.toNamed(Routes.OVERTIME)),
       _Action('Izin', Iconsax.calendar_remove, const Color(0xFF9333EA), () => Get.toNamed(Routes.PERMISSION)),
       _Action('Reimburse', Iconsax.wallet_money, const Color(0xFFDB2777), () => Get.toNamed(Routes.REIMBURSEMENT)),
-      _Action('Lainnya', Iconsax.category_2, const Color(0xFF475569), _openMoreSheet),
+      _Action('WFH', Iconsax.house, const Color(0xFF0EA5E9), () => Get.toNamed(Routes.WFH)),
+      _Action('Koreksi', Iconsax.clock, const Color(0xFF4F46E5), () => Get.toNamed(Routes.ATTENDANCE_CORRECTION)),
+      _Action('Dokumen', Iconsax.document_text, const Color(0xFF9333EA), () => Get.toNamed(Routes.DOKUMEN)),
+      _Action('Visiting', Iconsax.location, const Color(0xFFE11D48), () => Get.toNamed(Routes.VISITING)),
+      _Action('Tukar Shift', Iconsax.arrow_swap_horizontal, const Color(0xFF0D9488), () => Get.toNamed(Routes.SHIFT_SWAP)),
+      _Action('Pengumuman', Iconsax.volume_high, const Color(0xFFEA580C), () => Get.find<MainController>().changeTab(2)),
+      _Action('Notifikasi', Iconsax.notification, const Color(0xFF475569), () => Get.toNamed(Routes.NOTIFICATION)),
     ];
-    // Chunk into rows of 4 (Column of Rows avoids GridView's phantom height
-    // inside a scroll view).
-    final rows = <List<_Action>>[];
-    for (var i = 0; i < items.length; i += 4) {
-      rows.add(items.sublist(i, (i + 4).clamp(0, items.length)));
-    }
-    return Column(
-      children: rows.map((row) {
-        return Padding(
-          padding: EdgeInsets.only(bottom: 18.h),
-          child: Row(
-            children: List.generate(4, (i) {
-              if (i >= row.length) {
-                return const Expanded(child: SizedBox.shrink());
-              }
-              return Expanded(child: _actionTile(row[i]));
-            }),
-          ),
-        );
-      }).toList(),
-    );
-  }
-
-  Widget _actionTile(_Action a) {
-    return InkWell(
-      borderRadius: BorderRadius.circular(16.r),
-      onTap: a.onTap,
-      child: Column(
-        children: [
-          Container(
-            width: 54.w,
-            height: 54.w,
-            decoration: BoxDecoration(color: a.color.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(16.r)),
-            child: Icon(a.icon, color: a.color, size: 25.sp),
-          ),
-          SizedBox(height: 7.h),
-          Text(a.label, maxLines: 1, textAlign: TextAlign.center, overflow: TextOverflow.ellipsis,
-              style: TextStyle(fontWeight: FontWeight.w600, color: AppColors.navy, fontSize: 11.sp)),
-        ],
-      ),
-    );
   }
 
   /// Quick mood check-in in a bottom sheet (mirrors the home mood card).
@@ -611,49 +577,6 @@ class HomeTab extends GetView<HomeController> {
                       ),
                     ),
                   ),
-                );
-              }).toList(),
-            ),
-          ],
-        ),
-      ),
-      isScrollControlled: true,
-    );
-  }
-
-  /// "Lainnya" — the remaining features not on the quick grid.
-  void _openMoreSheet() {
-    final more = [
-      _Action('WFH', Iconsax.house, const Color(0xFF0EA5E9), () => Get.toNamed(Routes.WFH)),
-      _Action('Koreksi Absen', Iconsax.clock, const Color(0xFF4F46E5), () => Get.toNamed(Routes.ATTENDANCE_CORRECTION)),
-      _Action('Dokumen', Iconsax.document_text, const Color(0xFF9333EA), () => Get.toNamed(Routes.DOKUMEN)),
-      _Action('Visiting', Iconsax.location, const Color(0xFFE11D48), () => Get.toNamed(Routes.VISITING)),
-      _Action('Tukar Shift', Iconsax.arrow_swap_horizontal, const Color(0xFF0D9488), () => Get.toNamed(Routes.SHIFT_SWAP)),
-      _Action('Pengumuman', Iconsax.volume_high, const Color(0xFFEA580C), () => Get.find<MainController>().changeTab(2)),
-      _Action('Notifikasi', Iconsax.notification, const Color(0xFF475569), () => Get.toNamed(Routes.NOTIFICATION)),
-    ];
-    Get.bottomSheet(
-      Container(
-        padding: EdgeInsets.fromLTRB(20.w, 18.h, 20.w, 28.h),
-        decoration: BoxDecoration(
-          color: AppColors.background,
-          borderRadius: BorderRadius.vertical(top: Radius.circular(24.r)),
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('Menu Lainnya', style: TextStyle(fontWeight: FontWeight.w700, color: AppColors.navy, fontSize: 15.sp)),
-            SizedBox(height: 16.h),
-            Wrap(
-              runSpacing: 18.h,
-              children: more.map((a) {
-                return SizedBox(
-                  width: (1.sw - 40.w) / 4,
-                  child: _actionTile(_Action(a.label, a.icon, a.color, () {
-                    Get.back();
-                    a.onTap();
-                  })),
                 );
               }).toList(),
             ),
@@ -733,4 +656,128 @@ class _Action {
   final Color color;
   final VoidCallback onTap;
   _Action(this.label, this.icon, this.color, this.onTap);
+}
+
+/// Quick-menu carousel: swipeable pages of a 4×2 icon grid with page dots.
+class _MenuCarousel extends StatefulWidget {
+  final List<_Action> actions;
+  const _MenuCarousel(this.actions);
+
+  @override
+  State<_MenuCarousel> createState() => _MenuCarouselState();
+}
+
+class _MenuCarouselState extends State<_MenuCarousel> {
+  static const _perPage = 8; // 4 columns × 2 rows
+  final _controller = PageController();
+  int _page = 0;
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  List<List<_Action>> get _pages {
+    final pages = <List<_Action>>[];
+    for (var i = 0; i < widget.actions.length; i += _perPage) {
+      pages.add(widget.actions.sublist(
+          i, (i + _perPage).clamp(0, widget.actions.length)));
+    }
+    return pages;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final pages = _pages;
+
+    return Column(
+      children: [
+        SizedBox(
+          height: 186.h,
+          child: PageView.builder(
+            controller: _controller,
+            itemCount: pages.length,
+            onPageChanged: (i) => setState(() => _page = i),
+            itemBuilder: (_, p) => _grid(pages[p]),
+          ),
+        ),
+        if (pages.length > 1) ...[
+          SizedBox(height: 14.h),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: List.generate(pages.length, (i) {
+              final active = i == _page;
+              return AnimatedContainer(
+                duration: const Duration(milliseconds: 220),
+                curve: Curves.easeOut,
+                margin: EdgeInsets.symmetric(horizontal: 3.w),
+                width: active ? 20.w : 6.w,
+                height: 6.w,
+                decoration: BoxDecoration(
+                  color: active ? AppColors.primary : AppColors.border,
+                  borderRadius: BorderRadius.circular(3.r),
+                ),
+              );
+            }),
+          ),
+        ],
+      ],
+    );
+  }
+
+  /// One page: up to two rows of four tiles, blanks keep the grid aligned.
+  Widget _grid(List<_Action> items) {
+    final rows = <List<_Action>>[];
+    for (var i = 0; i < items.length; i += 4) {
+      rows.add(items.sublist(i, (i + 4).clamp(0, items.length)));
+    }
+    return Column(
+      children: rows.map((row) {
+        return Padding(
+          padding: EdgeInsets.only(bottom: 18.h),
+          child: Row(
+            children: List.generate(
+              4,
+              (i) => i < row.length
+                  ? Expanded(child: _tile(row[i]))
+                  : const Expanded(child: SizedBox.shrink()),
+            ),
+          ),
+        );
+      }).toList(),
+    );
+  }
+
+  Widget _tile(_Action a) {
+    return InkWell(
+      borderRadius: BorderRadius.circular(16.r),
+      onTap: a.onTap,
+      child: Column(
+        children: [
+          Container(
+            width: 54.w,
+            height: 54.w,
+            decoration: BoxDecoration(
+              color: a.color.withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(16.r),
+            ),
+            child: Icon(a.icon, color: a.color, size: 25.sp),
+          ),
+          SizedBox(height: 7.h),
+          Text(
+            a.label,
+            maxLines: 1,
+            textAlign: TextAlign.center,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              fontWeight: FontWeight.w600,
+              color: AppColors.navy,
+              fontSize: 11.sp,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 }

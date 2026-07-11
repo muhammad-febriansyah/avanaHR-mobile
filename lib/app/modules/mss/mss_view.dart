@@ -106,7 +106,7 @@ class MssView extends GetView<MssController> {
                       'Semua permintaan tim sudah diproses.',
                     )
                   : ListView.separated(
-                      physics: const AlwaysScrollableScrollPhysics(),
+                      physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
                       padding: EdgeInsets.fromLTRB(16.w, 8.h, 16.w, 24.h),
                       itemCount: items.length,
                       separatorBuilder: (_, __) => SizedBox(height: 10.h),
@@ -414,7 +414,7 @@ class MssView extends GetView<MssController> {
                 'Keputusan yang kamu buat akan tampil di sini.',
               )
             : ListView.separated(
-                physics: const AlwaysScrollableScrollPhysics(),
+                physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
                 padding: EdgeInsets.fromLTRB(16.w, 8.h, 16.w, 24.h),
                 itemCount: items.length,
                 separatorBuilder: (_, __) => SizedBox(height: 10.h),
@@ -515,7 +515,7 @@ class MssView extends GetView<MssController> {
       return RefreshIndicator(
         onRefresh: controller.load,
         child: ListView.separated(
-          physics: const AlwaysScrollableScrollPhysics(),
+          physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
           padding: EdgeInsets.fromLTRB(16.w, 8.h, 16.w, 24.h),
           itemCount: members.length,
           separatorBuilder: (_, __) => SizedBox(height: 10.h),
@@ -602,7 +602,7 @@ class MssView extends GetView<MssController> {
 
   Widget _empty(IconData icon, String title, String hint) {
     return ListView(
-      physics: const AlwaysScrollableScrollPhysics(),
+      physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
       children: [
         SizedBox(height: 80.h),
         Icon(icon, size: 56.sp, color: AppColors.border),

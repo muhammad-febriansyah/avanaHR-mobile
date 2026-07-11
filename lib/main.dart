@@ -36,6 +36,24 @@ Future<void> main() async {
   runApp(const AvanaApp());
 }
 
+/// App-wide scroll physics: iOS-style bouncing on every platform, with the
+/// Android overscroll glow removed so the bounce reads clean everywhere.
+class AppScrollBehavior extends MaterialScrollBehavior {
+  const AppScrollBehavior();
+
+  @override
+  ScrollPhysics getScrollPhysics(BuildContext context) =>
+      const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics());
+
+  @override
+  Widget buildOverscrollIndicator(
+    BuildContext context,
+    Widget child,
+    ScrollableDetails details,
+  ) =>
+      child;
+}
+
 class AvanaApp extends StatelessWidget {
   const AvanaApp({super.key});
 
@@ -49,6 +67,7 @@ class AvanaApp extends StatelessWidget {
           title: 'AvanaHR',
           debugShowCheckedModeBanner: false,
           theme: AppTheme.light,
+          scrollBehavior: const AppScrollBehavior(),
           initialRoute: AppPages.INITIAL,
           getPages: AppPages.routes,
         ),

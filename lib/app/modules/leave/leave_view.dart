@@ -33,7 +33,7 @@ class LeaveView extends GetView<LeaveController> {
           onRefresh: controller.load,
           color: AppColors.primary,
           child: ListView(
-            physics: const AlwaysScrollableScrollPhysics(),
+            physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
             padding: EdgeInsets.fromLTRB(20.w, 20.h, 20.w, 90.h),
             children: [
               const SectionTitle('Saldo Cuti'),

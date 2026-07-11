@@ -34,7 +34,7 @@ class DokumenView extends GetView<DokumenController> {
           color: AppColors.primary,
           child: controller.items.isEmpty
               ? ListView(
-                  physics: const AlwaysScrollableScrollPhysics(),
+                  physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
                   children: [
                     SizedBox(height: 80.h),
                     const EmptyState(
@@ -44,7 +44,7 @@ class DokumenView extends GetView<DokumenController> {
                   ],
                 )
               : ListView.separated(
-                  physics: const AlwaysScrollableScrollPhysics(),
+                  physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
                   padding: EdgeInsets.fromLTRB(20.w, 20.h, 20.w, 90.h),
                   itemCount: controller.items.length,
                   separatorBuilder: (_, i) => SizedBox(height: 10.h),

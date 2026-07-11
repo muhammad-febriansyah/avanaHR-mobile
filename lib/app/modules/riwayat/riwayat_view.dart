@@ -33,7 +33,7 @@ class RiwayatView extends GetView<RiwayatController> {
 
   Widget _empty() {
     return ListView(
-      physics: const AlwaysScrollableScrollPhysics(),
+      physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
       children: [
         SizedBox(height: 160.h),
         Icon(Iconsax.clock, size: 48.sp, color: AppColors.border),
@@ -50,7 +50,7 @@ class RiwayatView extends GetView<RiwayatController> {
 
   Widget _list() {
     return ListView.separated(
-      physics: const AlwaysScrollableScrollPhysics(),
+      physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
       padding: EdgeInsets.fromLTRB(16.w, 12.h, 16.w, 20.h),
       itemCount: controller.items.length,
       separatorBuilder: (_, __) => SizedBox(height: 10.h),
