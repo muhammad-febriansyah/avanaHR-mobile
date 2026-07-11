@@ -58,6 +58,30 @@ class AvanaApi {
     return Profile.fromJson(Map<String, dynamic>.from(res.data['data']));
   }
 
+  /// Update the caller's self-editable fields (phone, address).
+  Future<Profile> updateProfile({String? phone, String? address}) async {
+    final res = await _dio.put('/me/profile', data: {
+      'phone': phone,
+      'address': address,
+    });
+    return Profile.fromJson(Map<String, dynamic>.from(res.data['data']));
+  }
+
+  /// Change the account password. Old tokens are revoked server-side, so the
+  /// returned fresh access token must replace the stored one.
+  Future<String?> changePassword({
+    required String currentPassword,
+    required String password,
+    required String passwordConfirmation,
+  }) async {
+    final res = await _dio.post('/me/security/password', data: {
+      'current_password': currentPassword,
+      'password': password,
+      'password_confirmation': passwordConfirmation,
+    });
+    return res.data['access_token'] as String?;
+  }
+
   Future<AttendanceToday> attendanceToday() async {
     final res = await _dio.get('/me/attendance/today');
     return AttendanceToday.fromJson(Map<String, dynamic>.from(res.data['data']));
