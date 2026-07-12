@@ -39,7 +39,10 @@ class AuthService extends GetxService {
     try {
       user.value = await _api.me();
       return true;
-    } on DioException {
+    } catch (_) {
+      // Dead/absent token, network error, or an unexpected response shape:
+      // treat all as "not authenticated" so the splash routes to login instead
+      // of throwing an unhandled exception.
       return false;
     }
   }

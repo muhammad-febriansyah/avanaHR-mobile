@@ -81,17 +81,7 @@ class FaceVerifyView extends GetView<FaceVerifyController> {
       child: Container(
         width: double.infinity,
         padding: EdgeInsets.fromLTRB(20.w, 20.h, 20.w, 28.h),
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [
-              AppColors.navy.withValues(alpha: 0),
-              AppColors.navy.withValues(alpha: 0.85),
-              AppColors.navy,
-            ],
-          ),
-        ),
+        decoration: const BoxDecoration(color: AppColors.navy),
         child: SafeArea(
           top: false,
           child: Column(

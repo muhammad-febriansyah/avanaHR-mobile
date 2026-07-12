@@ -47,7 +47,14 @@ class AvanaApi {
 
   Future<AppUser> me() async {
     final res = await _dio.get('/auth/me');
-    return AppUser.fromJson(Map<String, dynamic>.from(res.data['data']));
+    final data = res.data is Map ? (res.data as Map)['data'] : null;
+    if (data is! Map) {
+      // No/expired token or an unexpected shape (e.g. a 401 error body) yields
+      // null here — surface it as a clean failure the caller can handle instead
+      // of a raw TypeError from Map.from(null).
+      throw StateError('Unexpected /auth/me response');
+    }
+    return AppUser.fromJson(Map<String, dynamic>.from(data));
   }
 
   Future<void> logout() => _dio.post('/auth/logout');

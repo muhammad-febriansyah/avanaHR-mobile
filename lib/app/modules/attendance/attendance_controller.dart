@@ -152,7 +152,30 @@ class AttendanceController extends GetxController {
     }
   }
 
-  Future<void> clock() async {
+  /// Marks the caller as face-enrolled locally (used by the on-page scanner
+  /// after it enrolls a template server-side).
+  void markFaceEnrolled() {
+    requiresFace.value = true;
+    _box.write(_faceKey, true);
+  }
+
+  /// Whether the geofence currently allows clocking; the on-page scanner uses
+  /// this to decide whether to run the camera.
+  bool get canClockNow => canClockByLocation && !isClocking.value;
+
+  /// Full clock action with the built-in navigating face gate. Kept for entry
+  /// points that push the standalone camera route.
+  Future<void> clock() => _runClock(navigateFaceGate: true);
+
+  /// Clock using a face embedding already captured by the on-page scanner —
+  /// no navigation. Pass null when enrollment just happened (no verify needed).
+  Future<void> clockWithEmbedding(List<double>? faceEmbedding) =>
+      _runClock(navigateFaceGate: false, providedEmbedding: faceEmbedding);
+
+  Future<void> _runClock({
+    required bool navigateFaceGate,
+    List<double>? providedEmbedding,
+  }) async {
     final type = today.value?.canClockIn ?? true ? 'in' : 'out';
 
     // Geofence gate: block only when we positively know the user is outside a
@@ -165,17 +188,29 @@ class AttendanceController extends GetxController {
       return;
     }
 
-    // Face gate: enrolled employees must pass on-device verification first.
-    // Capture + embedding both run locally, so this works offline too.
-    List<double>? faceEmbedding;
-    if (requiresFace.value) {
-      final result = await Get.toNamed(Routes.FACE_VERIFY);
-      if (result is! List) {
-        AppToast.warning('Verifikasi wajah dibatalkan.');
+    // Face gate: attendance always goes through on-device face recognition.
+    // Already enrolled → verify against the stored template; not yet enrolled →
+    // run enrollment (active liveness) first, then clock. Capture + embedding
+    // both run locally, so this works offline too.
+    List<double>? faceEmbedding = providedEmbedding;
+    if (navigateFaceGate) {
+      if (requiresFace.value) {
+        final result = await Get.toNamed(Routes.FACE_VERIFY);
+        if (result is! List) {
+          AppToast.warning('Verifikasi wajah dibatalkan.');
 
-        return;
+          return;
+        }
+        faceEmbedding = List<double>.from(result);
+      } else {
+        final enrolledOk = await Get.toNamed(Routes.FACE_ENROLL);
+        if (enrolledOk != true) {
+          AppToast.warning('Absen butuh verifikasi wajah. Daftarkan wajah dulu.');
+
+          return;
+        }
+        markFaceEnrolled();
       }
-      faceEmbedding = List<double>.from(result);
     }
 
     isClocking.value = true;

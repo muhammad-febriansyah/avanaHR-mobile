@@ -5,8 +5,8 @@ import 'package:iconsax/iconsax.dart';
 
 import '../../core/theme/app_colors.dart';
 import '../../data/services/connectivity_service.dart';
-import '../../routes/app_pages.dart';
 import '../announcement/announcement_view.dart';
+import '../attendance/attendance_view.dart';
 import '../home/views/home_tab.dart';
 import '../profile/profile_view.dart';
 import '../riwayat/riwayat_view.dart';
@@ -36,11 +36,16 @@ class MainView extends GetView<MainController> {
             child: Obx(
               () => IndexedStack(
                 index: controller.tab.value,
-                children: const [
-                  HomeTab(),
-                  RiwayatView(),
-                  AnnouncementView(),
-                  ProfileView(),
+                children: [
+                  const HomeTab(),
+                  const RiwayatView(),
+                  const AnnouncementView(),
+                  const ProfileView(),
+                  // Absensi tab: built only once first opened, so its GPS/camera
+                  // init doesn't fire at app launch.
+                  controller.attendanceOpened.value
+                      ? const AttendanceView()
+                      : const SizedBox.shrink(),
                 ],
               ),
             ),
@@ -53,30 +58,32 @@ class MainView extends GetView<MainController> {
     );
   }
 
-  /// Prominent center button that opens the attendance (clock-in/out) screen.
+  /// Prominent center button that opens the attendance (clock-in/out) tab,
+  /// keeping the bottom navigation bar in place.
   Widget _absensiFab() {
-    return GestureDetector(
-      onTap: () => Get.toNamed(Routes.ATTENDANCE),
-      child: Container(
-        width: 62.w,
-        height: 62.w,
-        decoration: BoxDecoration(
-          shape: BoxShape.circle,
-          gradient: const LinearGradient(
-            colors: [AppColors.primary, AppColors.accent],
+    return Obx(() {
+      final active = controller.tab.value == MainController.attendanceTab;
+      return GestureDetector(
+        onTap: () => controller.changeTab(MainController.attendanceTab),
+        child: Container(
+          width: 62.w,
+          height: 62.w,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: active ? AppColors.accent : AppColors.primary,
+            border: Border.all(color: Colors.white, width: 4),
+            boxShadow: [
+              BoxShadow(
+                color: AppColors.navy.withValues(alpha: 0.18),
+                blurRadius: 14,
+                offset: const Offset(0, 6),
+              ),
+            ],
           ),
-          border: Border.all(color: Colors.white, width: 4),
-          boxShadow: [
-            BoxShadow(
-              color: AppColors.primary.withValues(alpha: 0.4),
-              blurRadius: 16,
-              offset: const Offset(0, 6),
-            ),
-          ],
+          child: Icon(Iconsax.finger_scan, color: Colors.white, size: 26.sp),
         ),
-        child: Icon(Iconsax.finger_scan, color: Colors.white, size: 26.sp),
-      ),
-    );
+      );
+    });
   }
 
   /// A slim red bar shown whenever the device loses its network connection.

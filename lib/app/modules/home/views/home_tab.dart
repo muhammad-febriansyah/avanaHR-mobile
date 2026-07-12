@@ -165,7 +165,7 @@ class HomeTab extends GetView<HomeController> {
       decoration: BoxDecoration(
         color: AppColors.primary,
         borderRadius: BorderRadius.circular(20.r),
-        boxShadow: [BoxShadow(color: AppColors.primary.withValues(alpha: 0.3), blurRadius: 22, offset: const Offset(0, 10))],
+        boxShadow: [BoxShadow(color: AppColors.navy.withValues(alpha: 0.08), blurRadius: 16, offset: const Offset(0, 6))],
       ),
       child: Obx(() {
         final t = controller.today.value;
@@ -207,7 +207,8 @@ class HomeTab extends GetView<HomeController> {
                   elevation: 0,
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(13.r)),
                 ),
-                onPressed: () => Get.toNamed(Routes.ATTENDANCE),
+                onPressed: () => Get.find<MainController>()
+                    .changeTab(MainController.attendanceTab),
                 icon: Icon(next ? Iconsax.finger_scan : Iconsax.logout, size: 20.sp),
                 label: Text(next ? 'Clock In Sekarang' : 'Clock Out', style: TextStyle(fontSize: 14.sp, fontWeight: FontWeight.w700)),
               ),
@@ -254,13 +255,9 @@ class HomeTab extends GetView<HomeController> {
         width: double.infinity,
         padding: EdgeInsets.all(16.w),
         decoration: BoxDecoration(
-          gradient: const LinearGradient(
-            colors: [AppColors.primary, AppColors.accent],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-          ),
+          color: AppColors.primary,
           borderRadius: BorderRadius.circular(20.r),
-          boxShadow: [BoxShadow(color: AppColors.primary.withValues(alpha: 0.3), blurRadius: 20, offset: const Offset(0, 8))],
+          boxShadow: [BoxShadow(color: AppColors.navy.withValues(alpha: 0.08), blurRadius: 16, offset: const Offset(0, 6))],
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -530,7 +527,6 @@ class HomeTab extends GetView<HomeController> {
       _Action('Visiting', Iconsax.location, const Color(0xFFE11D48), () => Get.toNamed(Routes.VISITING)),
       _Action('Tukar Shift', Iconsax.arrow_swap_horizontal, const Color(0xFF0D9488), () => Get.toNamed(Routes.SHIFT_SWAP)),
       _Action('Pengumuman', Iconsax.volume_high, const Color(0xFFEA580C), () => Get.find<MainController>().changeTab(2)),
-      _Action('Notifikasi', Iconsax.notification, const Color(0xFF475569), () => Get.toNamed(Routes.NOTIFICATION)),
     ];
   }
 
@@ -733,19 +729,23 @@ class _MenuCarouselState extends State<_MenuCarousel> {
       rows.add(items.sublist(i, (i + 4).clamp(0, items.length)));
     }
     return Column(
-      children: rows.map((row) {
-        return Padding(
-          padding: EdgeInsets.only(bottom: 18.h),
-          child: Row(
-            children: List.generate(
-              4,
-              (i) => i < row.length
-                  ? Expanded(child: _tile(row[i]))
-                  : const Expanded(child: SizedBox.shrink()),
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        for (var r = 0; r < rows.length; r++)
+          Padding(
+            // No trailing gap after the last row — the extra 18.h pushed the
+            // grid past the fixed carousel height and tripped a hairline overflow.
+            padding: EdgeInsets.only(bottom: r == rows.length - 1 ? 0 : 18.h),
+            child: Row(
+              children: List.generate(
+                4,
+                (i) => i < rows[r].length
+                    ? Expanded(child: _tile(rows[r][i]))
+                    : const Expanded(child: SizedBox.shrink()),
+              ),
             ),
           ),
-        );
-      }).toList(),
+      ],
     );
   }
 
