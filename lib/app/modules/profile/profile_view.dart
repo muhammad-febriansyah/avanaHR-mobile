@@ -65,14 +65,10 @@ class ProfileView extends GetView<ProfileController> {
       width: double.infinity,
       padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 22.h),
       decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [AppColors.primary, AppColors.accent],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
+        color: AppColors.primary,
         borderRadius: BorderRadius.circular(22.r),
         boxShadow: [
-          BoxShadow(color: AppColors.primary.withValues(alpha: 0.3), blurRadius: 24, offset: const Offset(0, 12)),
+          BoxShadow(color: AppColors.navy.withValues(alpha: 0.08), blurRadius: 18, offset: const Offset(0, 8)),
         ],
       ),
       child: Column(
@@ -256,11 +252,11 @@ class ProfileView extends GetView<ProfileController> {
       title: 'Ubah Kata Sandi',
       subtitle: 'Minimal 8 karakter. Anda tetap masuk setelah diganti.',
       children: [
-        AppTextField(controller: current, label: 'Sandi Saat Ini', icon: Iconsax.lock, obscure: true),
+        AppTextField(controller: current, label: 'Sandi Saat Ini', hint: 'Masukkan sandi saat ini', icon: Iconsax.lock, obscure: true),
         SizedBox(height: 14.h),
-        AppTextField(controller: next, label: 'Sandi Baru', icon: Iconsax.lock_1, obscure: true),
+        AppTextField(controller: next, label: 'Sandi Baru', hint: 'Minimal 8 karakter', icon: Iconsax.lock_1, obscure: true),
         SizedBox(height: 14.h),
-        AppTextField(controller: confirm, label: 'Ulangi Sandi Baru', icon: Iconsax.lock_1, obscure: true),
+        AppTextField(controller: confirm, label: 'Ulangi Sandi Baru', hint: 'Ketik ulang sandi baru', icon: Iconsax.lock_1, obscure: true),
         SizedBox(height: 20.h),
         Obx(() => AppSubmitButton(
               loading: controller.isSaving.value,

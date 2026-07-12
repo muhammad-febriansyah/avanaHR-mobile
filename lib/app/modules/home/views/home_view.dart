@@ -54,7 +54,7 @@ class HomeView extends GetView<HomeController> {
           width: 46.w,
           height: 46.w,
           decoration: BoxDecoration(
-            gradient: const LinearGradient(colors: [AppColors.primary, AppColors.accent]),
+            color: AppColors.primary,
             borderRadius: BorderRadius.circular(14.r),
           ),
           alignment: Alignment.center,
@@ -115,9 +115,9 @@ class HomeView extends GetView<HomeController> {
     return Container(
       padding: EdgeInsets.all(20.w),
       decoration: BoxDecoration(
-        gradient: const LinearGradient(colors: [AppColors.primary, AppColors.accent], begin: Alignment.topLeft, end: Alignment.bottomRight),
+        color: AppColors.primary,
         borderRadius: BorderRadius.circular(20.r),
-        boxShadow: [BoxShadow(color: AppColors.primary.withValues(alpha: 0.28), blurRadius: 22, offset: const Offset(0, 10))],
+        boxShadow: [BoxShadow(color: AppColors.navy.withValues(alpha: 0.08), blurRadius: 16, offset: const Offset(0, 6))],
       ),
       child: Obx(() {
         final t = controller.today.value;

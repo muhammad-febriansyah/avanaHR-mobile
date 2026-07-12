@@ -9,6 +9,7 @@ import '../../core/theme/app_colors.dart';
 import '../../core/widgets/app_page.dart';
 import '../../data/services/attendance_queue_service.dart';
 import 'attendance_controller.dart';
+import 'on_page_face_scan.dart';
 
 class AttendanceView extends GetView<AttendanceController> {
   const AttendanceView({super.key});
@@ -18,6 +19,9 @@ class AttendanceView extends GetView<AttendanceController> {
     return AppPage(
       title: 'Absensi',
       subtitle: 'Clock in / clock out',
+      // As the center-FAB tab there's nothing to pop, so hide the back arrow;
+      // when opened as a standalone pushed route, show it.
+      showBack: Navigator.of(context).canPop(),
       child: Column(
         children: [
           _pendingBanner(),
@@ -68,33 +72,30 @@ class AttendanceView extends GetView<AttendanceController> {
         },
         child: SingleChildScrollView(
           physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
-          padding: EdgeInsets.fromLTRB(20.w, 4.h, 20.w, 28.h),
+          // Extra bottom inset so the map/content clears the docked center FAB.
+          padding: EdgeInsets.fromLTRB(20.w, 4.h, 20.w, 72.h),
           child: Center(
             child: ConstrainedBox(
               constraints: const BoxConstraints(maxWidth: 480),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  const _GeofenceMap(),
-                  SizedBox(height: 12.h),
                   _geoStatus(),
-                  SizedBox(height: 16.h),
+                  SizedBox(height: 14.h),
                   _todayCard(),
-                  Obx(() => controller.requiresFace.value
-                      ? Padding(
-                          padding: EdgeInsets.only(top: 12.h),
-                          child: _faceBadge(),
-                        )
-                      : const SizedBox.shrink()),
-                  SizedBox(height: 24.h),
-                  _clockButton(),
-                  SizedBox(height: 12.h),
+                  SizedBox(height: 18.h),
+                  // Live face scanner embedded right here — no separate screen.
+                  const OnPageFaceScan(),
+                  SizedBox(height: 8.h),
                   Text(
                     'Lokasi & perangkat direkam saat absen.',
                     style:
                         TextStyle(color: AppColors.textMuted, fontSize: 11.5.sp),
                     textAlign: TextAlign.center,
                   ),
+                  SizedBox(height: 18.h),
+                  // Map sits at the bottom as location confirmation.
+                  const _GeofenceMap(),
                 ],
               ),
             ),
@@ -290,121 +291,6 @@ class AttendanceView extends GetView<AttendanceController> {
     );
   }
 
-  Widget _faceBadge() {
-    return Container(
-      padding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 11.h),
-      decoration: BoxDecoration(
-        color: AppColors.primary.withValues(alpha: 0.07),
-        borderRadius: BorderRadius.circular(14.r),
-        border: Border.all(color: AppColors.primary.withValues(alpha: 0.22)),
-      ),
-      child: Row(
-        children: [
-          Icon(Iconsax.scan, size: 18.sp, color: AppColors.primary),
-          SizedBox(width: 10.w),
-          Expanded(
-            child: Text(
-              'Verifikasi wajah diperlukan sebelum absen.',
-              style: TextStyle(
-                color: AppColors.primary,
-                fontSize: 12.5.sp,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  // ---- Clock button ---------------------------------------------------------
-
-  Widget _clockButton() {
-    return Obx(() {
-      final isIn = controller.today.value?.canClockIn ?? true;
-      final blocked = !controller.canClockByLocation;
-      final busy = controller.isClocking.value;
-
-      final gradient = blocked
-          ? [const Color(0xFFE2E8F0), const Color(0xFFB8C2D0)]
-          : isIn
-              ? [AppColors.primary, AppColors.accent]
-              : [AppColors.warning, const Color(0xFFF59E0B)];
-
-      final glow = blocked
-          ? const Color(0xFF94A3B8)
-          : isIn
-              ? AppColors.primary
-              : AppColors.warning;
-
-      return Center(
-        child: Semantics(
-          button: true,
-          enabled: !busy && !blocked,
-          label: isIn ? 'Clock in' : 'Clock out',
-          child: GestureDetector(
-            onTap: busy ? null : controller.clock,
-            child: AnimatedScale(
-              scale: busy ? 0.97 : 1,
-              duration: const Duration(milliseconds: 150),
-              child: Container(
-                height: 168.w,
-                width: 168.w,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  gradient: LinearGradient(
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                    colors: gradient,
-                  ),
-                  border: Border.all(color: Colors.white, width: 5),
-                  boxShadow: [
-                    BoxShadow(
-                      color: glow.withValues(alpha: blocked ? 0.25 : 0.4),
-                      blurRadius: 30,
-                      offset: const Offset(0, 12),
-                    ),
-                  ],
-                ),
-                child: Center(
-                  child: busy
-                      ? const CircularProgressIndicator(color: Colors.white)
-                      : Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(
-                              blocked
-                                  ? Iconsax.location_slash
-                                  : isIn
-                                      ? Iconsax.login
-                                      : Iconsax.logout,
-                              color: Colors.white,
-                              size: 46.sp,
-                            ),
-                            SizedBox(height: 8.h),
-                            Text(
-                              blocked
-                                  ? 'DI LUAR RADIUS'
-                                  : isIn
-                                      ? 'CLOCK IN'
-                                      : 'CLOCK OUT',
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontWeight: FontWeight.w800,
-                                fontSize: blocked ? 13.sp : 16.sp,
-                                letterSpacing: 0.5,
-                              ),
-                            ),
-                          ],
-                        ),
-                ),
-              ),
-            ),
-          ),
-        ),
-      );
-    });
-  }
 }
 
 /// Interactive OpenStreetMap card showing the office geofence circle, the
