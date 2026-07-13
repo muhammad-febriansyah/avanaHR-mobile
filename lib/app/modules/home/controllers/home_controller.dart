@@ -9,7 +9,9 @@ import '../../../data/models/ess_models.dart';
 import '../../../data/providers/api_client.dart';
 import '../../../data/providers/avana_api.dart';
 import '../../../data/services/auth_service.dart';
+import '../../../data/services/storage_service.dart';
 import '../../../routes/app_pages.dart';
+import '../views/mood_dialog.dart';
 
 /// Result of the home-screen geofence auto-detect.
 enum LocState { loading, inside, outside, denied, gpsOff, noOffice, error }
@@ -17,12 +19,17 @@ enum LocState { loading, inside, outside, denied, gpsOff, noOffice, error }
 class HomeController extends GetxController {
   final AvanaApi _api = AvanaApi();
   final AuthService auth = Get.find();
+  final StorageService _storage = Get.find();
 
   final isLoading = true.obs;
   final today = Rxn<AttendanceToday>();
   final unread = 0.obs;
   final announcements = <AnnouncementItem>[].obs;
   final summary = Rxn<DashboardSummary>();
+
+  // Manager (MSS) summary for the home manager banner.
+  final pendingApprovals = 0.obs;
+  final teamCount = 0.obs;
 
   // Daily mood check-in.
   final moodCheckedIn = false.obs;
@@ -71,8 +78,32 @@ class HomeController extends GetxController {
 
   Future<void> refreshAll() async {
     isLoading.value = true;
-    await Future.wait([_loadToday(), _loadUnread(), _loadAnnouncements(), _loadSummary(), _loadMood()]);
+    await Future.wait([_loadToday(), _loadUnread(), _loadAnnouncements(), _loadSummary(), _loadMood(), _loadManager()]);
     isLoading.value = false;
+    _maybePromptMood();
+  }
+
+  /// Date key (yyyy-MM-dd) for once-per-day gating.
+  String _todayStr() {
+    final d = DateTime.now();
+    return '${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
+  }
+
+  /// Auto-show the mood popup at most once per calendar day, and only when the
+  /// employee hasn't checked in yet today.
+  void _maybePromptMood() {
+    if (moodCheckedIn.value) return;
+    if (Get.isDialogOpen ?? false) return;
+    final today = _todayStr();
+    if (_storage.moodPromptDate == today) return;
+    _storage.setMoodPromptDate(today);
+    Get.dialog(const MoodDialog());
+  }
+
+  /// Manual open (from the "Feeling" quick action) — always allowed.
+  void openMoodDialog() {
+    if (Get.isDialogOpen ?? false) return;
+    Get.dialog(const MoodDialog());
   }
 
   Future<void> _loadMood() async {
@@ -94,6 +125,9 @@ class HomeController extends GetxController {
       if (code >= 200 && code < 300) {
         selectedMood.value = mood;
         moodCheckedIn.value = true;
+        // Also mark today as prompted so the popup can't reappear today even if
+        // a later /me/mood reload fails (network) and loses the checked-in flag.
+        _storage.setMoodPromptDate(_todayStr());
         AppToast.success(ApiClient.messageFrom(res, 'Terima kasih, perasaanmu tercatat.'));
       } else {
         AppToast.error(ApiClient.messageFrom(res, 'Gagal menyimpan perasaan.'));
@@ -110,6 +144,21 @@ class HomeController extends GetxController {
       summary.value = await _api.dashboard();
     } catch (_) {
       summary.value = null;
+    }
+  }
+
+  /// Team approval + headcount counts for the manager banner. Only fetched for
+  /// managers; failures are non-fatal (the banner still shows without counts).
+  Future<void> _loadManager() async {
+    if (!isManager) {
+      return;
+    }
+    try {
+      final results = await Future.wait([_api.approvals(), _api.team()]);
+      pendingApprovals.value = results[0].length;
+      teamCount.value = results[1].length;
+    } catch (_) {
+      // Non-fatal.
     }
   }
 
