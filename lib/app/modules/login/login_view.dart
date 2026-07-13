@@ -30,7 +30,7 @@ class LoginView extends GetView<LoginController> {
                   width: double.infinity,
                   constraints: BoxConstraints(minHeight: 0.6.sh),
                   color: AppColors.background,
-                  padding: EdgeInsets.fromLTRB(20.w, 0, 20.w, 24.h),
+                  padding: EdgeInsets.only(bottom: 24.h),
                   // The form card straddles the blue header / white seam, the
                   // same overlap as the home hero card.
                   child: Transform.translate(
