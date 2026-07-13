@@ -19,7 +19,7 @@ class LoginView extends GetView<LoginController> {
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: SystemUiOverlayStyle.light,
       child: Scaffold(
-        backgroundColor: AppColors.primary,
+        backgroundColor: AppColors.background,
         body: Column(
           children: [
             _header(cfg),
