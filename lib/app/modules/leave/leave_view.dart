@@ -5,6 +5,7 @@ import 'package:iconsax/iconsax.dart';
 
 import '../../core/theme/app_colors.dart';
 import '../../core/widgets/app_page.dart';
+import '../../core/widgets/app_sheet.dart';
 import '../../core/widgets/app_toast.dart';
 import '../../core/widgets/form_fields.dart';
 import '../../core/widgets/status_chip.dart';
@@ -33,7 +34,9 @@ class LeaveView extends GetView<LeaveController> {
           onRefresh: controller.load,
           color: AppColors.primary,
           child: ListView(
-            physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
+            physics: const AlwaysScrollableScrollPhysics(
+              parent: BouncingScrollPhysics(),
+            ),
             padding: EdgeInsets.fromLTRB(20.w, 20.h, 20.w, 90.h),
             children: [
               const SectionTitle('Saldo Cuti'),
@@ -50,7 +53,7 @@ class LeaveView extends GetView<LeaveController> {
                     child: ContentCard(
                       child: Row(
                         children: [
-                          const IconBubble(Iconsax.sun_1, Color(0xFF16A34A)),
+                          const IconBubble(Iconsax.sun_1, Color(0xFF22C55E)),
                           SizedBox(width: 12.w),
                           Expanded(
                             child: Text(
@@ -91,7 +94,7 @@ class LeaveView extends GetView<LeaveController> {
                     child: ContentCard(
                       child: Row(
                         children: [
-                          const IconBubble(Iconsax.sun_1, Color(0xFF16A34A)),
+                          const IconBubble(Iconsax.sun_1, Color(0xFF22C55E)),
                           SizedBox(width: 12.w),
                           Expanded(
                             child: Column(
@@ -139,20 +142,10 @@ class LeaveView extends GetView<LeaveController> {
     String fmt(DateTime d) =>
         '${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
 
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.white,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20.r)),
-      ),
-      builder: (ctx) => Padding(
-        padding: EdgeInsets.only(
-          left: 20.w,
-          right: 20.w,
-          top: 20.h,
-          bottom: MediaQuery.of(ctx).viewInsets.bottom + 20.h,
-        ),
+    showAppSheet(
+      context,
+      child: Padding(
+        padding: EdgeInsets.fromLTRB(20.w, 20.h, 20.w, 20.h),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -163,8 +156,14 @@ class LeaveView extends GetView<LeaveController> {
               () => AppDropdownField<int>(
                 label: 'Jenis Cuti',
                 hint: 'Pilih jenis cuti',
-                value: controller.types.any((t) => t.id == typeId.value) ? typeId.value : null,
-                items: controller.types.map((t) => DropdownMenuItem(value: t.id, child: Text(t.name))).toList(),
+                value: controller.types.any((t) => t.id == typeId.value)
+                    ? typeId.value
+                    : null,
+                items: controller.types
+                    .map(
+                      (t) => DropdownMenuItem(value: t.id, child: Text(t.name)),
+                    )
+                    .toList(),
                 onChanged: (v) => typeId.value = v ?? 0,
                 required: true,
               ),
@@ -172,19 +171,44 @@ class LeaveView extends GetView<LeaveController> {
             SizedBox(height: 14.h),
             Row(
               children: [
-                Expanded(child: Obx(() => AppDateField(label: 'Mulai', value: start.value, onPick: (d) => start.value = d, required: true))),
+                Expanded(
+                  child: Obx(
+                    () => AppDateField(
+                      label: 'Mulai',
+                      value: start.value,
+                      onPick: (d) => start.value = d,
+                      required: true,
+                    ),
+                  ),
+                ),
                 SizedBox(width: 12.w),
-                Expanded(child: Obx(() => AppDateField(label: 'Selesai', value: end.value, onPick: (d) => end.value = d, required: true))),
+                Expanded(
+                  child: Obx(
+                    () => AppDateField(
+                      label: 'Selesai',
+                      value: end.value,
+                      onPick: (d) => end.value = d,
+                      required: true,
+                    ),
+                  ),
+                ),
               ],
             ),
             SizedBox(height: 14.h),
-            AppTextField(controller: reasonC, label: 'Alasan (opsional)', hint: 'Tulis alasan…', maxLines: 2),
+            AppTextField(
+              controller: reasonC,
+              label: 'Alasan (opsional)',
+              hint: 'Tulis alasan…',
+              maxLines: 2,
+            ),
             SizedBox(height: 22.h),
             Obx(
               () => AppSubmitButton(
                 loading: controller.submitting.value,
                 onPressed: () async {
-                  if (typeId.value == 0 || start.value == null || end.value == null) {
+                  if (typeId.value == 0 ||
+                      start.value == null ||
+                      end.value == null) {
                     AppToast.warning('Lengkapi jenis cuti & tanggal.');
                     return;
                   }
@@ -192,7 +216,9 @@ class LeaveView extends GetView<LeaveController> {
                     leaveTypeId: typeId.value,
                     startDate: fmt(start.value!),
                     endDate: fmt(end.value!),
-                    reason: reasonC.text.trim().isEmpty ? null : reasonC.text.trim(),
+                    reason: reasonC.text.trim().isEmpty
+                        ? null
+                        : reasonC.text.trim(),
                   );
                   if (ok) Get.back();
                 },
@@ -203,5 +229,4 @@ class LeaveView extends GetView<LeaveController> {
       ),
     );
   }
-
 }

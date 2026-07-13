@@ -5,6 +5,7 @@ import 'package:iconsax/iconsax.dart';
 
 import '../../core/theme/app_colors.dart';
 import '../../core/widgets/app_page.dart';
+import '../../core/widgets/app_sheet.dart';
 import '../../core/widgets/form_fields.dart';
 import '../../core/widgets/ui.dart';
 import '../../data/models/profile.dart';
@@ -29,7 +30,9 @@ class ProfileView extends GetView<ProfileController> {
           return const Center(child: Text('Gagal memuat profil.'));
         }
         return ListView(
-          physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
+          physics: const AlwaysScrollableScrollPhysics(
+            parent: BouncingScrollPhysics(),
+          ),
           padding: EdgeInsets.fromLTRB(20.w, 20.h, 20.w, 28.h),
           children: [
             _header(p),
@@ -68,7 +71,11 @@ class ProfileView extends GetView<ProfileController> {
         color: AppColors.primary,
         borderRadius: BorderRadius.circular(22.r),
         boxShadow: [
-          BoxShadow(color: AppColors.navy.withValues(alpha: 0.08), blurRadius: 18, offset: const Offset(0, 8)),
+          BoxShadow(
+            color: AppColors.navy.withValues(alpha: 0.08),
+            blurRadius: 18,
+            offset: const Offset(0, 8),
+          ),
         ],
       ),
       child: Column(
@@ -82,11 +89,17 @@ class ProfileView extends GetView<ProfileController> {
             child: CircleAvatar(
               radius: 40.r,
               backgroundColor: Colors.white,
-              backgroundImage: p.photoUrl != null ? NetworkImage(p.photoUrl!) : null,
+              backgroundImage: p.photoUrl != null
+                  ? NetworkImage(p.photoUrl!)
+                  : null,
               child: p.photoUrl == null
                   ? Text(
                       p.fullName.isNotEmpty ? p.fullName[0].toUpperCase() : '?',
-                      style: TextStyle(fontSize: 30.sp, color: AppColors.primary, fontWeight: FontWeight.w800),
+                      style: TextStyle(
+                        fontSize: 30.sp,
+                        color: AppColors.primary,
+                        fontWeight: FontWeight.w800,
+                      ),
                     )
                   : null,
             ),
@@ -95,13 +108,20 @@ class ProfileView extends GetView<ProfileController> {
           Text(
             p.fullName,
             textAlign: TextAlign.center,
-            style: TextStyle(fontSize: 19.sp, fontWeight: FontWeight.w800, color: Colors.white),
+            style: TextStyle(
+              fontSize: 19.sp,
+              fontWeight: FontWeight.w800,
+              color: Colors.white,
+            ),
           ),
           SizedBox(height: 3.h),
           Text(
             _subtitleOf(p),
             textAlign: TextAlign.center,
-            style: TextStyle(fontSize: 12.5.sp, color: Colors.white.withValues(alpha: 0.9)),
+            style: TextStyle(
+              fontSize: 12.5.sp,
+              color: Colors.white.withValues(alpha: 0.9),
+            ),
           ),
           SizedBox(height: 12.h),
           Wrap(
@@ -130,7 +150,14 @@ class ProfileView extends GetView<ProfileController> {
         children: [
           Icon(icon, size: 13.sp, color: Colors.white),
           SizedBox(width: 5.w),
-          Text(text, style: TextStyle(fontSize: 11.5.sp, color: Colors.white, fontWeight: FontWeight.w600)),
+          Text(
+            text,
+            style: TextStyle(
+              fontSize: 11.5.sp,
+              color: Colors.white,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
         ],
       ),
     );
@@ -141,9 +168,21 @@ class ProfileView extends GetView<ProfileController> {
   Widget _actions(Profile p) {
     return Row(
       children: [
-        Expanded(child: _actionButton('Edit Profil', Iconsax.edit, () => _openEditSheet(p))),
+        Expanded(
+          child: _actionButton(
+            'Edit Profil',
+            Iconsax.edit,
+            () => _openEditSheet(p),
+          ),
+        ),
         SizedBox(width: 12.w),
-        Expanded(child: _actionButton('Ubah Sandi', Iconsax.lock_1, _openPasswordSheet)),
+        Expanded(
+          child: _actionButton(
+            'Ubah Sandi',
+            Iconsax.lock_1,
+            _openPasswordSheet,
+          ),
+        ),
       ],
     );
   }
@@ -164,7 +203,14 @@ class ProfileView extends GetView<ProfileController> {
           children: [
             Icon(icon, size: 17.sp, color: AppColors.primary),
             SizedBox(width: 8.w),
-            Text(label, style: TextStyle(fontSize: 13.sp, fontWeight: FontWeight.w700, color: AppColors.primary)),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 13.sp,
+                fontWeight: FontWeight.w700,
+                color: AppColors.primary,
+              ),
+            ),
           ],
         ),
       ),
@@ -183,7 +229,14 @@ class ProfileView extends GetView<ProfileController> {
             children: [
               Icon(icon, size: 16.sp, color: AppColors.primary),
               SizedBox(width: 8.w),
-              Text(title, style: TextStyle(fontWeight: FontWeight.w700, color: AppColors.navy, fontSize: 15.sp)),
+              Text(
+                title,
+                style: TextStyle(
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.navy,
+                  fontSize: 15.sp,
+                ),
+              ),
             ],
           ),
           Divider(color: AppColors.border, height: 22.h),
@@ -202,14 +255,23 @@ class ProfileView extends GetView<ProfileController> {
         decoration: BoxDecoration(
           color: AppColors.destructive.withValues(alpha: 0.06),
           borderRadius: BorderRadius.circular(14.r),
-          border: Border.all(color: AppColors.destructive.withValues(alpha: 0.25)),
+          border: Border.all(
+            color: AppColors.destructive.withValues(alpha: 0.25),
+          ),
         ),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Icon(Iconsax.logout, size: 17.sp, color: AppColors.destructive),
             SizedBox(width: 8.w),
-            Text('Keluar', style: TextStyle(fontSize: 13.5.sp, fontWeight: FontWeight.w700, color: AppColors.destructive)),
+            Text(
+              'Keluar',
+              style: TextStyle(
+                fontSize: 13.5.sp,
+                fontWeight: FontWeight.w700,
+                color: AppColors.destructive,
+              ),
+            ),
           ],
         ),
       ),
@@ -226,19 +288,36 @@ class ProfileView extends GetView<ProfileController> {
       title: 'Edit Profil',
       subtitle: 'Perbarui nomor telepon dan alamat Anda.',
       children: [
-        AppTextField(controller: phone, label: 'Telepon', hint: '0812xxxx', icon: Iconsax.call, keyboardType: TextInputType.phone),
+        AppTextField(
+          controller: phone,
+          label: 'Telepon',
+          hint: '0812xxxx',
+          icon: Iconsax.call,
+          keyboardType: TextInputType.phone,
+        ),
         SizedBox(height: 14.h),
-        AppTextField(controller: address, label: 'Alamat', hint: 'Alamat tempat tinggal', icon: Iconsax.location, maxLines: 3),
+        AppTextField(
+          controller: address,
+          label: 'Alamat',
+          hint: 'Alamat tempat tinggal',
+          icon: Iconsax.location,
+          maxLines: 3,
+        ),
         SizedBox(height: 20.h),
-        Obx(() => AppSubmitButton(
-              loading: controller.isSaving.value,
-              icon: Iconsax.save_2,
-              label: 'Simpan',
-              onPressed: () async {
-                final ok = await controller.updateProfile(phone: phone.text.trim(), address: address.text.trim());
-                if (ok) Get.back();
-              },
-            )),
+        Obx(
+          () => AppSubmitButton(
+            loading: controller.isSaving.value,
+            icon: Iconsax.save_2,
+            label: 'Simpan',
+            onPressed: () async {
+              final ok = await controller.updateProfile(
+                phone: phone.text.trim(),
+                address: address.text.trim(),
+              );
+              if (ok) Get.back();
+            },
+          ),
+        ),
       ],
     );
   }
@@ -252,82 +331,132 @@ class ProfileView extends GetView<ProfileController> {
       title: 'Ubah Kata Sandi',
       subtitle: 'Minimal 8 karakter. Anda tetap masuk setelah diganti.',
       children: [
-        AppTextField(controller: current, label: 'Sandi Saat Ini', hint: 'Masukkan sandi saat ini', icon: Iconsax.lock, obscure: true),
+        AppTextField(
+          controller: current,
+          label: 'Sandi Saat Ini',
+          hint: 'Masukkan sandi saat ini',
+          icon: Iconsax.lock,
+          obscure: true,
+        ),
         SizedBox(height: 14.h),
-        AppTextField(controller: next, label: 'Sandi Baru', hint: 'Minimal 8 karakter', icon: Iconsax.lock_1, obscure: true),
+        AppTextField(
+          controller: next,
+          label: 'Sandi Baru',
+          hint: 'Minimal 8 karakter',
+          icon: Iconsax.lock_1,
+          obscure: true,
+        ),
         SizedBox(height: 14.h),
-        AppTextField(controller: confirm, label: 'Ulangi Sandi Baru', hint: 'Ketik ulang sandi baru', icon: Iconsax.lock_1, obscure: true),
+        AppTextField(
+          controller: confirm,
+          label: 'Ulangi Sandi Baru',
+          hint: 'Ketik ulang sandi baru',
+          icon: Iconsax.lock_1,
+          obscure: true,
+        ),
         SizedBox(height: 20.h),
-        Obx(() => AppSubmitButton(
-              loading: controller.isSaving.value,
-              icon: Iconsax.shield_tick,
-              label: 'Perbarui Sandi',
-              onPressed: () async {
-                final ok = await controller.changePassword(
-                  current: current.text,
-                  password: next.text,
-                  confirm: confirm.text,
-                );
-                if (ok) Get.back();
-              },
-            )),
+        Obx(
+          () => AppSubmitButton(
+            loading: controller.isSaving.value,
+            icon: Iconsax.shield_tick,
+            label: 'Perbarui Sandi',
+            onPressed: () async {
+              final ok = await controller.changePassword(
+                current: current.text,
+                password: next.text,
+                confirm: confirm.text,
+              );
+              if (ok) Get.back();
+            },
+          ),
+        ),
       ],
     );
   }
 
-  void _sheet({required String title, required String subtitle, required List<Widget> children}) {
-    Get.bottomSheet(
-      Builder(
-        builder: (context) => Padding(
-          padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
-          child: Container(
-            padding: EdgeInsets.fromLTRB(20.w, 12.h, 20.w, 24.h),
-            decoration: BoxDecoration(
-              color: AppColors.background,
-              borderRadius: BorderRadius.vertical(top: Radius.circular(24.r)),
-            ),
-            child: SingleChildScrollView(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Center(
-                    child: Container(
-                      width: 40.w,
-                      height: 4.h,
-                      margin: EdgeInsets.only(bottom: 16.h),
-                      decoration: BoxDecoration(color: AppColors.border, borderRadius: BorderRadius.circular(2.r)),
-                    ),
+  void _sheet({
+    required String title,
+    required String subtitle,
+    required List<Widget> children,
+  }) {
+    showAppSheet(
+      Get.context!,
+      scrollable: true,
+      child: Padding(
+        padding: EdgeInsets.fromLTRB(20.w, 12.h, 20.w, 24.h),
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Center(
+                child: Container(
+                  width: 40.w,
+                  height: 4.h,
+                  margin: EdgeInsets.only(bottom: 16.h),
+                  decoration: BoxDecoration(
+                    color: AppColors.border,
+                    borderRadius: BorderRadius.circular(2.r),
                   ),
-                  Text(title, style: TextStyle(fontWeight: FontWeight.w800, color: AppColors.navy, fontSize: 17.sp)),
-                  SizedBox(height: 4.h),
-                  Text(subtitle, style: TextStyle(color: AppColors.textMuted, fontSize: 12.5.sp)),
-                  SizedBox(height: 18.h),
-                  ...children,
-                ],
+                ),
               ),
-            ),
+              Text(
+                title,
+                style: TextStyle(
+                  fontWeight: FontWeight.w800,
+                  color: AppColors.navy,
+                  fontSize: 17.sp,
+                ),
+              ),
+              SizedBox(height: 4.h),
+              Text(
+                subtitle,
+                style: TextStyle(color: AppColors.textMuted, fontSize: 12.5.sp),
+              ),
+              SizedBox(height: 18.h),
+              ...children,
+            ],
           ),
         ),
       ),
-      isScrollControlled: true,
     );
   }
 
   void _confirmLogout() {
     Get.dialog(
       AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18.r)),
-        title: Text('Keluar akun?', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16.sp, color: AppColors.navy)),
-        content: Text('Anda harus masuk kembali untuk mengakses aplikasi.', style: TextStyle(fontSize: 13.sp, color: AppColors.textMuted)),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(18.r),
+        ),
+        title: Text(
+          'Keluar akun?',
+          style: TextStyle(
+            fontWeight: FontWeight.w700,
+            fontSize: 16.sp,
+            color: AppColors.navy,
+          ),
+        ),
+        content: Text(
+          'Anda harus masuk kembali untuk mengakses aplikasi.',
+          style: TextStyle(fontSize: 13.sp, color: AppColors.textMuted),
+        ),
         actions: [
-          TextButton(onPressed: Get.back, child: Text('Batal', style: TextStyle(color: AppColors.textMuted))),
+          TextButton(
+            onPressed: Get.back,
+            child: Text('Batal', style: TextStyle(color: AppColors.textMuted)),
+          ),
           TextButton(
             onPressed: () {
               Get.back();
               controller.logout();
             },
-            child: Text('Keluar', style: TextStyle(color: AppColors.destructive, fontWeight: FontWeight.w700)),
+            child: Text(
+              'Keluar',
+              style: TextStyle(
+                color: AppColors.destructive,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
           ),
         ],
       ),
@@ -337,9 +466,10 @@ class ProfileView extends GetView<ProfileController> {
   // ---- Helpers --------------------------------------------------------------
 
   String _subtitleOf(Profile p) {
-    final parts = [p.employment?.position, p.employment?.department]
-        .where((e) => e != null && e.isNotEmpty)
-        .toList();
+    final parts = [
+      p.employment?.position,
+      p.employment?.department,
+    ].where((e) => e != null && e.isNotEmpty).toList();
     return parts.isEmpty ? 'Karyawan' : parts.join(' · ');
   }
 
