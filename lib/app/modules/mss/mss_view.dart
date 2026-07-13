@@ -28,6 +28,9 @@ class MssView extends GetView<MssController> {
       child: AppPage(
         title: 'Persetujuan Tim',
         subtitle: 'Manager Self-Service',
+        actions: [
+          HeaderAction(Iconsax.chart_2, () => Get.toNamed(Routes.MSS_RECAP)),
+        ],
         child: Column(
           children: [
             _tabBar(),
