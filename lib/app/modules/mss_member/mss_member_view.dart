@@ -5,6 +5,7 @@ import 'package:iconsax/iconsax.dart';
 
 import '../../core/theme/app_colors.dart';
 import '../../core/widgets/app_page.dart';
+import '../../core/widgets/app_sheet.dart';
 import '../../core/widgets/form_fields.dart';
 import '../../core/widgets/ui.dart';
 import '../../data/models/dashboard.dart';
@@ -41,7 +42,9 @@ class MssMemberView extends GetView<MssMemberController> {
           onRefresh: controller.load,
           color: AppColors.primary,
           child: ListView(
-            physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
+            physics: const AlwaysScrollableScrollPhysics(
+              parent: BouncingScrollPhysics(),
+            ),
             padding: EdgeInsets.fromLTRB(20.w, 18.h, 20.w, 24.h),
             children: [
               _profile(m),
@@ -66,7 +69,10 @@ class MssMemberView extends GetView<MssMemberController> {
               ] else
                 Padding(
                   padding: EdgeInsets.only(top: 40.h),
-                  child: const EmptyState(icon: Iconsax.info_circle, message: 'Gagal memuat detail.'),
+                  child: const EmptyState(
+                    icon: Iconsax.info_circle,
+                    message: 'Gagal memuat detail.',
+                  ),
                 ),
             ],
           ),
@@ -89,24 +95,49 @@ class MssMemberView extends GetView<MssMemberController> {
             width: 56.w,
             height: 56.w,
             alignment: Alignment.center,
-            decoration: BoxDecoration(shape: BoxShape.circle, color: m.avatarColor),
-            child: Text(m.initials,
-                style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 18.sp)),
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: m.avatarColor,
+            ),
+            child: Text(
+              m.initials,
+              style: TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.w700,
+                fontSize: 18.sp,
+              ),
+            ),
           ),
           SizedBox(width: 14.w),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(m.name,
-                    style: TextStyle(fontSize: 15.sp, fontWeight: FontWeight.w700, color: AppColors.navy)),
+                Text(
+                  m.name,
+                  style: TextStyle(
+                    fontSize: 15.sp,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.navy,
+                  ),
+                ),
                 SizedBox(height: 2.h),
-                Text([m.position, m.department].where((e) => e != null).join(' · '),
-                    style: TextStyle(fontSize: 12.sp, color: AppColors.textMuted)),
+                Text(
+                  [
+                    m.position,
+                    m.department,
+                  ].where((e) => e != null).join(' · '),
+                  style: TextStyle(fontSize: 12.sp, color: AppColors.textMuted),
+                ),
                 if (m.employeeNumber != null) ...[
                   SizedBox(height: 2.h),
-                  Text('NIK ${m.employeeNumber}',
-                      style: TextStyle(fontSize: 11.sp, color: AppColors.textMuted)),
+                  Text(
+                    'NIK ${m.employeeNumber}',
+                    style: TextStyle(
+                      fontSize: 11.sp,
+                      color: AppColors.textMuted,
+                    ),
+                  ),
                 ],
               ],
             ),
@@ -123,9 +154,19 @@ class MssMemberView extends GetView<MssMemberController> {
         SizedBox(width: 10.w),
         _stat('Telat', '${r.late}', AppColors.warning, Iconsax.clock),
         SizedBox(width: 10.w),
-        _stat('Absen', '${r.absent}', AppColors.destructive, Iconsax.close_circle),
+        _stat(
+          'Absen',
+          '${r.absent}',
+          AppColors.destructive,
+          Iconsax.close_circle,
+        ),
         SizedBox(width: 10.w),
-        _stat('Jam', r.workHours.toStringAsFixed(0), AppColors.primary, Iconsax.timer_1),
+        _stat(
+          'Jam',
+          r.workHours.toStringAsFixed(0),
+          AppColors.primary,
+          Iconsax.timer_1,
+        ),
       ],
     );
   }
@@ -135,7 +176,7 @@ class MssMemberView extends GetView<MssMemberController> {
       child: Container(
         padding: EdgeInsets.symmetric(vertical: 12.h, horizontal: 6.w),
         decoration: BoxDecoration(
-          color: AppColors.background,
+          color: AppColors.surface,
           borderRadius: BorderRadius.circular(14.r),
           border: Border.all(color: AppColors.border),
         ),
@@ -144,14 +185,26 @@ class MssMemberView extends GetView<MssMemberController> {
             Container(
               width: 32.w,
               height: 32.w,
-              decoration: BoxDecoration(color: color.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(9.r)),
+              decoration: BoxDecoration(
+                color: color.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(9.r),
+              ),
               child: Icon(icon, color: color, size: 16.sp),
             ),
             SizedBox(height: 7.h),
-            Text(value,
-                style: TextStyle(fontWeight: FontWeight.w800, color: AppColors.navy, fontSize: 15.sp)),
+            Text(
+              value,
+              style: TextStyle(
+                fontWeight: FontWeight.w800,
+                color: AppColors.navy,
+                fontSize: 15.sp,
+              ),
+            ),
             SizedBox(height: 1.h),
-            Text(label, style: TextStyle(color: AppColors.textMuted, fontSize: 10.sp)),
+            Text(
+              label,
+              style: TextStyle(color: AppColors.textMuted, fontSize: 10.sp),
+            ),
           ],
         ),
       ),
@@ -193,7 +246,10 @@ class MssMemberView extends GetView<MssMemberController> {
           Container(
             width: 42.w,
             height: 42.w,
-            decoration: BoxDecoration(color: color.withValues(alpha: 0.14), borderRadius: BorderRadius.circular(12.r)),
+            decoration: BoxDecoration(
+              color: color.withValues(alpha: 0.14),
+              borderRadius: BorderRadius.circular(12.r),
+            ),
             child: Icon(icon, color: color, size: 21.sp),
           ),
           SizedBox(width: 12.w),
@@ -201,10 +257,23 @@ class MssMemberView extends GetView<MssMemberController> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(title,
-                    style: TextStyle(fontWeight: FontWeight.w700, color: AppColors.navy, fontSize: 13.5.sp)),
+                Text(
+                  title,
+                  style: TextStyle(
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.navy,
+                    fontSize: 13.5.sp,
+                  ),
+                ),
                 SizedBox(height: 1.h),
-                Text(sub, style: TextStyle(color: color, fontSize: 11.5.sp, fontWeight: FontWeight.w600)),
+                Text(
+                  sub,
+                  style: TextStyle(
+                    color: color,
+                    fontSize: 11.5.sp,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
               ],
             ),
           ),
@@ -219,7 +288,7 @@ class MssMemberView extends GetView<MssMemberController> {
       margin: EdgeInsets.only(bottom: 10.h),
       padding: EdgeInsets.all(14.w),
       decoration: BoxDecoration(
-        color: AppColors.background,
+        color: AppColors.surface,
         borderRadius: BorderRadius.circular(14.r),
         border: Border.all(color: AppColors.border),
       ),
@@ -228,7 +297,10 @@ class MssMemberView extends GetView<MssMemberController> {
           Container(
             width: 40.w,
             height: 40.w,
-            decoration: BoxDecoration(color: color.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(11.r)),
+            decoration: BoxDecoration(
+              color: color.withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(11.r),
+            ),
             child: Icon(Iconsax.document_text, color: color, size: 18.sp),
           ),
           SizedBox(width: 12.w),
@@ -239,24 +311,42 @@ class MssMemberView extends GetView<MssMemberController> {
                 Row(
                   children: [
                     Expanded(
-                      child: Text(p.title,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(fontWeight: FontWeight.w700, color: AppColors.navy, fontSize: 13.sp)),
+                      child: Text(
+                        p.title,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.navy,
+                          fontSize: 13.sp,
+                        ),
+                      ),
                     ),
                     Container(
-                      padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 3.h),
+                      padding: EdgeInsets.symmetric(
+                        horizontal: 8.w,
+                        vertical: 3.h,
+                      ),
                       decoration: BoxDecoration(
                         color: color.withValues(alpha: 0.1),
                         borderRadius: BorderRadius.circular(999),
                       ),
-                      child: Text(p.typeLabel,
-                          style: TextStyle(fontSize: 10.sp, fontWeight: FontWeight.w700, color: color)),
+                      child: Text(
+                        p.typeLabel,
+                        style: TextStyle(
+                          fontSize: 10.sp,
+                          fontWeight: FontWeight.w700,
+                          color: color,
+                        ),
+                      ),
                     ),
                   ],
                 ),
                 SizedBox(height: 2.h),
-                Text(p.detail, style: TextStyle(color: AppColors.textMuted, fontSize: 12.sp)),
+                Text(
+                  p.detail,
+                  style: TextStyle(color: AppColors.textMuted, fontSize: 12.sp),
+                ),
               ],
             ),
           ),
@@ -268,12 +358,18 @@ class MssMemberView extends GetView<MssMemberController> {
   Widget _pendingEmpty() {
     return Container(
       padding: EdgeInsets.symmetric(vertical: 20.h, horizontal: 16.w),
-      decoration: BoxDecoration(color: AppColors.muted, borderRadius: BorderRadius.circular(14.r)),
+      decoration: BoxDecoration(
+        color: AppColors.muted,
+        borderRadius: BorderRadius.circular(14.r),
+      ),
       child: Row(
         children: [
           Icon(Iconsax.tick_circle, size: 20.sp, color: AppColors.success),
           SizedBox(width: 10.w),
-          Text('Tidak ada request pending.', style: TextStyle(color: AppColors.textMuted, fontSize: 13.sp)),
+          Text(
+            'Tidak ada request pending.',
+            style: TextStyle(color: AppColors.textMuted, fontSize: 13.sp),
+          ),
         ],
       ),
     );
@@ -288,17 +384,28 @@ class MssMemberView extends GetView<MssMemberController> {
           foregroundColor: AppColors.primary,
           side: BorderSide(color: AppColors.primary.withValues(alpha: 0.4)),
           padding: EdgeInsets.symmetric(vertical: 12.h),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12.r),
+          ),
         ),
         icon: Icon(Iconsax.calendar_edit, size: 18.sp),
-        label: Text('Atur Shift', style: TextStyle(fontSize: 13.5.sp, fontWeight: FontWeight.w700)),
+        label: Text(
+          'Atur Shift',
+          style: TextStyle(fontSize: 13.5.sp, fontWeight: FontWeight.w700),
+        ),
       ),
     );
   }
 
   Widget _sectionTitle(String title) {
-    return Text(title,
-        style: TextStyle(fontSize: 14.sp, fontWeight: FontWeight.w700, color: AppColors.navy));
+    return Text(
+      title,
+      style: TextStyle(
+        fontSize: 14.sp,
+        fontWeight: FontWeight.w700,
+        color: AppColors.navy,
+      ),
+    );
   }
 
   void _openAssign(BuildContext context) {
@@ -308,64 +415,82 @@ class MssMemberView extends GetView<MssMemberController> {
     String fmt(DateTime d) =>
         '${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
 
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.white,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20.r)),
-      ),
-      builder: (ctx) => Padding(
-        padding: EdgeInsets.only(
-          left: 20.w,
-          right: 20.w,
-          top: 14.h,
-          bottom: MediaQuery.of(ctx).viewInsets.bottom + 24.h,
-        ),
+    showAppSheet(
+      context,
+      child: Padding(
+        padding: EdgeInsets.fromLTRB(20.w, 14.h, 20.w, 24.h),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             SheetHeader('Atur Shift — ${controller.member.name}'),
             SizedBox(height: 16.h),
-            Obx(() => AppDateField(
-                  label: 'Tanggal',
-                  value: date.value,
-                  onPick: (d) => date.value = d,
-                )),
+            Obx(
+              () => AppDateField(
+                label: 'Tanggal',
+                value: date.value,
+                onPick: (d) => date.value = d,
+              ),
+            ),
             SizedBox(height: 16.h),
-            Text('Pilih shift',
-                style: TextStyle(fontSize: 12.sp, fontWeight: FontWeight.w600, color: AppColors.textMuted)),
+            Text(
+              'Pilih shift',
+              style: TextStyle(
+                fontSize: 12.sp,
+                fontWeight: FontWeight.w600,
+                color: AppColors.textMuted,
+              ),
+            ),
             SizedBox(height: 8.h),
-            Obx(() => Column(
-                  children: [
-                    _optionTile('off', 'Libur', 'Tidak ada jadwal kerja', selectedKey),
-                    ...controller.shifts.map((s) =>
-                        _optionTile(s.id.toString(), s.name, s.label, selectedKey)),
-                  ],
-                )),
+            Obx(
+              () => Column(
+                children: [
+                  _optionTile(
+                    'off',
+                    'Libur',
+                    'Tidak ada jadwal kerja',
+                    selectedKey,
+                  ),
+                  ...controller.shifts.map(
+                    (s) => _optionTile(
+                      s.id.toString(),
+                      s.name,
+                      s.label,
+                      selectedKey,
+                    ),
+                  ),
+                ],
+              ),
+            ),
             SizedBox(height: 20.h),
-            Obx(() => AppSubmitButton(
-                  loading: controller.assigning.value,
-                  onPressed: () async {
-                    if (date.value == null || selectedKey.value == null) {
-                      return;
-                    }
-                    final key = selectedKey.value!;
-                    final ok = await controller.assignShift(
-                      date: fmt(date.value!),
-                      shiftId: key == 'off' ? null : int.parse(key),
-                    );
-                    if (ok) Get.back();
-                  },
-                )),
+            Obx(
+              () => AppSubmitButton(
+                loading: controller.assigning.value,
+                onPressed: () async {
+                  if (date.value == null || selectedKey.value == null) {
+                    return;
+                  }
+                  final key = selectedKey.value!;
+                  final ok = await controller.assignShift(
+                    date: fmt(date.value!),
+                    shiftId: key == 'off' ? null : int.parse(key),
+                  );
+                  if (ok) Get.back();
+                },
+              ),
+            ),
           ],
         ),
       ),
     );
   }
 
-  Widget _optionTile(String key, String title, String sub, RxnString selectedKey) {
+  Widget _optionTile(
+    String key,
+    String title,
+    String sub,
+    RxnString selectedKey,
+  ) {
     final selected = selectedKey.value == key;
     return GestureDetector(
       onTap: () => selectedKey.value = key,
@@ -373,7 +498,9 @@ class MssMemberView extends GetView<MssMemberController> {
         margin: EdgeInsets.only(bottom: 8.h),
         padding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 12.h),
         decoration: BoxDecoration(
-          color: selected ? AppColors.primary.withValues(alpha: 0.06) : AppColors.muted,
+          color: selected
+              ? AppColors.primary.withValues(alpha: 0.06)
+              : AppColors.muted,
           borderRadius: BorderRadius.circular(12.r),
           border: Border.all(
             color: selected ? AppColors.primary : Colors.transparent,
@@ -382,18 +509,32 @@ class MssMemberView extends GetView<MssMemberController> {
         ),
         child: Row(
           children: [
-            Icon(selected ? Iconsax.tick_circle : Iconsax.record_circle,
-                size: 20.sp, color: selected ? AppColors.primary : AppColors.textMuted),
+            Icon(
+              selected ? Iconsax.tick_circle : Iconsax.record_circle,
+              size: 20.sp,
+              color: selected ? AppColors.primary : AppColors.textMuted,
+            ),
             SizedBox(width: 12.w),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(title,
-                      style: TextStyle(
-                          fontSize: 13.5.sp, fontWeight: FontWeight.w700, color: AppColors.navy)),
+                  Text(
+                    title,
+                    style: TextStyle(
+                      fontSize: 13.5.sp,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.navy,
+                    ),
+                  ),
                   SizedBox(height: 1.h),
-                  Text(sub, style: TextStyle(fontSize: 11.5.sp, color: AppColors.textMuted)),
+                  Text(
+                    sub,
+                    style: TextStyle(
+                      fontSize: 11.5.sp,
+                      color: AppColors.textMuted,
+                    ),
+                  ),
                 ],
               ),
             ),

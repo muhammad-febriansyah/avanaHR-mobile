@@ -7,24 +7,48 @@ import 'package:iconsax/iconsax.dart';
 import 'package:image_picker/image_picker.dart';
 
 import '../theme/app_colors.dart';
+import 'app_sheet.dart';
 
-const _months = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
+const _months = [
+  'Jan',
+  'Feb',
+  'Mar',
+  'Apr',
+  'Mei',
+  'Jun',
+  'Jul',
+  'Agu',
+  'Sep',
+  'Okt',
+  'Nov',
+  'Des',
+];
 
 String _prettyDate(DateTime d) => '${d.day} ${_months[d.month - 1]} ${d.year}';
 
 /// Shared field decoration: filled, rounded, hairline border, primary on focus.
-InputDecoration _decoration({String? hint, IconData? icon, String? prefixText}) {
+InputDecoration _decoration({
+  String? hint,
+  IconData? icon,
+  String? prefixText,
+}) {
   OutlineInputBorder border(Color c, [double w = 1]) => OutlineInputBorder(
-        borderRadius: BorderRadius.circular(14.r),
-        borderSide: BorderSide(color: c, width: w),
-      );
+    borderRadius: BorderRadius.circular(14.r),
+    borderSide: BorderSide(color: c, width: w),
+  );
 
   return InputDecoration(
     hintText: hint,
     hintStyle: TextStyle(color: AppColors.textMuted, fontSize: 13.sp),
-    prefixIcon: icon != null ? Icon(icon, size: 18.sp, color: AppColors.textMuted) : null,
+    prefixIcon: icon != null
+        ? Icon(icon, size: 18.sp, color: AppColors.textMuted)
+        : null,
     prefixText: prefixText,
-    prefixStyle: TextStyle(color: AppColors.navy, fontSize: 14.sp, fontWeight: FontWeight.w600),
+    prefixStyle: TextStyle(
+      color: AppColors.navy,
+      fontSize: 14.sp,
+      fontWeight: FontWeight.w600,
+    ),
     filled: true,
     fillColor: AppColors.muted,
     isDense: true,
@@ -36,23 +60,38 @@ InputDecoration _decoration({String? hint, IconData? icon, String? prefixText}) 
 }
 
 Widget _label(String text, {bool required = false}) => Padding(
-      padding: EdgeInsets.only(bottom: 6.h),
-      child: RichText(
-        text: TextSpan(
-          text: text,
-          style: TextStyle(fontWeight: FontWeight.w600, color: AppColors.navy, fontSize: 12.5.sp),
-          children: required
-              ? [TextSpan(text: ' *', style: TextStyle(color: AppColors.destructive, fontSize: 12.5.sp))]
-              : null,
-        ),
+  padding: EdgeInsets.only(bottom: 6.h),
+  child: RichText(
+    text: TextSpan(
+      text: text,
+      style: TextStyle(
+        fontWeight: FontWeight.w600,
+        color: AppColors.navy,
+        fontSize: 12.5.sp,
       ),
-    );
+      children: required
+          ? [
+              TextSpan(
+                text: ' *',
+                style: TextStyle(
+                  color: AppColors.destructive,
+                  fontSize: 12.5.sp,
+                ),
+              ),
+            ]
+          : null,
+    ),
+  ),
+);
 
 /// Small helper/error caption shown under a field.
 Widget _helper(String text) => Padding(
-      padding: EdgeInsets.only(top: 6.h, left: 2.w),
-      child: Text(text, style: TextStyle(color: AppColors.textMuted, fontSize: 11.5.sp)),
-    );
+  padding: EdgeInsets.only(top: 6.h, left: 2.w),
+  child: Text(
+    text,
+    style: TextStyle(color: AppColors.textMuted, fontSize: 11.5.sp),
+  ),
+);
 
 /// Labelled text input matching the app's card style.
 class AppTextField extends StatelessWidget {
@@ -96,7 +135,11 @@ class AppTextField extends StatelessWidget {
           obscureText: obscure,
           inputFormatters: formatters,
           style: TextStyle(color: AppColors.navy, fontSize: 14.sp),
-          decoration: _decoration(hint: hint, icon: icon, prefixText: prefixText),
+          decoration: _decoration(
+            hint: hint,
+            icon: icon,
+            prefixText: prefixText,
+          ),
         ),
         if (helper != null) _helper(helper!),
       ],
@@ -153,14 +196,20 @@ class AppDateField extends StatelessWidget {
             ),
             child: Row(
               children: [
-                Icon(Iconsax.calendar_1, size: 18.sp, color: AppColors.textMuted),
+                Icon(
+                  Iconsax.calendar_1,
+                  size: 18.sp,
+                  color: AppColors.textMuted,
+                ),
                 SizedBox(width: 10.w),
                 Text(
                   value == null ? 'Pilih tanggal' : _prettyDate(value!),
                   style: TextStyle(
                     fontSize: 14.sp,
                     color: value == null ? AppColors.textMuted : AppColors.navy,
-                    fontWeight: value == null ? FontWeight.w400 : FontWeight.w600,
+                    fontWeight: value == null
+                        ? FontWeight.w400
+                        : FontWeight.w600,
                   ),
                 ),
               ],
@@ -179,7 +228,13 @@ class AppTimeField extends StatelessWidget {
   final ValueChanged<String> onPick;
   final bool required;
 
-  const AppTimeField({super.key, required this.label, required this.value, required this.onPick, this.required = false});
+  const AppTimeField({
+    super.key,
+    required this.label,
+    required this.value,
+    required this.onPick,
+    this.required = false,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -190,7 +245,10 @@ class AppTimeField extends StatelessWidget {
         InkWell(
           borderRadius: BorderRadius.circular(14.r),
           onTap: () async {
-            final picked = await showTimePicker(context: context, initialTime: TimeOfDay.now());
+            final picked = await showTimePicker(
+              context: context,
+              initialTime: TimeOfDay.now(),
+            );
             if (picked != null) {
               final h = picked.hour.toString().padLeft(2, '0');
               final m = picked.minute.toString().padLeft(2, '0');
@@ -213,7 +271,9 @@ class AppTimeField extends StatelessWidget {
                   style: TextStyle(
                     fontSize: 14.sp,
                     color: value == null ? AppColors.textMuted : AppColors.navy,
-                    fontWeight: value == null ? FontWeight.w400 : FontWeight.w600,
+                    fontWeight: value == null
+                        ? FontWeight.w400
+                        : FontWeight.w600,
                   ),
                 ),
               ],
@@ -253,8 +313,17 @@ class AppDropdownField<T> extends StatelessWidget {
         DropdownButtonFormField<T>(
           initialValue: value,
           isExpanded: true,
-          hint: hint != null ? Text(hint!, style: TextStyle(color: AppColors.textMuted, fontSize: 13.sp)) : null,
-          icon: Icon(Iconsax.arrow_down_1, size: 16.sp, color: AppColors.textMuted),
+          hint: hint != null
+              ? Text(
+                  hint!,
+                  style: TextStyle(color: AppColors.textMuted, fontSize: 13.sp),
+                )
+              : null,
+          icon: Icon(
+            Iconsax.arrow_down_1,
+            size: 16.sp,
+            color: AppColors.textMuted,
+          ),
           style: TextStyle(color: AppColors.navy, fontSize: 14.sp),
           decoration: _decoration(),
           items: items,
@@ -289,15 +358,34 @@ class AppSubmitButton extends StatelessWidget {
         style: ElevatedButton.styleFrom(
           backgroundColor: AppColors.primary,
           padding: EdgeInsets.symmetric(vertical: 15.h),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14.r)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(14.r),
+          ),
         ),
         child: loading
-            ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+            ? const SizedBox(
+                height: 20,
+                width: 20,
+                child: CircularProgressIndicator(
+                  color: Colors.white,
+                  strokeWidth: 2,
+                ),
+              )
             : Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  if (icon != null) ...[Icon(icon, size: 18.sp, color: Colors.white), SizedBox(width: 8.w)],
-                  Text(label, style: TextStyle(color: Colors.white, fontSize: 14.sp, fontWeight: FontWeight.w700)),
+                  if (icon != null) ...[
+                    Icon(icon, size: 18.sp, color: Colors.white),
+                    SizedBox(width: 8.w),
+                  ],
+                  Text(
+                    label,
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 14.sp,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
                 ],
               ),
       ),
@@ -321,10 +409,21 @@ class SheetHeader extends StatelessWidget {
             width: 40.w,
             height: 4.h,
             margin: EdgeInsets.only(bottom: 16.h),
-            decoration: BoxDecoration(color: AppColors.border, borderRadius: BorderRadius.circular(4.r)),
+            decoration: BoxDecoration(
+              color: AppColors.border,
+              borderRadius: BorderRadius.circular(4.r),
+            ),
           ),
         ),
-        Text(title, style: TextStyle(fontWeight: FontWeight.w800, color: AppColors.navy, fontSize: 17.sp, letterSpacing: -0.3)),
+        Text(
+          title,
+          style: TextStyle(
+            fontWeight: FontWeight.w800,
+            color: AppColors.navy,
+            fontSize: 17.sp,
+            letterSpacing: -0.3,
+          ),
+        ),
       ],
     );
   }
@@ -352,43 +451,61 @@ class AppImageField extends StatelessWidget {
   });
 
   Future<void> _pick(ImageSource source) async {
-    final img = await ImagePicker().pickImage(source: source, imageQuality: 70, maxWidth: 1600);
+    final img = await ImagePicker().pickImage(
+      source: source,
+      imageQuality: 70,
+      maxWidth: 1600,
+    );
     if (img != null) onPick(img.path);
   }
 
   void _chooseSource(BuildContext context) {
-    showModalBottomSheet<void>(
-      context: context,
-      backgroundColor: Colors.white,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20.r))),
-      builder: (ctx) => SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              width: 40.w,
-              height: 4.h,
-              margin: EdgeInsets.symmetric(vertical: 12.h),
-              decoration: BoxDecoration(color: AppColors.border, borderRadius: BorderRadius.circular(4.r)),
+    showAppSheet<void>(
+      context,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 40.w,
+            height: 4.h,
+            margin: EdgeInsets.symmetric(vertical: 12.h),
+            decoration: BoxDecoration(
+              color: AppColors.border,
+              borderRadius: BorderRadius.circular(4.r),
             ),
-            _sourceTile(ctx, Iconsax.camera, 'Kamera', ImageSource.camera),
-            _sourceTile(ctx, Iconsax.gallery, 'Galeri', ImageSource.gallery),
-            SizedBox(height: 8.h),
-          ],
-        ),
+          ),
+          _sourceTile(context, Iconsax.camera, 'Kamera', ImageSource.camera),
+          _sourceTile(context, Iconsax.gallery, 'Galeri', ImageSource.gallery),
+          SizedBox(height: 8.h),
+        ],
       ),
     );
   }
 
-  Widget _sourceTile(BuildContext ctx, IconData icon, String text, ImageSource src) {
+  Widget _sourceTile(
+    BuildContext ctx,
+    IconData icon,
+    String text,
+    ImageSource src,
+  ) {
     return ListTile(
       leading: Container(
         width: 40.w,
         height: 40.w,
-        decoration: BoxDecoration(color: AppColors.primary.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(12.r)),
+        decoration: BoxDecoration(
+          color: AppColors.primary.withValues(alpha: 0.12),
+          borderRadius: BorderRadius.circular(12.r),
+        ),
         child: Icon(icon, color: AppColors.primary, size: 20.sp),
       ),
-      title: Text(text, style: TextStyle(fontWeight: FontWeight.w600, color: AppColors.navy, fontSize: 14.sp)),
+      title: Text(
+        text,
+        style: TextStyle(
+          fontWeight: FontWeight.w600,
+          color: AppColors.navy,
+          fontSize: 14.sp,
+        ),
+      ),
       onTap: () {
         Navigator.pop(ctx);
         _pick(src);
@@ -402,7 +519,10 @@ class AppImageField extends StatelessWidget {
       customBorder: const CircleBorder(),
       child: Container(
         padding: EdgeInsets.all(7.w),
-        decoration: BoxDecoration(color: Colors.black.withValues(alpha: 0.55), shape: BoxShape.circle),
+        decoration: BoxDecoration(
+          color: Colors.black.withValues(alpha: 0.55),
+          shape: BoxShape.circle,
+        ),
         child: Icon(icon, size: 15.sp, color: Colors.white),
       ),
     );
@@ -424,16 +544,35 @@ class AppImageField extends StatelessWidget {
               decoration: BoxDecoration(
                 color: AppColors.primary.withValues(alpha: 0.05),
                 borderRadius: BorderRadius.circular(14.r),
-                border: Border.all(color: AppColors.primary.withValues(alpha: 0.3)),
+                border: Border.all(
+                  color: AppColors.primary.withValues(alpha: 0.3),
+                ),
               ),
               child: Column(
                 children: [
-                  Icon(Iconsax.gallery_add, size: 26.sp, color: AppColors.primary),
+                  Icon(
+                    Iconsax.gallery_add,
+                    size: 26.sp,
+                    color: AppColors.primary,
+                  ),
                   SizedBox(height: 8.h),
-                  Text('Tambah Foto', style: TextStyle(color: AppColors.primary, fontWeight: FontWeight.w700, fontSize: 13.sp)),
+                  Text(
+                    'Tambah Foto',
+                    style: TextStyle(
+                      color: AppColors.primary,
+                      fontWeight: FontWeight.w700,
+                      fontSize: 13.sp,
+                    ),
+                  ),
                   if (hint != null) ...[
                     SizedBox(height: 2.h),
-                    Text(hint!, style: TextStyle(color: AppColors.textMuted, fontSize: 11.5.sp)),
+                    Text(
+                      hint!,
+                      style: TextStyle(
+                        color: AppColors.textMuted,
+                        fontSize: 11.5.sp,
+                      ),
+                    ),
                   ],
                 ],
               ),
@@ -444,13 +583,21 @@ class AppImageField extends StatelessWidget {
             borderRadius: BorderRadius.circular(14.r),
             child: Stack(
               children: [
-                Image.file(File(path!), width: double.infinity, height: 170.h, fit: BoxFit.cover),
+                Image.file(
+                  File(path!),
+                  width: double.infinity,
+                  height: 170.h,
+                  fit: BoxFit.cover,
+                ),
                 Positioned(
                   top: 8.h,
                   right: 8.w,
                   child: Row(
                     children: [
-                      _circleButton(Iconsax.edit_2, () => _chooseSource(context)),
+                      _circleButton(
+                        Iconsax.edit_2,
+                        () => _chooseSource(context),
+                      ),
                       SizedBox(width: 8.w),
                       _circleButton(Iconsax.trash, onClear),
                     ],
@@ -468,7 +615,10 @@ class AppImageField extends StatelessWidget {
 /// becomes "1.000.000"). Pair with a `prefixText: 'Rp '` field.
 class RupiahInputFormatter extends TextInputFormatter {
   @override
-  TextEditingValue formatEditUpdate(TextEditingValue oldValue, TextEditingValue newValue) {
+  TextEditingValue formatEditUpdate(
+    TextEditingValue oldValue,
+    TextEditingValue newValue,
+  ) {
     final digits = newValue.text.replaceAll(RegExp(r'[^0-9]'), '');
     if (digits.isEmpty) {
       return const TextEditingValue();
@@ -491,4 +641,5 @@ class RupiahInputFormatter extends TextInputFormatter {
 }
 
 /// Parse a Rupiah-formatted string back to an integer.
-int parseRupiah(String text) => int.tryParse(text.replaceAll(RegExp(r'[^0-9]'), '')) ?? 0;
+int parseRupiah(String text) =>
+    int.tryParse(text.replaceAll(RegExp(r'[^0-9]'), '')) ?? 0;

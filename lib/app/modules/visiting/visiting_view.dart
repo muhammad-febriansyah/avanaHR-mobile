@@ -5,6 +5,7 @@ import 'package:iconsax/iconsax.dart';
 
 import '../../core/theme/app_colors.dart';
 import '../../core/widgets/app_page.dart';
+import '../../core/widgets/app_sheet.dart';
 import '../../core/widgets/app_toast.dart';
 import '../../core/widgets/form_fields.dart';
 import '../../core/widgets/status_chip.dart';
@@ -34,7 +35,9 @@ class VisitingView extends GetView<VisitingController> {
           color: AppColors.primary,
           child: controller.items.isEmpty
               ? ListView(
-                  physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
+                  physics: const AlwaysScrollableScrollPhysics(
+                    parent: BouncingScrollPhysics(),
+                  ),
                   children: [
                     SizedBox(height: 80.h),
                     const EmptyState(
@@ -44,7 +47,9 @@ class VisitingView extends GetView<VisitingController> {
                   ],
                 )
               : ListView.separated(
-                  physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
+                  physics: const AlwaysScrollableScrollPhysics(
+                    parent: BouncingScrollPhysics(),
+                  ),
                   padding: EdgeInsets.fromLTRB(20.w, 20.h, 20.w, 90.h),
                   itemCount: controller.items.length,
                   separatorBuilder: (_, i) => SizedBox(height: 10.h),
@@ -147,20 +152,11 @@ class VisitingView extends GetView<VisitingController> {
     String fmt(DateTime d) =>
         '${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
 
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.white,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20.r)),
-      ),
-      builder: (ctx) => Padding(
-        padding: EdgeInsets.only(
-          left: 20.w,
-          right: 20.w,
-          top: 14.h,
-          bottom: MediaQuery.of(ctx).viewInsets.bottom + 24.h,
-        ),
+    showAppSheet(
+      context,
+      scrollable: true,
+      child: Padding(
+        padding: EdgeInsets.fromLTRB(20.w, 20.h, 20.w, 20.h),
         child: SingleChildScrollView(
           child: Column(
             mainAxisSize: MainAxisSize.min,
