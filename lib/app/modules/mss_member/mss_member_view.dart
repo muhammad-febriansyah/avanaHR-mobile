@@ -87,7 +87,6 @@ class MssMemberView extends GetView<MssMemberController> {
       decoration: BoxDecoration(
         color: AppColors.primary.withValues(alpha: 0.06),
         borderRadius: BorderRadius.circular(18.r),
-        border: Border.all(color: AppColors.primary.withValues(alpha: 0.15)),
       ),
       child: Row(
         children: [
@@ -178,7 +177,6 @@ class MssMemberView extends GetView<MssMemberController> {
         decoration: BoxDecoration(
           color: AppColors.surface,
           borderRadius: BorderRadius.circular(14.r),
-          border: Border.all(color: AppColors.border),
         ),
         child: Column(
           children: [
@@ -239,7 +237,6 @@ class MssMemberView extends GetView<MssMemberController> {
       decoration: BoxDecoration(
         color: color.withValues(alpha: 0.07),
         borderRadius: BorderRadius.circular(16.r),
-        border: Border.all(color: color.withValues(alpha: 0.25)),
       ),
       child: Row(
         children: [
@@ -290,7 +287,6 @@ class MssMemberView extends GetView<MssMemberController> {
       decoration: BoxDecoration(
         color: AppColors.surface,
         borderRadius: BorderRadius.circular(14.r),
-        border: Border.all(color: AppColors.border),
       ),
       child: Row(
         children: [
@@ -502,10 +498,6 @@ class MssMemberView extends GetView<MssMemberController> {
               ? AppColors.primary.withValues(alpha: 0.06)
               : AppColors.muted,
           borderRadius: BorderRadius.circular(12.r),
-          border: Border.all(
-            color: selected ? AppColors.primary : Colors.transparent,
-            width: 1.5,
-          ),
         ),
         child: Row(
           children: [

@@ -71,7 +71,9 @@ class AttendanceView extends GetView<AttendanceController> {
           await controller.detectLocation();
         },
         child: SingleChildScrollView(
-          physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
+          physics: const AlwaysScrollableScrollPhysics(
+            parent: BouncingScrollPhysics(),
+          ),
           // Extra bottom inset so the map/content clears the docked center FAB.
           padding: EdgeInsets.fromLTRB(20.w, 4.h, 20.w, 72.h),
           child: Center(
@@ -89,8 +91,10 @@ class AttendanceView extends GetView<AttendanceController> {
                   SizedBox(height: 8.h),
                   Text(
                     'Lokasi & perangkat direkam saat absen.',
-                    style:
-                        TextStyle(color: AppColors.textMuted, fontSize: 11.5.sp),
+                    style: TextStyle(
+                      color: AppColors.textMuted,
+                      fontSize: 11.5.sp,
+                    ),
                     textAlign: TextAlign.center,
                   ),
                   SizedBox(height: 18.h),
@@ -167,7 +171,6 @@ class AttendanceView extends GetView<AttendanceController> {
         decoration: BoxDecoration(
           color: color.withValues(alpha: 0.08),
           borderRadius: BorderRadius.circular(14.r),
-          border: Border.all(color: color.withValues(alpha: 0.28)),
         ),
         child: Row(
           children: [
@@ -202,8 +205,10 @@ class AttendanceView extends GetView<AttendanceController> {
                 ? SizedBox(
                     width: 18.w,
                     height: 18.w,
-                    child:
-                        CircularProgressIndicator(strokeWidth: 2, color: color),
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: color,
+                    ),
                   )
                 : InkWell(
                     onTap: controller.detectLocation,
@@ -227,9 +232,8 @@ class AttendanceView extends GetView<AttendanceController> {
       width: double.infinity,
       padding: EdgeInsets.all(18.w),
       decoration: BoxDecoration(
-        color: AppColors.background,
+        color: AppColors.surface,
         borderRadius: BorderRadius.circular(18.r),
-        border: Border.all(color: AppColors.border),
       ),
       child: Column(
         children: [
@@ -273,8 +277,10 @@ class AttendanceView extends GetView<AttendanceController> {
           children: [
             Icon(icon, size: 13.sp, color: AppColors.textMuted),
             SizedBox(width: 5.w),
-            Text(label,
-                style: TextStyle(color: AppColors.textMuted, fontSize: 12.sp)),
+            Text(
+              label,
+              style: TextStyle(color: AppColors.textMuted, fontSize: 12.sp),
+            ),
           ],
         ),
         SizedBox(height: 6.h),
@@ -290,7 +296,6 @@ class AttendanceView extends GetView<AttendanceController> {
       ],
     );
   }
-
 }
 
 /// Interactive OpenStreetMap card showing the office geofence circle, the
@@ -328,115 +333,118 @@ class _GeofenceMapState extends State<_GeofenceMap> {
     final controller = Get.find<AttendanceController>();
 
     return Container(
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(18.r),
-        boxShadow: [
-          BoxShadow(
-            color: AppColors.navy.withValues(alpha: 0.08),
-            blurRadius: 18,
-            offset: const Offset(0, 8),
-          ),
-        ],
-      ),
+      decoration: BoxDecoration(borderRadius: BorderRadius.circular(18.r)),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(18.r),
-        child: Container(
+        child: SizedBox(
           height: 230.h,
-          decoration: BoxDecoration(border: Border.all(color: AppColors.border)),
           child: Obx(() {
-          final office = _officeOf(controller);
-          final user = _userOf(controller);
-          final center = office ?? user ?? _fallback;
-          final radius = (controller.nearest.value?.radius ?? 0).toDouble();
+            final office = _officeOf(controller);
+            final user = _userOf(controller);
+            final center = office ?? user ?? _fallback;
+            final radius = (controller.nearest.value?.radius ?? 0).toDouble();
 
-          return Stack(
-            children: [
-              FlutterMap(
-                mapController: _map,
-                options: MapOptions(
-                  initialCenter: center,
-                  initialZoom: 16,
-                  minZoom: 3,
-                  maxZoom: 19,
-                  interactionOptions: const InteractionOptions(
-                    flags: InteractiveFlag.pinchZoom |
-                        InteractiveFlag.drag |
-                        InteractiveFlag.doubleTapZoom,
+            return Stack(
+              children: [
+                FlutterMap(
+                  mapController: _map,
+                  options: MapOptions(
+                    initialCenter: center,
+                    initialZoom: 16,
+                    minZoom: 3,
+                    maxZoom: 19,
+                    interactionOptions: const InteractionOptions(
+                      flags:
+                          InteractiveFlag.pinchZoom |
+                          InteractiveFlag.drag |
+                          InteractiveFlag.doubleTapZoom,
+                    ),
                   ),
-                ),
-                children: [
-                  TileLayer(
-                    urlTemplate:
-                        'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-                    userAgentPackageName: 'id.avanahr.mobile',
-                    tileProvider: NetworkTileProvider(),
-                  ),
-                  if (office != null && radius > 0)
-                    CircleLayer(
-                      circles: [
-                        CircleMarker(
-                          point: office,
-                          radius: radius,
-                          useRadiusInMeter: true,
-                          color: AppColors.primary.withValues(alpha: 0.12),
-                          borderColor: AppColors.primary.withValues(alpha: 0.6),
-                          borderStrokeWidth: 2,
-                        ),
+                  children: [
+                    TileLayer(
+                      urlTemplate:
+                          'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                      userAgentPackageName: 'id.avanahr.mobile',
+                      tileProvider: NetworkTileProvider(),
+                    ),
+                    if (office != null && radius > 0)
+                      CircleLayer(
+                        circles: [
+                          CircleMarker(
+                            point: office,
+                            radius: radius,
+                            useRadiusInMeter: true,
+                            color: AppColors.primary.withValues(alpha: 0.12),
+                            borderColor: AppColors.primary.withValues(
+                              alpha: 0.6,
+                            ),
+                            borderStrokeWidth: 2,
+                          ),
+                        ],
+                      ),
+                    MarkerLayer(
+                      markers: [
+                        if (office != null)
+                          Marker(
+                            point: office,
+                            width: 48.w,
+                            height: 52.w,
+                            alignment: Alignment.bottomCenter,
+                            child: _officePin(),
+                          ),
+                        if (user != null)
+                          Marker(
+                            point: user,
+                            width: 26.w,
+                            height: 26.w,
+                            child: _pulseDot(),
+                          ),
                       ],
                     ),
-                  MarkerLayer(
-                    markers: [
-                      if (office != null)
-                        Marker(
-                          point: office,
-                          width: 48.w,
-                          height: 52.w,
-                          alignment: Alignment.bottomCenter,
-                          child: _officePin(),
+                  ],
+                ),
+                Positioned(
+                  right: 10.w,
+                  bottom: 10.h,
+                  child: Material(
+                    color: Colors.white,
+                    shape: const CircleBorder(),
+                    elevation: 0,
+                    child: InkWell(
+                      onTap: _recenter,
+                      customBorder: const CircleBorder(),
+                      child: SizedBox(
+                        width: 44.w,
+                        height: 44.w,
+                        child: Icon(
+                          Iconsax.gps,
+                          color: AppColors.primary,
+                          size: 22.sp,
                         ),
-                      if (user != null)
-                        Marker(
-                          point: user,
-                          width: 26.w,
-                          height: 26.w,
-                          child: _pulseDot(),
-                        ),
-                    ],
-                  ),
-                ],
-              ),
-              Positioned(
-                right: 10.w,
-                bottom: 10.h,
-                child: Material(
-                  color: Colors.white,
-                  shape: const CircleBorder(),
-                  elevation: 3,
-                  child: InkWell(
-                    onTap: _recenter,
-                    customBorder: const CircleBorder(),
-                    child: SizedBox(
-                      width: 44.w,
-                      height: 44.w,
-                      child: Icon(Iconsax.gps,
-                          color: AppColors.primary, size: 22.sp),
+                      ),
                     ),
                   ),
                 ),
-              ),
-              Positioned(
-                left: 6.w,
-                bottom: 4.h,
-                child: Container(
-                  padding: EdgeInsets.symmetric(horizontal: 5.w, vertical: 1.h),
-                  color: Colors.white.withValues(alpha: 0.7),
-                  child: Text('© OpenStreetMap',
+                Positioned(
+                  left: 6.w,
+                  bottom: 4.h,
+                  child: Container(
+                    padding: EdgeInsets.symmetric(
+                      horizontal: 5.w,
+                      vertical: 1.h,
+                    ),
+                    color: Colors.white.withValues(alpha: 0.7),
+                    child: Text(
+                      '© OpenStreetMap',
                       style: TextStyle(
-                          fontSize: 8.5.sp, color: AppColors.textMuted)),
+                        fontSize: 8.5.sp,
+                        color: AppColors.textMuted,
+                      ),
+                    ),
+                  ),
                 ),
-              ),
-            ],
-          );
+              ],
+            );
           }),
         ),
       ),
@@ -454,14 +462,7 @@ class _GeofenceMapState extends State<_GeofenceMap> {
         alignment: Alignment.topCenter,
         clipBehavior: Clip.none,
         children: [
-          Icon(
-            Icons.location_on,
-            size: 50.sp,
-            color: AppColors.primary,
-            shadows: const [
-              Shadow(color: Color(0x40000000), blurRadius: 4, offset: Offset(0, 2)),
-            ],
-          ),
+          Icon(Icons.location_on, size: 50.sp, color: AppColors.primary),
           Positioned(
             top: 6.w,
             child: Container(
@@ -471,8 +472,11 @@ class _GeofenceMapState extends State<_GeofenceMap> {
                 color: Colors.white,
                 shape: BoxShape.circle,
               ),
-              child: Icon(Icons.business_rounded,
-                  size: 13.sp, color: AppColors.primary),
+              child: Icon(
+                Icons.business_rounded,
+                size: 13.sp,
+                color: AppColors.primary,
+              ),
             ),
           ),
         ],
@@ -485,14 +489,6 @@ class _GeofenceMapState extends State<_GeofenceMap> {
       decoration: BoxDecoration(
         shape: BoxShape.circle,
         color: AppColors.accent,
-        border: Border.all(color: Colors.white, width: 3.5),
-        boxShadow: [
-          BoxShadow(
-            color: AppColors.accent.withValues(alpha: 0.55),
-            blurRadius: 10,
-            spreadRadius: 2,
-          ),
-        ],
       ),
     );
   }

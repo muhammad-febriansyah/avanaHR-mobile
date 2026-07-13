@@ -164,7 +164,6 @@ class HeaderAction extends StatelessWidget {
                   decoration: BoxDecoration(
                     color: AppColors.destructive,
                     shape: BoxShape.circle,
-                    border: Border.all(color: AppColors.primary, width: 1.5),
                   ),
                   constraints: BoxConstraints(minWidth: 15.w, minHeight: 15.w),
                   child: Text(
@@ -207,9 +206,8 @@ class ContentCard extends StatelessWidget {
       margin: margin,
       padding: padding ?? EdgeInsets.all(14.w),
       decoration: BoxDecoration(
-        color: AppColors.background,
+        color: AppColors.surface,
         borderRadius: BorderRadius.circular(14.r),
-        border: Border.all(color: AppColors.border),
       ),
       child: child,
     );

@@ -27,7 +27,9 @@ class ScheduleView extends GetView<ScheduleController> {
               }
               if (controller.days.isEmpty) {
                 return ListView(
-                  physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
+                  physics: const AlwaysScrollableScrollPhysics(
+                    parent: BouncingScrollPhysics(),
+                  ),
                   children: [
                     SizedBox(height: 80.h),
                     const EmptyState(
@@ -41,7 +43,9 @@ class ScheduleView extends GetView<ScheduleController> {
                 onRefresh: controller.load,
                 color: AppColors.primary,
                 child: ListView.separated(
-                  physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
+                  physics: const AlwaysScrollableScrollPhysics(
+                    parent: BouncingScrollPhysics(),
+                  ),
                   padding: EdgeInsets.fromLTRB(20.w, 16.h, 20.w, 24.h),
                   itemCount: controller.days.length,
                   separatorBuilder: (_, __) => SizedBox(height: 10.h),
@@ -71,13 +75,21 @@ class ScheduleView extends GetView<ScheduleController> {
                 onTap: controller.resetToThisWeek,
                 child: Column(
                   children: [
-                    Text(label,
-                        style: TextStyle(
-                            fontSize: 13.5.sp,
-                            fontWeight: FontWeight.w700,
-                            color: AppColors.navy)),
-                    Text('Ketuk untuk minggu ini',
-                        style: TextStyle(fontSize: 10.sp, color: AppColors.textMuted)),
+                    Text(
+                      label,
+                      style: TextStyle(
+                        fontSize: 13.5.sp,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.navy,
+                      ),
+                    ),
+                    Text(
+                      'Ketuk untuk minggu ini',
+                      style: TextStyle(
+                        fontSize: 10.sp,
+                        color: AppColors.textMuted,
+                      ),
+                    ),
                   ],
                 ),
               );
@@ -127,12 +139,10 @@ class ScheduleView extends GetView<ScheduleController> {
     return Container(
       padding: EdgeInsets.all(12.w),
       decoration: BoxDecoration(
-        color: d.isToday ? AppColors.primary.withValues(alpha: 0.06) : AppColors.background,
+        color: d.isToday
+            ? AppColors.primary.withValues(alpha: 0.06)
+            : AppColors.surface,
         borderRadius: BorderRadius.circular(16.r),
-        border: Border.all(
-          color: d.isToday ? AppColors.primary.withValues(alpha: 0.4) : AppColors.border,
-          width: d.isToday ? 1.5 : 1,
-        ),
       ),
       child: Row(
         children: [
@@ -147,16 +157,22 @@ class ScheduleView extends GetView<ScheduleController> {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Text(d.dayShort,
-                    style: TextStyle(
-                        fontSize: 10.sp,
-                        fontWeight: FontWeight.w600,
-                        color: d.isToday ? Colors.white70 : AppColors.textMuted)),
-                Text(_dayNum(d.date),
-                    style: TextStyle(
-                        fontSize: 17.sp,
-                        fontWeight: FontWeight.w800,
-                        color: d.isToday ? Colors.white : AppColors.navy)),
+                Text(
+                  d.dayShort,
+                  style: TextStyle(
+                    fontSize: 10.sp,
+                    fontWeight: FontWeight.w600,
+                    color: d.isToday ? Colors.white70 : AppColors.textMuted,
+                  ),
+                ),
+                Text(
+                  _dayNum(d.date),
+                  style: TextStyle(
+                    fontSize: 17.sp,
+                    fontWeight: FontWeight.w800,
+                    color: d.isToday ? Colors.white : AppColors.navy,
+                  ),
+                ),
               ],
             ),
           ),
@@ -167,34 +183,46 @@ class ScheduleView extends GetView<ScheduleController> {
               children: [
                 Row(
                   children: [
-                    Text(d.dayLabel,
-                        style: TextStyle(
-                            fontSize: 13.5.sp,
-                            fontWeight: FontWeight.w700,
-                            color: AppColors.navy)),
+                    Text(
+                      d.dayLabel,
+                      style: TextStyle(
+                        fontSize: 13.5.sp,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.navy,
+                      ),
+                    ),
                     if (d.isToday) ...[
                       SizedBox(width: 8.w),
                       Container(
-                        padding: EdgeInsets.symmetric(horizontal: 7.w, vertical: 2.h),
+                        padding: EdgeInsets.symmetric(
+                          horizontal: 7.w,
+                          vertical: 2.h,
+                        ),
                         decoration: BoxDecoration(
                           color: AppColors.primary,
                           borderRadius: BorderRadius.circular(999),
                         ),
-                        child: Text('Hari ini',
-                            style: TextStyle(
-                                fontSize: 9.sp,
-                                fontWeight: FontWeight.w700,
-                                color: Colors.white)),
+                        child: Text(
+                          'Hari ini',
+                          style: TextStyle(
+                            fontSize: 9.sp,
+                            fontWeight: FontWeight.w700,
+                            color: Colors.white,
+                          ),
+                        ),
                       ),
                     ],
                   ],
                 ),
                 SizedBox(height: 3.h),
-                Text(d.isScheduled && !d.isOff ? (d.shiftName ?? 'Shift') : status,
-                    style: TextStyle(
-                        fontSize: 12.sp,
-                        fontWeight: FontWeight.w600,
-                        color: accent)),
+                Text(
+                  d.isScheduled && !d.isOff ? (d.shiftName ?? 'Shift') : status,
+                  style: TextStyle(
+                    fontSize: 12.sp,
+                    fontWeight: FontWeight.w600,
+                    color: accent,
+                  ),
+                ),
               ],
             ),
           ),
@@ -218,12 +246,27 @@ class ScheduleView extends GetView<ScheduleController> {
   }
 
   String _short(String date) {
-    const months = ['', 'Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
+    const months = [
+      '',
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'Mei',
+      'Jun',
+      'Jul',
+      'Agu',
+      'Sep',
+      'Okt',
+      'Nov',
+      'Des',
+    ];
     final parts = date.split('-');
     if (parts.length != 3) {
       return date;
     }
     final m = int.tryParse(parts[1]) ?? 0;
-    return '${int.tryParse(parts[2]) ?? parts[2]} ${m >= 1 && m <= 12 ? months[m] : ''}'.trim();
+    return '${int.tryParse(parts[2]) ?? parts[2]} ${m >= 1 && m <= 12 ? months[m] : ''}'
+        .trim();
   }
 }

@@ -120,7 +120,9 @@ class _OnPageFaceScanState extends State<OnPageFaceScan>
     final cam = _cam;
     if (cam == null || !cam.value.isInitialized || _busy.value) return;
     if (!_attendance.canClockByLocation) {
-      AppToast.warning('Di luar radius kantor. Mendekat ke lokasi untuk absen.');
+      AppToast.warning(
+        'Di luar radius kantor. Mendekat ke lokasi untuk absen.',
+      );
       return;
     }
 
@@ -152,7 +154,10 @@ class _OnPageFaceScanState extends State<OnPageFaceScan>
         }
       }
 
-      final embedding = await _embedder.embedFromFile(shot.path, face.boundingBox);
+      final embedding = await _embedder.embedFromFile(
+        shot.path,
+        face.boundingBox,
+      );
       if (embedding == null) {
         AppToast.error('Model wajah tidak tersedia. Hubungi admin.');
         return;
@@ -210,21 +215,10 @@ class _OnPageFaceScanState extends State<OnPageFaceScan>
       decoration: BoxDecoration(
         color: AppColors.navy,
         borderRadius: BorderRadius.circular(22.r),
-        boxShadow: [
-          BoxShadow(
-            color: AppColors.navy.withValues(alpha: 0.18),
-            blurRadius: 20,
-            offset: const Offset(0, 10),
-          ),
-        ],
       ),
       child: Column(
         children: [
-          SizedBox(
-            height: 340.h,
-            width: double.infinity,
-            child: _cameraArea(),
-          ),
+          SizedBox(height: 340.h, width: double.infinity, child: _cameraArea()),
           _panel(),
         ],
       ),
@@ -261,16 +255,18 @@ class _OnPageFaceScanState extends State<OnPageFaceScan>
         ),
         const Positioned.fill(child: _OvalScrim()),
         // Sweeping scan line (hidden while processing / under reduced motion).
-        Obx(() =>
-            _busy.value ? const SizedBox.shrink() : _scanLine(context)),
+        Obx(() => _busy.value ? const SizedBox.shrink() : _scanLine(context)),
         Center(
           child: SizedBox(
             width: 200.w,
             height: 250.w,
-            child: Obx(() => CustomPaint(
-                  painter: _CornerPainter(
-                      _busy.value ? AppColors.success : Colors.white),
-                )),
+            child: Obx(
+              () => CustomPaint(
+                painter: _CornerPainter(
+                  _busy.value ? AppColors.success : Colors.white,
+                ),
+              ),
+            ),
           ),
         ),
         // Geofence-blocked veil.
@@ -298,8 +294,7 @@ class _OnPageFaceScanState extends State<OnPageFaceScan>
                 Text(
                   'Mendekat ke lokasi untuk absen',
                   textAlign: TextAlign.center,
-                  style: TextStyle(
-                      color: Colors.white70, fontSize: 11.5.sp),
+                  style: TextStyle(color: Colors.white70, fontSize: 11.5.sp),
                 ),
               ],
             ),
@@ -312,7 +307,8 @@ class _OnPageFaceScanState extends State<OnPageFaceScan>
   /// A soft green line sweeping vertically inside the oval — a live-scan cue.
   /// Skipped when the user prefers reduced motion.
   Widget _scanLine(BuildContext context) {
-    final reduceMotion = MediaQuery.maybeOf(context)?.disableAnimations ?? false;
+    final reduceMotion =
+        MediaQuery.maybeOf(context)?.disableAnimations ?? false;
     if (reduceMotion) return const SizedBox.shrink();
     return Center(
       child: SizedBox(
@@ -346,16 +342,18 @@ class _OnPageFaceScanState extends State<OnPageFaceScan>
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Obx(() => Text(
-                _instruction(),
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 12.5.sp,
-                  height: 1.35,
-                  fontWeight: FontWeight.w500,
-                ),
-              )),
+          Obx(
+            () => Text(
+              _instruction(),
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 12.5.sp,
+                height: 1.35,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ),
           SizedBox(height: 14.h),
           Obx(() {
             final isIn = _attendance.today.value?.canClockIn ?? true;
@@ -368,8 +366,7 @@ class _OnPageFaceScanState extends State<OnPageFaceScan>
                 onPressed: busy || blocked ? null : _capture,
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppColors.success,
-                  disabledBackgroundColor:
-                      Colors.white.withValues(alpha: 0.16),
+                  disabledBackgroundColor: Colors.white.withValues(alpha: 0.16),
                   foregroundColor: Colors.white,
                   elevation: 0,
                   shape: RoundedRectangleBorder(
@@ -381,18 +378,23 @@ class _OnPageFaceScanState extends State<OnPageFaceScan>
                         width: 18.w,
                         height: 18.w,
                         child: const CircularProgressIndicator(
-                            color: Colors.white, strokeWidth: 2),
+                          color: Colors.white,
+                          strokeWidth: 2,
+                        ),
                       )
                     : Icon(Iconsax.scan, size: 20.sp),
                 label: Text(
                   busy
                       ? 'Memproses…'
                       : blocked
-                          ? 'Di luar radius'
-                          : isIn
-                              ? 'Absen Masuk (Wajah)'
-                              : 'Absen Pulang (Wajah)',
-                  style: TextStyle(fontSize: 14.sp, fontWeight: FontWeight.w700),
+                      ? 'Di luar radius'
+                      : isIn
+                      ? 'Absen Masuk (Wajah)'
+                      : 'Absen Pulang (Wajah)',
+                  style: TextStyle(
+                    fontSize: 14.sp,
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
               ),
             );

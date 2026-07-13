@@ -175,9 +175,6 @@ class DokumenView extends GetView<DokumenController> {
                     decoration: BoxDecoration(
                       color: AppColors.primary.withValues(alpha: 0.05),
                       borderRadius: BorderRadius.circular(14.r),
-                      border: Border.all(
-                        color: AppColors.primary.withValues(alpha: 0.3),
-                      ),
                     ),
                     child: Column(
                       children: [
@@ -214,7 +211,6 @@ class DokumenView extends GetView<DokumenController> {
                 decoration: BoxDecoration(
                   color: AppColors.muted,
                   borderRadius: BorderRadius.circular(14.r),
-                  border: Border.all(color: AppColors.border),
                 ),
                 child: Row(
                   children: [

@@ -3,19 +3,11 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 import '../theme/app_colors.dart';
 
-/// Soft, modern card surface — subtle shadow instead of a hard border.
+/// Flat card surface — solid fill and rounded corners, no border or shadow.
 BoxDecoration softCard({Color? color, double radius = 18}) => BoxDecoration(
-      color: color ?? AppColors.background,
-      borderRadius: BorderRadius.circular(radius.r),
-      border: Border.all(color: AppColors.border.withValues(alpha: 0.6)),
-      boxShadow: [
-        BoxShadow(
-          color: const Color(0xFF0E1A3A).withValues(alpha: 0.05),
-          blurRadius: 18,
-          offset: const Offset(0, 8),
-        ),
-      ],
-    );
+  color: color ?? AppColors.surface,
+  borderRadius: BorderRadius.circular(radius.r),
+);
 
 /// Section heading with an optional trailing widget.
 class SectionTitle extends StatelessWidget {
@@ -27,7 +19,17 @@ class SectionTitle extends StatelessWidget {
   Widget build(BuildContext context) {
     return Row(
       children: [
-        Expanded(child: Text(text, style: TextStyle(fontWeight: FontWeight.w700, color: AppColors.navy, fontSize: 15.5.sp, letterSpacing: -0.2))),
+        Expanded(
+          child: Text(
+            text,
+            style: TextStyle(
+              fontWeight: FontWeight.w700,
+              color: AppColors.navy,
+              fontSize: 15.5.sp,
+              letterSpacing: -0.2,
+            ),
+          ),
+        ),
         if (trailing != null) trailing!,
       ],
     );
@@ -50,11 +52,18 @@ class EmptyState extends StatelessWidget {
           children: [
             Container(
               padding: EdgeInsets.all(18.w),
-              decoration: BoxDecoration(color: AppColors.primary.withValues(alpha: 0.08), shape: BoxShape.circle),
+              decoration: BoxDecoration(
+                color: AppColors.primary.withValues(alpha: 0.08),
+                shape: BoxShape.circle,
+              ),
               child: Icon(icon, size: 30.sp, color: AppColors.primary),
             ),
             SizedBox(height: 14.h),
-            Text(message, textAlign: TextAlign.center, style: TextStyle(color: AppColors.textMuted, fontSize: 13.sp)),
+            Text(
+              message,
+              textAlign: TextAlign.center,
+              style: TextStyle(color: AppColors.textMuted, fontSize: 13.sp),
+            ),
           ],
         ),
       ),
@@ -66,5 +75,6 @@ class EmptyState extends StatelessWidget {
 class Loading extends StatelessWidget {
   const Loading({super.key});
   @override
-  Widget build(BuildContext context) => const Center(child: CircularProgressIndicator(color: AppColors.primary));
+  Widget build(BuildContext context) =>
+      const Center(child: CircularProgressIndicator(color: AppColors.primary));
 }
