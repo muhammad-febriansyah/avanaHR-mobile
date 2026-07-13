@@ -5,6 +5,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:get/get.dart';
 
 import '../../core/theme/app_colors.dart';
+import '../../core/widgets/app_page.dart';
 import '../../data/services/config_service.dart';
 import 'login_controller.dart';
 
@@ -22,7 +23,23 @@ class LoginView extends GetView<LoginController> {
         body: Column(
           children: [
             _header(cfg),
-            Expanded(child: _sheet(cfg)),
+            Expanded(
+              child: SingleChildScrollView(
+                physics: const BouncingScrollPhysics(),
+                child: Container(
+                  width: double.infinity,
+                  constraints: BoxConstraints(minHeight: 0.6.sh),
+                  color: AppColors.background,
+                  padding: EdgeInsets.fromLTRB(20.w, 0, 20.w, 24.h),
+                  // The form card straddles the blue header / white seam, the
+                  // same overlap as the home hero card.
+                  child: Transform.translate(
+                    offset: Offset(0, -44.h),
+                    child: _formCard(cfg),
+                  ),
+                ),
+              ),
+            ),
           ],
         ),
       ),
@@ -31,31 +48,53 @@ class LoginView extends GetView<LoginController> {
 
   /// Solid-primary panel: welcome copy only (logo sits on the white sheet).
   Widget _header(ConfigService cfg) {
-    return SafeArea(
-      bottom: false,
-      child: Padding(
-        padding: EdgeInsets.fromLTRB(24.w, 40.h, 24.w, 30.h),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _eyebrow('PORTAL KARYAWAN'),
-            SizedBox(height: 18.h),
-            Text(
-              'Selamat datang kembali',
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 24.sp,
-                fontWeight: FontWeight.w700,
-                height: 1.2,
+    return Container(
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [AppColors.primary, AppColors.primaryHover],
+        ),
+      ),
+      child: Stack(
+        children: [
+          Positioned.fill(
+            child: ClipRect(
+              child: CustomPaint(painter: const BrandMeshPainter()),
+            ),
+          ),
+          SafeArea(
+            bottom: false,
+            child: Padding(
+              padding: EdgeInsets.fromLTRB(24.w, 36.h, 24.w, 64.h),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _eyebrow('PORTAL KARYAWAN'),
+                  SizedBox(height: 18.h),
+                  Text(
+                    'Selamat datang kembali',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 24.sp,
+                      fontWeight: FontWeight.w700,
+                      height: 1.2,
+                    ),
+                  ),
+                  SizedBox(height: 6.h),
+                  Text(
+                    'Masuk untuk kelola absensi, cuti & slip gaji Anda.',
+                    style: TextStyle(
+                      color: Colors.white.withValues(alpha: 0.85),
+                      fontSize: 13.sp,
+                      height: 1.4,
+                    ),
+                  ),
+                ],
               ),
             ),
-            SizedBox(height: 6.h),
-            Text(
-              'Masuk untuk kelola absensi, cuti & slip gaji Anda.',
-              style: TextStyle(color: Colors.white.withValues(alpha: 0.85), fontSize: 13.sp, height: 1.4),
-            ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
@@ -116,85 +155,96 @@ class LoginView extends GetView<LoginController> {
         SizedBox(width: 12.w),
         Text(
           name,
-          style: TextStyle(fontSize: 24.sp, fontWeight: FontWeight.w700, color: AppColors.navy),
+          style: TextStyle(
+            fontSize: 24.sp,
+            fontWeight: FontWeight.w700,
+            color: AppColors.navy,
+          ),
         ),
       ],
     );
   }
 
-  Widget _sheet(ConfigService cfg) {
+  Widget _formCard(ConfigService cfg) {
     return Container(
       width: double.infinity,
-      decoration: const BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.only(
-          topLeft: Radius.circular(32),
-          topRight: Radius.circular(32),
-        ),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(24.r),
       ),
-      child: SingleChildScrollView(
-        padding: EdgeInsets.fromLTRB(24.w, 28.h, 24.w, 24.h),
-        child: AutofillGroup(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Align(alignment: Alignment.centerLeft, child: _logo(cfg)),
-              SizedBox(height: 22.h),
-              Text(
-                'Masuk ke akun',
-                style: TextStyle(fontSize: 20.sp, fontWeight: FontWeight.w700, color: AppColors.navy),
+      padding: EdgeInsets.fromLTRB(22.w, 24.h, 22.w, 24.h),
+      child: AutofillGroup(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Align(alignment: Alignment.centerLeft, child: _logo(cfg)),
+            SizedBox(height: 22.h),
+            Text(
+              'Masuk ke akun',
+              style: TextStyle(
+                fontSize: 20.sp,
+                fontWeight: FontWeight.w700,
+                color: AppColors.navy,
               ),
-              SizedBox(height: 4.h),
-              Text(
-                'Gunakan email & kata sandi terdaftar',
-                style: TextStyle(color: AppColors.textMuted, fontSize: 12.5.sp),
+            ),
+            SizedBox(height: 4.h),
+            Text(
+              'Gunakan email & kata sandi terdaftar',
+              style: TextStyle(color: AppColors.textMuted, fontSize: 12.5.sp),
+            ),
+            SizedBox(height: 24.h),
+            _Label('Email'),
+            TextField(
+              controller: controller.emailC,
+              keyboardType: TextInputType.emailAddress,
+              textInputAction: TextInputAction.next,
+              autocorrect: false,
+              textCapitalization: TextCapitalization.none,
+              autofillHints: const [
+                AutofillHints.username,
+                AutofillHints.email,
+              ],
+              decoration: const InputDecoration(
+                hintText: 'nama@perusahaan.co.id',
+                prefixIcon: Icon(Iconsax.sms, size: 20),
               ),
-              SizedBox(height: 24.h),
-              _Label('Email'),
-              TextField(
-                controller: controller.emailC,
-                keyboardType: TextInputType.emailAddress,
-                textInputAction: TextInputAction.next,
-                autocorrect: false,
-                textCapitalization: TextCapitalization.none,
-                autofillHints: const [AutofillHints.username, AutofillHints.email],
-                decoration: const InputDecoration(
-                  hintText: 'nama@perusahaan.co.id',
-                  prefixIcon: Icon(Iconsax.sms, size: 20),
-                ),
-              ),
-              SizedBox(height: 16.h),
-              _Label('Kata Sandi'),
-              Obx(
-                () => TextField(
-                  controller: controller.passwordC,
-                  obscureText: controller.obscure.value,
-                  textInputAction: TextInputAction.done,
-                  autofillHints: const [AutofillHints.password],
-                  onSubmitted: (_) => controller.isLoading.value ? null : controller.submit(),
-                  decoration: InputDecoration(
-                    hintText: 'Masukkan kata sandi',
-                    prefixIcon: const Icon(Iconsax.lock, size: 20),
-                    suffixIcon: IconButton(
-                      tooltip: controller.obscure.value ? 'Tampilkan sandi' : 'Sembunyikan sandi',
-                      icon: Icon(
-                        controller.obscure.value ? Iconsax.eye_slash : Iconsax.eye,
-                        size: 20,
-                      ),
-                      onPressed: controller.obscure.toggle,
+            ),
+            SizedBox(height: 16.h),
+            _Label('Kata Sandi'),
+            Obx(
+              () => TextField(
+                controller: controller.passwordC,
+                obscureText: controller.obscure.value,
+                textInputAction: TextInputAction.done,
+                autofillHints: const [AutofillHints.password],
+                onSubmitted: (_) =>
+                    controller.isLoading.value ? null : controller.submit(),
+                decoration: InputDecoration(
+                  hintText: 'Masukkan kata sandi',
+                  prefixIcon: const Icon(Iconsax.lock, size: 20),
+                  suffixIcon: IconButton(
+                    tooltip: controller.obscure.value
+                        ? 'Tampilkan sandi'
+                        : 'Sembunyikan sandi',
+                    icon: Icon(
+                      controller.obscure.value
+                          ? Iconsax.eye_slash
+                          : Iconsax.eye,
+                      size: 20,
                     ),
+                    onPressed: controller.obscure.toggle,
                   ),
                 ),
               ),
-              SizedBox(height: 8.h),
-              _rememberRow(),
-              SizedBox(height: 22.h),
-              _submitButton(),
-              SizedBox(height: 18.h),
-              _trustFooter(),
-              SizedBox(height: 8.h),
-            ],
-          ),
+            ),
+            SizedBox(height: 8.h),
+            _rememberRow(),
+            SizedBox(height: 22.h),
+            _submitButton(),
+            SizedBox(height: 18.h),
+            _trustFooter(),
+            SizedBox(height: 8.h),
+          ],
         ),
       ),
     );
@@ -220,13 +270,19 @@ class LoginView extends GetView<LoginController> {
                     activeColor: AppColors.primary,
                     materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
                     visualDensity: VisualDensity.compact,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6.r)),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(6.r),
+                    ),
                   ),
                 ),
                 SizedBox(width: 8.w),
                 Text(
                   'Ingat saya',
-                  style: TextStyle(color: AppColors.navy, fontSize: 12.5.sp, fontWeight: FontWeight.w500),
+                  style: TextStyle(
+                    color: AppColors.navy,
+                    fontSize: 12.5.sp,
+                    fontWeight: FontWeight.w500,
+                  ),
                 ),
               ],
             ),
@@ -259,17 +315,26 @@ class LoginView extends GetView<LoginController> {
             disabledBackgroundColor: AppColors.primary.withValues(alpha: 0.45),
             foregroundColor: Colors.white,
             elevation: 0,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14.r)),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(14.r),
+            ),
           ),
           child: controller.isLoading.value
               ? SizedBox(
                   height: 20.w,
                   width: 20.w,
-                  child: const CircularProgressIndicator(color: Colors.white, strokeWidth: 2.4),
+                  child: const CircularProgressIndicator(
+                    color: Colors.white,
+                    strokeWidth: 2.4,
+                  ),
                 )
               : Text(
                   'Masuk',
-                  style: TextStyle(fontSize: 15.sp, fontWeight: FontWeight.w700, color: Colors.white),
+                  style: TextStyle(
+                    fontSize: 15.sp,
+                    fontWeight: FontWeight.w700,
+                    color: Colors.white,
+                  ),
                 ),
         ),
       ),
@@ -301,7 +366,14 @@ class _Label extends StatelessWidget {
   Widget build(BuildContext context) {
     return Padding(
       padding: EdgeInsets.only(bottom: 8.h),
-      child: Text(text, style: TextStyle(fontWeight: FontWeight.w600, color: AppColors.navy, fontSize: 13.5.sp)),
+      child: Text(
+        text,
+        style: TextStyle(
+          fontWeight: FontWeight.w600,
+          color: AppColors.navy,
+          fontSize: 13.5.sp,
+        ),
+      ),
     );
   }
 }
