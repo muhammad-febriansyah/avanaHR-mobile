@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Royal-blue brand color, matches Flutter AppColors.primary (#2F54C9)
+         and the login header. Used as the launch splash background so the
+         native launch screen blends into the Flutter SplashView. -->
+    <color name="splash_bg">#2F54C9</color>
+</resources>

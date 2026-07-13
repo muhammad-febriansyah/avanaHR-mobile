@@ -1,4 +1,7 @@
+import 'dart:async';
+
 import 'package:dio/dio.dart';
+import 'package:geocoding/geocoding.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:get/get.dart' hide Response;
 
@@ -36,10 +39,19 @@ class HomeController extends GetxController {
   final selectedMood = RxnString();
   final moodSubmitting = false.obs;
 
+  // Home/Office work-mode selector on the attendance hero card.
+  final workMode = 'office'.obs;
+
   // Auto-detected location status.
   final locState = LocState.loading.obs;
   final nearestOffice = ''.obs;
   final distanceMeters = 0.0.obs;
+
+  // Realtime user location: a reverse-geocoded street/area label that updates
+  // as the user moves, plus the live GPS stream backing it.
+  final userAddress = ''.obs;
+  final locating = true.obs;
+  StreamSubscription<Position>? _posSub;
 
   String get name => auth.user.value?.name ?? '';
   bool get isManager => auth.isManager;
@@ -62,8 +74,29 @@ class HomeController extends GetxController {
 
   /// Indonesian date label, e.g. "Jumat, 3 Jul 2026".
   String get todayLabel {
-    const days = ['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu', 'Minggu'];
-    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
+    const days = [
+      'Senin',
+      'Selasa',
+      'Rabu',
+      'Kamis',
+      'Jumat',
+      'Sabtu',
+      'Minggu',
+    ];
+    const months = [
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'Mei',
+      'Jun',
+      'Jul',
+      'Agu',
+      'Sep',
+      'Okt',
+      'Nov',
+      'Des',
+    ];
     final d = DateTime.now();
 
     return '${days[d.weekday - 1]}, ${d.day} ${months[d.month - 1]} ${d.year}';
@@ -74,11 +107,99 @@ class HomeController extends GetxController {
     super.onInit();
     refreshAll();
     detectLocation();
+    startLocationStream();
+  }
+
+  @override
+  void onClose() {
+    _posSub?.cancel();
+    super.onClose();
+  }
+
+  /// Streams the user's realtime GPS position and reverse-geocodes it into a
+  /// short human address shown in the header. Best-effort; never throws. Only
+  /// re-geocodes after the user moves ≥25 m to keep it cheap.
+  Future<void> startLocationStream() async {
+    locating.value = true;
+    try {
+      if (!await Geolocator.isLocationServiceEnabled()) {
+        userAddress.value = 'GPS mati';
+        locating.value = false;
+        return;
+      }
+      var permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+      }
+      if (permission == LocationPermission.denied ||
+          permission == LocationPermission.deniedForever) {
+        userAddress.value = 'Izin lokasi ditolak';
+        locating.value = false;
+        return;
+      }
+
+      // Seed immediately from the current/last fix so the header isn't empty
+      // while waiting for the first stream event.
+      try {
+        final pos = await Geolocator.getCurrentPosition(
+          locationSettings: const LocationSettings(
+            accuracy: LocationAccuracy.high,
+            timeLimit: Duration(seconds: 8),
+          ),
+        );
+        await _reverseGeocode(pos);
+      } catch (_) {
+        final last = await Geolocator.getLastKnownPosition();
+        if (last != null) await _reverseGeocode(last);
+      }
+
+      await _posSub?.cancel();
+      _posSub = Geolocator.getPositionStream(
+        locationSettings: const LocationSettings(
+          accuracy: LocationAccuracy.high,
+          distanceFilter: 25,
+        ),
+      ).listen(_reverseGeocode, onError: (_) {});
+    } catch (_) {
+      if (userAddress.value.isEmpty) {
+        userAddress.value = 'Lokasi tidak tersedia';
+      }
+    } finally {
+      locating.value = false;
+    }
+  }
+
+  /// Turns a GPS fix into a compact "area, city" label via on-device geocoding.
+  Future<void> _reverseGeocode(Position pos) async {
+    locating.value = false;
+    try {
+      final marks = await placemarkFromCoordinates(pos.latitude, pos.longitude);
+      if (marks.isEmpty) return;
+      final p = marks.first;
+      final parts = <String?>[
+        p.subLocality?.isNotEmpty == true ? p.subLocality : p.thoroughfare,
+        p.locality?.isNotEmpty == true ? p.locality : p.subAdministrativeArea,
+      ].where((e) => e != null && e.isNotEmpty).cast<String>().toList();
+      if (parts.isNotEmpty) {
+        userAddress.value = parts.join(', ');
+      } else if (p.name?.isNotEmpty == true) {
+        userAddress.value = p.name!;
+      }
+    } catch (_) {
+      // Geocoder can fail (no network / no result); keep the previous label.
+    }
   }
 
   Future<void> refreshAll() async {
     isLoading.value = true;
-    await Future.wait([_loadToday(), _loadUnread(), _loadAnnouncements(), _loadSummary(), _loadMood(), _loadManager()]);
+    await Future.wait([
+      _loadToday(),
+      _loadUnread(),
+      _loadAnnouncements(),
+      _loadSummary(),
+      _loadMood(),
+      _loadManager(),
+    ]);
     isLoading.value = false;
     _maybePromptMood();
   }
@@ -128,7 +249,9 @@ class HomeController extends GetxController {
         // Also mark today as prompted so the popup can't reappear today even if
         // a later /me/mood reload fails (network) and loses the checked-in flag.
         _storage.setMoodPromptDate(_todayStr());
-        AppToast.success(ApiClient.messageFrom(res, 'Terima kasih, perasaanmu tercatat.'));
+        AppToast.success(
+          ApiClient.messageFrom(res, 'Terima kasih, perasaanmu tercatat.'),
+        );
       } else {
         AppToast.error(ApiClient.messageFrom(res, 'Gagal menyimpan perasaan.'));
       }
@@ -184,7 +307,8 @@ class HomeController extends GetxController {
       if (permission == LocationPermission.denied) {
         permission = await Geolocator.requestPermission();
       }
-      if (permission == LocationPermission.denied || permission == LocationPermission.deniedForever) {
+      if (permission == LocationPermission.denied ||
+          permission == LocationPermission.deniedForever) {
         locState.value = LocState.denied;
 
         return;
@@ -193,7 +317,10 @@ class HomeController extends GetxController {
       Position pos;
       try {
         pos = await Geolocator.getCurrentPosition(
-          locationSettings: const LocationSettings(accuracy: LocationAccuracy.high, timeLimit: Duration(seconds: 8)),
+          locationSettings: const LocationSettings(
+            accuracy: LocationAccuracy.high,
+            timeLimit: Duration(seconds: 8),
+          ),
         );
       } catch (_) {
         // Emulators / slow fixes: fall back to the last known position.
@@ -212,7 +339,12 @@ class HomeController extends GetxController {
         if (loc.latitude == null || loc.longitude == null) {
           continue;
         }
-        final d = Geolocator.distanceBetween(pos.latitude, pos.longitude, loc.latitude!, loc.longitude!);
+        final d = Geolocator.distanceBetween(
+          pos.latitude,
+          pos.longitude,
+          loc.latitude!,
+          loc.longitude!,
+        );
         if (d < nearestDistance) {
           nearestDistance = d;
           nearest = loc;

@@ -16,11 +16,11 @@ class AppTheme {
       colorScheme: base.colorScheme.copyWith(
         primary: AppColors.primary,
         secondary: AppColors.accent,
-        surface: AppColors.background,
+        surface: AppColors.surface,
         error: AppColors.destructive,
       ),
       appBarTheme: AppBarTheme(
-        backgroundColor: AppColors.background,
+        backgroundColor: AppColors.surface,
         foregroundColor: AppColors.navy,
         elevation: 0,
         centerTitle: false,
@@ -53,12 +53,17 @@ class AppTheme {
           foregroundColor: Colors.white,
           minimumSize: Size.fromHeight(52.h),
           elevation: 0,
-          textStyle: GoogleFonts.poppins(fontSize: 15.sp, fontWeight: FontWeight.w600),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r)),
+          textStyle: GoogleFonts.poppins(
+            fontSize: 15.sp,
+            fontWeight: FontWeight.w600,
+          ),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12.r),
+          ),
         ),
       ),
       cardTheme: CardThemeData(
-        color: AppColors.background,
+        color: AppColors.surface,
         elevation: 0,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(16.r),

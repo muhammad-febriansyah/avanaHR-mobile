@@ -18,13 +18,13 @@ class Employment {
   });
 
   factory Employment.fromJson(Map<String, dynamic> json) => Employment(
-        company: json['company'],
-        branch: json['branch'],
-        department: json['department'],
-        position: json['position'],
-        jobGrade: json['job_grade'],
-        employmentType: json['employment_type'],
-      );
+    company: json['company'],
+    branch: json['branch'],
+    department: json['department'],
+    position: json['position'],
+    jobGrade: json['job_grade'],
+    employmentType: json['employment_type'],
+  );
 }
 
 class Profile {
@@ -39,6 +39,10 @@ class Profile {
   final String? photoUrl;
   final Employment? employment;
 
+  /// Whether this employee manages a team — drives Manager Self-Service (MSS)
+  /// access. Sourced from the API's `employee.is_manager` flag.
+  final bool isManager;
+
   Profile({
     required this.id,
     required this.employeeNo,
@@ -50,20 +54,22 @@ class Profile {
     this.joinDate,
     this.photoUrl,
     this.employment,
+    this.isManager = false,
   });
 
   factory Profile.fromJson(Map<String, dynamic> json) => Profile(
-        id: json['id'],
-        employeeNo: json['employee_no'] ?? '',
-        fullName: json['full_name'] ?? '',
-        email: json['email'],
-        phone: json['phone'],
-        address: json['address'],
-        status: json['status'] ?? '',
-        joinDate: json['join_date'],
-        photoUrl: Env.resolveMedia(json['photo_url'] as String?),
-        employment: json['employment'] != null
-            ? Employment.fromJson(Map<String, dynamic>.from(json['employment']))
-            : null,
-      );
+    id: json['id'],
+    employeeNo: json['employee_no'] ?? '',
+    fullName: json['full_name'] ?? '',
+    email: json['email'],
+    phone: json['phone'],
+    address: json['address'],
+    status: json['status'] ?? '',
+    joinDate: json['join_date'],
+    photoUrl: Env.resolveMedia(json['photo_url'] as String?),
+    employment: json['employment'] != null
+        ? Employment.fromJson(Map<String, dynamic>.from(json['employment']))
+        : null,
+    isManager: json['is_manager'] == true,
+  );
 }

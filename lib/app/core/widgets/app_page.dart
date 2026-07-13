@@ -6,10 +6,10 @@ import 'package:iconsax/iconsax.dart';
 
 import '../theme/app_colors.dart';
 
-/// Standard page chrome for the whole app: a solid-primary header panel with a
-/// white rounded content sheet underneath — the same visual language as the
-/// Beranda (home) and login screens. Every non-home screen should use this so
-/// the app reads as one product.
+/// Standard page chrome for the whole app: a blue gradient header with a subtle
+/// diagonal mesh ([BrandMeshPainter]) and a flat white content area underneath —
+/// the same visual language as the Beranda (home) screen. Every non-home screen
+/// should use this so the app reads as one product.
 class AppPage extends StatelessWidget {
   final String title;
   final String? subtitle;
@@ -19,6 +19,10 @@ class AppPage extends StatelessWidget {
 
   /// Show the back button (false for bottom-nav tabs).
   final bool showBack;
+
+  /// Reserve bottom space equal to the persistent nav bar so scroll content is
+  /// not hidden behind it. Enable only on bottom-nav tab screens.
+  final bool reserveBottomNav;
 
   /// Pull-to-refresh handler. When set, [child] must be scrollable.
   final Future<void> Function()? onRefresh;
@@ -34,10 +38,17 @@ class AppPage extends StatelessWidget {
     this.subtitle,
     this.actions = const [],
     this.showBack = true,
+    this.reserveBottomNav = false,
     this.onRefresh,
     this.floatingActionButton,
     this.floatingActionButtonLocation,
   });
+
+  /// Vertical space the persistent Style 13 nav bar occupies (floating-button
+  /// gutter + bar + bottom safe area) — scroll views on tab screens pad their
+  /// bottom by this so their last item clears the bar.
+  static double bottomNavClearance(BuildContext context) =>
+      87.h + MediaQuery.of(context).viewPadding.bottom;
 
   @override
   Widget build(BuildContext context) {
@@ -62,14 +73,10 @@ class AppPage extends StatelessWidget {
             Expanded(
               child: Container(
                 width: double.infinity,
-                clipBehavior: Clip.antiAlias,
-                decoration: const BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.only(
-                    topLeft: Radius.circular(28),
-                    topRight: Radius.circular(28),
-                  ),
-                ),
+                color: Colors.white,
+                padding: reserveBottomNav
+                    ? EdgeInsets.only(bottom: bottomNavClearance(context))
+                    : EdgeInsets.zero,
                 child: content,
               ),
             ),
@@ -80,53 +87,105 @@ class AppPage extends StatelessWidget {
   }
 
   Widget _header(BuildContext context) {
-    return SafeArea(
-      bottom: false,
-      child: Padding(
-        padding: EdgeInsets.fromLTRB(showBack ? 8.w : 20.w, 10.h, 12.w, 18.h),
-        child: Row(
-          children: [
-            if (showBack) ...[
-              HeaderAction(Iconsax.arrow_left_2, () => Get.back()),
-              SizedBox(width: 8.w),
-            ],
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+    return Container(
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [AppColors.primary, AppColors.primaryHover],
+        ),
+      ),
+      child: Stack(
+        children: [
+          Positioned.fill(
+            child: ClipRect(
+              child: CustomPaint(painter: const BrandMeshPainter()),
+            ),
+          ),
+          SafeArea(
+            bottom: false,
+            child: Padding(
+              padding: EdgeInsets.fromLTRB(
+                showBack ? 8.w : 20.w,
+                10.h,
+                12.w,
+                18.h,
+              ),
+              child: Row(
                 children: [
-                  Text(
-                    title,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 18.sp,
-                      fontWeight: FontWeight.w700,
-                      letterSpacing: -0.3,
+                  if (showBack) ...[
+                    HeaderAction(Iconsax.arrow_left_2, () => Get.back()),
+                    SizedBox(width: 8.w),
+                  ],
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          title,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 18.sp,
+                            fontWeight: FontWeight.w700,
+                            letterSpacing: -0.3,
+                          ),
+                        ),
+                        if (subtitle != null)
+                          Padding(
+                            padding: EdgeInsets.only(top: 1.h),
+                            child: Text(
+                              subtitle!,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                color: Colors.white.withValues(alpha: 0.82),
+                                fontSize: 12.sp,
+                              ),
+                            ),
+                          ),
+                      ],
                     ),
                   ),
-                  if (subtitle != null)
-                    Padding(
-                      padding: EdgeInsets.only(top: 1.h),
-                      child: Text(
-                        subtitle!,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          color: Colors.white.withValues(alpha: 0.82),
-                          fontSize: 12.sp,
-                        ),
-                      ),
-                    ),
+                  ...actions,
                 ],
               ),
             ),
-            ...actions,
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
+}
+
+/// Subtle diagonal crosshatch (mesh) painted behind the brand blue header —
+/// shared by every page header and the home screen for one visual language.
+class BrandMeshPainter extends CustomPainter {
+  const BrandMeshPainter();
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final line = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.0
+      ..color = Colors.white.withValues(alpha: 0.06);
+
+    const gap = 24.0;
+    final h = size.height;
+
+    // ╲ diagonals (top-left → bottom-right).
+    for (var d = -h; d < size.width + h; d += gap) {
+      canvas.drawLine(Offset(d, 0), Offset(d + h, h), line);
+    }
+    // ╱ diagonals (top-right → bottom-left).
+    for (var d = 0.0; d < size.width + h; d += gap) {
+      canvas.drawLine(Offset(d, 0), Offset(d - h, h), line);
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant BrandMeshPainter oldDelegate) => false;
 }
 
 /// A translucent white icon button for the [AppPage] header.
@@ -143,15 +202,16 @@ class HeaderAction extends StatelessWidget {
       padding: EdgeInsets.only(left: 8.w),
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(12.r),
+        borderRadius: BorderRadius.circular(100.r),
         child: Stack(
           children: [
             Container(
-              width: 40.w,
-              height: 40.w,
+              width: 44.w,
+              height: 44.w,
+              alignment: Alignment.center,
               decoration: BoxDecoration(
                 color: Colors.white.withValues(alpha: 0.16),
-                borderRadius: BorderRadius.circular(12.r),
+                shape: BoxShape.circle,
               ),
               child: Icon(icon, color: Colors.white, size: 20.sp),
             ),

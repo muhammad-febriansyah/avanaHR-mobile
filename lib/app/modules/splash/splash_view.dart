@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:get/get.dart';
 
@@ -26,17 +27,15 @@ class _SplashViewState extends State<SplashView> {
     final storage = Get.find<StorageService>();
     final auth = Get.find<AuthService>();
 
-    // Pull branding (name/logo) first, then hold briefly so the API logo is
-    // actually visible before we navigate away.
+    // Pull branding first, then hold briefly so the splash is actually seen.
     await Get.find<ConfigService>().load();
-    await Future.delayed(const Duration(milliseconds: 700));
+    await Future.delayed(const Duration(milliseconds: 800));
+    if (!mounted) return;
 
-    // Logged in → straight into the app (splash only, skip onboarding).
     if (auth.isLoggedIn && await auth.loadMe()) {
       Get.offAllNamed(Routes.MAIN);
       return;
     }
-    // Not logged in → show the intro once, then the login screen.
     if (!storage.onboarded) {
       Get.offAllNamed(Routes.ONBOARDING);
       return;
@@ -46,29 +45,38 @@ class _SplashViewState extends State<SplashView> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppColors.background,
-      body: Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            // Bundled brand logo — no network dependency on the API for the
-            // very first frame.
-            Image.asset(
-              'assets/AvanaHR.png',
-              height: 130.h,
-              fit: BoxFit.contain,
-            ),
-            SizedBox(height: 40.h),
-            SizedBox(
-              width: 22.w,
-              height: 22.w,
-              child: const CircularProgressIndicator(
-                color: AppColors.primary,
-                strokeWidth: 2.2,
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value: SystemUiOverlayStyle.dark.copyWith(
+        statusBarColor: Colors.transparent,
+        systemNavigationBarColor: Colors.white,
+        systemNavigationBarIconBrightness: Brightness.dark,
+      ),
+      child: Scaffold(
+        // White — matches the native launch screen so the handoff is seamless.
+        backgroundColor: Colors.white,
+        body: Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Bundled brand logo (designed for white) — instant first frame,
+              // no network dependency.
+              Image.asset(
+                'assets/AvanaHR.png',
+                width: 200.w,
+                fit: BoxFit.contain,
+                semanticLabel: 'AvanaHR',
               ),
-            ),
-          ],
+              SizedBox(height: 44.h),
+              SizedBox(
+                width: 26.w,
+                height: 26.w,
+                child: const CircularProgressIndicator(
+                  color: AppColors.primary,
+                  strokeWidth: 2.6,
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );

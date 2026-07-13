@@ -20,6 +20,7 @@ class ProfileView extends GetView<ProfileController> {
       title: 'Profil Saya',
       subtitle: 'Akun & keamanan',
       showBack: false,
+      reserveBottomNav: true,
       onRefresh: controller.load,
       child: Obx(() {
         if (controller.isLoading.value) {

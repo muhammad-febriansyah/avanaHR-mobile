@@ -78,15 +78,15 @@ class MssTeamMember {
   });
 
   factory MssTeamMember.fromJson(Map<String, dynamic> j) => MssTeamMember(
-        id: j['id'] ?? 0,
-        name: (j['name'] ?? '—').toString(),
-        employeeNumber: j['employee_number']?.toString(),
-        position: j['position']?.toString(),
-        department: j['department']?.toString(),
-        status: (j['status'] ?? 'active').toString(),
-        initials: (j['initials'] ?? '?').toString(),
-        avatarColor: _hex(j['avatar_color']),
-      );
+    id: j['id'] ?? 0,
+    name: (j['name'] ?? '—').toString(),
+    employeeNumber: j['employee_number']?.toString(),
+    position: j['position']?.toString(),
+    department: j['department']?.toString(),
+    status: (j['status'] ?? 'active').toString(),
+    initials: (j['initials'] ?? '?').toString(),
+    avatarColor: _hex(j['avatar_color']),
+  );
 }
 
 /// A team member's detail for the manager: profile, this month's attendance
@@ -105,15 +105,19 @@ class MssMemberDetail {
   });
 
   factory MssMemberDetail.fromJson(Map<String, dynamic> j) => MssMemberDetail(
-        member: MssTeamMember.fromJson(Map<String, dynamic>.from(j['member'] ?? {})),
-        attendance: AttendanceRecap.fromJson(Map<String, dynamic>.from(j['attendance'] ?? {})),
-        todayShift: j['today_shift'] is Map
-            ? TodayShift.fromJson(Map<String, dynamic>.from(j['today_shift']))
-            : null,
-        pending: ((j['pending'] as List?) ?? [])
-            .map((e) => MssPendingItem.fromJson(Map<String, dynamic>.from(e)))
-            .toList(),
-      );
+    member: MssTeamMember.fromJson(
+      Map<String, dynamic>.from(j['member'] ?? {}),
+    ),
+    attendance: AttendanceRecap.fromJson(
+      Map<String, dynamic>.from(j['attendance'] ?? {}),
+    ),
+    todayShift: j['today_shift'] is Map
+        ? TodayShift.fromJson(Map<String, dynamic>.from(j['today_shift']))
+        : null,
+    pending: ((j['pending'] as List?) ?? [])
+        .map((e) => MssPendingItem.fromJson(Map<String, dynamic>.from(e)))
+        .toList(),
+  );
 }
 
 /// A member's attendance tally for the current month.
@@ -133,12 +137,12 @@ class AttendanceRecap {
   });
 
   factory AttendanceRecap.fromJson(Map<String, dynamic> j) => AttendanceRecap(
-        month: (j['month'] ?? '').toString(),
-        present: (j['present'] ?? 0) is int ? j['present'] : 0,
-        late: (j['late'] ?? 0) is int ? j['late'] : 0,
-        absent: (j['absent'] ?? 0) is int ? j['absent'] : 0,
-        workHours: (j['work_hours'] as num?)?.toDouble() ?? 0,
-      );
+    month: (j['month'] ?? '').toString(),
+    present: (j['present'] ?? 0) is int ? j['present'] : 0,
+    late: (j['late'] ?? 0) is int ? j['late'] : 0,
+    absent: (j['absent'] ?? 0) is int ? j['absent'] : 0,
+    workHours: (j['work_hours'] as num?)?.toDouble() ?? 0,
+  );
 }
 
 /// A compact pending request shown on the member detail (context, not actionable).
@@ -158,12 +162,12 @@ class MssPendingItem {
   });
 
   factory MssPendingItem.fromJson(Map<String, dynamic> j) => MssPendingItem(
-        id: (j['id'] ?? '').toString(),
-        type: (j['type'] ?? '').toString(),
-        typeLabel: (j['type_label'] ?? '').toString(),
-        title: (j['title'] ?? '').toString(),
-        detail: (j['detail'] ?? '').toString(),
-      );
+    id: (j['id'] ?? '').toString(),
+    type: (j['type'] ?? '').toString(),
+    typeLabel: (j['type_label'] ?? '').toString(),
+    title: (j['title'] ?? '').toString(),
+    detail: (j['detail'] ?? '').toString(),
+  );
 }
 
 /// A shift a manager can assign to a team member.
@@ -183,12 +187,12 @@ class ShiftOption {
   });
 
   factory ShiftOption.fromJson(Map<String, dynamic> j) => ShiftOption(
-        id: j['id'] ?? 0,
-        name: (j['name'] ?? '').toString(),
-        code: j['code']?.toString(),
-        start: j['start']?.toString(),
-        end: j['end']?.toString(),
-      );
+    id: j['id'] ?? 0,
+    name: (j['name'] ?? '').toString(),
+    code: j['code']?.toString(),
+    start: j['start']?.toString(),
+    end: j['end']?.toString(),
+  );
 
   String get label {
     final time = (start != null && end != null) ? ' · $start–$end' : '';
@@ -229,20 +233,20 @@ class TeamRecapRow {
   });
 
   factory TeamRecapRow.fromJson(Map<String, dynamic> j) => TeamRecapRow(
-        id: (j['id'] as num?)?.toInt() ?? 0,
-        name: (j['name'] ?? '—').toString(),
-        employeeNumber: j['employee_number']?.toString(),
-        initials: (j['initials'] ?? '?').toString(),
-        avatarColor: _hex(j['avatar_color']),
-        present: (j['present'] as num?)?.toInt() ?? 0,
-        late: (j['late'] as num?)?.toInt() ?? 0,
-        absent: (j['absent'] as num?)?.toInt() ?? 0,
-        leave: (j['leave'] as num?)?.toInt() ?? 0,
-        wfh: (j['wfh'] as num?)?.toInt() ?? 0,
-        holiday: (j['holiday'] as num?)?.toInt() ?? 0,
-        workHours: (j['work_hours'] as num?)?.toDouble() ?? 0,
-        lateMinutes: (j['late_minutes'] as num?)?.toInt() ?? 0,
-      );
+    id: (j['id'] as num?)?.toInt() ?? 0,
+    name: (j['name'] ?? '—').toString(),
+    employeeNumber: j['employee_number']?.toString(),
+    initials: (j['initials'] ?? '?').toString(),
+    avatarColor: _hex(j['avatar_color']),
+    present: (j['present'] as num?)?.toInt() ?? 0,
+    late: (j['late'] as num?)?.toInt() ?? 0,
+    absent: (j['absent'] as num?)?.toInt() ?? 0,
+    leave: (j['leave'] as num?)?.toInt() ?? 0,
+    wfh: (j['wfh'] as num?)?.toInt() ?? 0,
+    holiday: (j['holiday'] as num?)?.toInt() ?? 0,
+    workHours: (j['work_hours'] as num?)?.toDouble() ?? 0,
+    lateMinutes: (j['late_minutes'] as num?)?.toInt() ?? 0,
+  );
 }
 
 /// Team-wide totals for the recap period.
@@ -270,16 +274,16 @@ class TeamRecapSummary {
   });
 
   factory TeamRecapSummary.fromJson(Map<String, dynamic> j) => TeamRecapSummary(
-        members: (j['members'] as num?)?.toInt() ?? 0,
-        present: (j['present'] as num?)?.toInt() ?? 0,
-        late: (j['late'] as num?)?.toInt() ?? 0,
-        absent: (j['absent'] as num?)?.toInt() ?? 0,
-        leave: (j['leave'] as num?)?.toInt() ?? 0,
-        wfh: (j['wfh'] as num?)?.toInt() ?? 0,
-        holiday: (j['holiday'] as num?)?.toInt() ?? 0,
-        workHours: (j['work_hours'] as num?)?.toDouble() ?? 0,
-        lateMinutes: (j['late_minutes'] as num?)?.toInt() ?? 0,
-      );
+    members: (j['members'] as num?)?.toInt() ?? 0,
+    present: (j['present'] as num?)?.toInt() ?? 0,
+    late: (j['late'] as num?)?.toInt() ?? 0,
+    absent: (j['absent'] as num?)?.toInt() ?? 0,
+    leave: (j['leave'] as num?)?.toInt() ?? 0,
+    wfh: (j['wfh'] as num?)?.toInt() ?? 0,
+    holiday: (j['holiday'] as num?)?.toInt() ?? 0,
+    workHours: (j['work_hours'] as num?)?.toDouble() ?? 0,
+    lateMinutes: (j['late_minutes'] as num?)?.toInt() ?? 0,
+  );
 }
 
 /// The manager's team attendance recap: per-member rows plus a period summary.
@@ -304,14 +308,15 @@ class TeamRecap {
           .toList(),
       start: (meta['start'] ?? '').toString(),
       end: (meta['end'] ?? '').toString(),
-      summary:
-          TeamRecapSummary.fromJson(Map<String, dynamic>.from(meta['summary'] ?? {})),
+      summary: TeamRecapSummary.fromJson(
+        Map<String, dynamic>.from(meta['summary'] ?? {}),
+      ),
     );
   }
 }
 
 Color _hex(dynamic value) {
-  final s = (value ?? '#2F54C9').toString().replaceAll('#', '');
-  final v = int.tryParse(s.length == 6 ? 'FF$s' : s, radix: 16) ?? 0xFF2F54C9;
+  final s = (value ?? '#2547F9').toString().replaceAll('#', '');
+  final v = int.tryParse(s.length == 6 ? 'FF$s' : s, radix: 16) ?? 0xFF2547F9;
   return Color(v);
 }
