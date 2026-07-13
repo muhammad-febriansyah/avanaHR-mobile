@@ -7,6 +7,7 @@ import '../../core/theme/app_colors.dart';
 import '../../core/widgets/app_page.dart';
 import '../../core/widgets/app_sheet.dart';
 import '../../core/widgets/app_toast.dart';
+import '../../core/widgets/filter_chips.dart';
 import '../../core/widgets/form_fields.dart';
 import '../../core/widgets/status_chip.dart';
 import '../../core/widgets/ui.dart';
@@ -30,75 +31,98 @@ class OvertimeView extends GetView<OvertimeController> {
         if (controller.isLoading.value) {
           return const Loading();
         }
-        return RefreshIndicator(
-          onRefresh: controller.load,
-          color: AppColors.primary,
-          child: controller.items.isEmpty
-              ? ListView(
-                  physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
-                  children: [
-                    SizedBox(height: 80.h),
-                    const EmptyState(
-                      icon: Iconsax.timer_1,
-                      message: 'Belum ada pengajuan lembur.',
-                    ),
-                  ],
-                )
-              : ListView.separated(
-                  physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
-                  padding: EdgeInsets.fromLTRB(20.w, 20.h, 20.w, 90.h),
-                  itemCount: controller.items.length,
-                  separatorBuilder: (_, i) => SizedBox(height: 10.h),
-                  itemBuilder: (_, i) {
-                    final o = controller.items[i];
-                    return ContentCard(
-                      child: Row(
+        return Column(
+          children: [
+            Padding(
+              padding: EdgeInsets.fromLTRB(20.w, 12.h, 20.w, 4.h),
+              child: FilterChips(
+                options: kStatusFilterOptions,
+                selected: controller.statusFilter.value,
+                onSelected: (v) => controller.statusFilter.value = v,
+              ),
+            ),
+            Expanded(
+              child: RefreshIndicator(
+                onRefresh: controller.load,
+                color: AppColors.primary,
+                child: controller.visibleItems.isEmpty
+                    ? ListView(
+                        physics: const AlwaysScrollableScrollPhysics(
+                          parent: BouncingScrollPhysics(),
+                        ),
                         children: [
-                          const IconBubble(Iconsax.timer_1, AppColors.warning),
-                          SizedBox(width: 12.w),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
+                          SizedBox(height: 80.h),
+                          const EmptyState(
+                            icon: Iconsax.timer_1,
+                            message: 'Belum ada pengajuan lembur.',
+                          ),
+                        ],
+                      )
+                    : ListView.separated(
+                        physics: const AlwaysScrollableScrollPhysics(
+                          parent: BouncingScrollPhysics(),
+                        ),
+                        padding: EdgeInsets.fromLTRB(20.w, 16.h, 20.w, 90.h),
+                        itemCount: controller.visibleItems.length,
+                        separatorBuilder: (_, i) => SizedBox(height: 10.h),
+                        itemBuilder: (_, i) {
+                          final o = controller.visibleItems[i];
+                          return ContentCard(
+                            child: Row(
                               children: [
-                                Text(
-                                  '${o.hours} jam',
-                                  style: TextStyle(
-                                    fontWeight: FontWeight.w700,
-                                    color: AppColors.navy,
-                                    fontSize: 13.5.sp,
-                                  ),
+                                const IconBubble(
+                                  Iconsax.timer_1,
+                                  AppColors.warning,
                                 ),
-                                SizedBox(height: 2.h),
-                                Text(
-                                  o.date,
-                                  style: TextStyle(
-                                    color: AppColors.textMuted,
-                                    fontSize: 12.sp,
-                                  ),
-                                ),
-                                if (o.reason != null && o.reason!.isNotEmpty)
-                                  Padding(
-                                    padding: EdgeInsets.only(top: 2.h),
-                                    child: Text(
-                                      o.reason!,
-                                      maxLines: 2,
-                                      overflow: TextOverflow.ellipsis,
-                                      style: TextStyle(
-                                        color: AppColors.textMuted,
-                                        fontSize: 12.sp,
+                                SizedBox(width: 12.w),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        '${o.hours} jam',
+                                        style: TextStyle(
+                                          fontWeight: FontWeight.w700,
+                                          color: AppColors.navy,
+                                          fontSize: 13.5.sp,
+                                        ),
                                       ),
-                                    ),
+                                      SizedBox(height: 2.h),
+                                      Text(
+                                        o.date,
+                                        style: TextStyle(
+                                          color: AppColors.textMuted,
+                                          fontSize: 12.sp,
+                                        ),
+                                      ),
+                                      if (o.reason != null &&
+                                          o.reason!.isNotEmpty)
+                                        Padding(
+                                          padding: EdgeInsets.only(top: 2.h),
+                                          child: Text(
+                                            o.reason!,
+                                            maxLines: 2,
+                                            overflow: TextOverflow.ellipsis,
+                                            style: TextStyle(
+                                              color: AppColors.textMuted,
+                                              fontSize: 12.sp,
+                                            ),
+                                          ),
+                                        ),
+                                    ],
                                   ),
+                                ),
+                                SizedBox(width: 8.w),
+                                StatusChip(o.status),
                               ],
                             ),
-                          ),
-                          SizedBox(width: 8.w),
-                          StatusChip(o.status),
-                        ],
+                          );
+                        },
                       ),
-                    );
-                  },
-                ),
+              ),
+            ),
+          ],
         );
       }),
     );

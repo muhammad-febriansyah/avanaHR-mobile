@@ -6,11 +6,22 @@ import 'package:intl/intl.dart';
 
 import '../../core/theme/app_colors.dart';
 import '../../core/widgets/app_page.dart';
+import '../../core/widgets/filter_chips.dart';
 import '../../data/models/activity.dart';
 import 'riwayat_controller.dart';
 
 class RiwayatView extends GetView<RiwayatController> {
   const RiwayatView({super.key});
+
+  static const _typeOptions = [
+    FilterOption('all', 'Semua'),
+    FilterOption('attendance', 'Absensi'),
+    FilterOption('leave', 'Cuti'),
+    FilterOption('overtime', 'Lembur'),
+    FilterOption('permission', 'Izin'),
+    FilterOption('wfh', 'WFH'),
+    FilterOption('reimbursement', 'Reimburse'),
+  ];
 
   @override
   Widget build(BuildContext context) {
@@ -18,14 +29,29 @@ class RiwayatView extends GetView<RiwayatController> {
       title: 'Riwayat Aktivitas',
       subtitle: 'Aktivitas terbaru',
       showBack: false,
+      reserveBottomNav: true,
       child: Obx(() {
         if (controller.isLoading.value) {
           return const Center(child: CircularProgressIndicator());
         }
 
-        return RefreshIndicator(
-          onRefresh: controller.load,
-          child: controller.items.isEmpty ? _empty() : _list(),
+        return Column(
+          children: [
+            Padding(
+              padding: EdgeInsets.fromLTRB(16.w, 12.h, 16.w, 4.h),
+              child: FilterChips(
+                options: _typeOptions,
+                selected: controller.typeFilter.value,
+                onSelected: (v) => controller.typeFilter.value = v,
+              ),
+            ),
+            Expanded(
+              child: RefreshIndicator(
+                onRefresh: controller.load,
+                child: controller.visibleItems.isEmpty ? _empty() : _list(),
+              ),
+            ),
+          ],
         );
       }),
     );
@@ -56,9 +82,9 @@ class RiwayatView extends GetView<RiwayatController> {
         parent: BouncingScrollPhysics(),
       ),
       padding: EdgeInsets.fromLTRB(16.w, 12.h, 16.w, 20.h),
-      itemCount: controller.items.length,
+      itemCount: controller.visibleItems.length,
       separatorBuilder: (_, __) => SizedBox(height: 10.h),
-      itemBuilder: (_, i) => _tile(controller.items[i]),
+      itemBuilder: (_, i) => _tile(controller.visibleItems[i]),
     );
   }
 

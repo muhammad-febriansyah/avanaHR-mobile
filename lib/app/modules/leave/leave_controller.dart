@@ -2,6 +2,7 @@ import 'package:dio/dio.dart';
 import 'package:get/get.dart' hide Response;
 
 import '../../core/widgets/app_toast.dart';
+import '../../core/widgets/filter_chips.dart';
 import '../../data/models/ess_models.dart';
 import '../../data/models/leave_balance.dart';
 import '../../data/providers/api_client.dart';
@@ -15,6 +16,14 @@ class LeaveController extends GetxController {
   final balances = <LeaveBalance>[].obs;
   final requests = <LeaveRequestItem>[].obs;
   final types = <LeaveType>[].obs;
+  final statusFilter = 'all'.obs;
+
+  /// Requests narrowed to the selected status group ('all' = everything).
+  List<LeaveRequestItem> get visibleRequests => statusFilter.value == 'all'
+      ? requests
+      : requests
+            .where((e) => statusGroup(e.status) == statusFilter.value)
+            .toList();
 
   @override
   void onInit() {
@@ -39,10 +48,20 @@ class LeaveController extends GetxController {
     isLoading.value = false;
   }
 
-  Future<bool> submit({required int leaveTypeId, required String startDate, required String endDate, String? reason}) async {
+  Future<bool> submit({
+    required int leaveTypeId,
+    required String startDate,
+    required String endDate,
+    String? reason,
+  }) async {
     submitting.value = true;
     try {
-      final res = await _api.submitLeave(leaveTypeId: leaveTypeId, startDate: startDate, endDate: endDate, reason: reason);
+      final res = await _api.submitLeave(
+        leaveTypeId: leaveTypeId,
+        startDate: startDate,
+        endDate: endDate,
+        reason: reason,
+      );
       submitting.value = false;
       if (res.statusCode == 201) {
         AppToast.success('Pengajuan cuti terkirim');
@@ -53,7 +72,9 @@ class LeaveController extends GetxController {
       return false;
     } on DioException catch (e) {
       submitting.value = false;
-      AppToast.error(ApiClient.messageFrom(e.response, 'Gagal terhubung ke server.'));
+      AppToast.error(
+        ApiClient.messageFrom(e.response, 'Gagal terhubung ke server.'),
+      );
       return false;
     }
   }

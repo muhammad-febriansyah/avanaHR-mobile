@@ -2,6 +2,7 @@ import 'package:dio/dio.dart';
 import 'package:get/get.dart' hide Response;
 
 import '../../core/widgets/app_toast.dart';
+import '../../core/widgets/filter_chips.dart';
 import '../../data/models/ess_models.dart';
 import '../../data/providers/api_client.dart';
 import '../../data/providers/avana_api.dart';
@@ -12,6 +13,14 @@ class PermissionController extends GetxController {
   final isLoading = true.obs;
   final submitting = false.obs;
   final items = <PermissionItem>[].obs;
+  final statusFilter = 'all'.obs;
+
+  /// Items narrowed to the selected status group ('all' = everything).
+  List<PermissionItem> get visibleItems => statusFilter.value == 'all'
+      ? items
+      : items
+            .where((e) => statusGroup(e.status) == statusFilter.value)
+            .toList();
 
   @override
   void onInit() {
@@ -29,10 +38,22 @@ class PermissionController extends GetxController {
     isLoading.value = false;
   }
 
-  Future<bool> submit({required String date, required String type, String? startTime, String? endTime, String? reason}) async {
+  Future<bool> submit({
+    required String date,
+    required String type,
+    String? startTime,
+    String? endTime,
+    String? reason,
+  }) async {
     submitting.value = true;
     try {
-      final res = await _api.submitPermission(date: date, type: type, startTime: startTime, endTime: endTime, reason: reason);
+      final res = await _api.submitPermission(
+        date: date,
+        type: type,
+        startTime: startTime,
+        endTime: endTime,
+        reason: reason,
+      );
       submitting.value = false;
       if (res.statusCode == 201) {
         AppToast.success('Pengajuan izin terkirim');
@@ -43,7 +64,9 @@ class PermissionController extends GetxController {
       return false;
     } on DioException catch (e) {
       submitting.value = false;
-      AppToast.error(ApiClient.messageFrom(e.response, 'Gagal terhubung ke server.'));
+      AppToast.error(
+        ApiClient.messageFrom(e.response, 'Gagal terhubung ke server.'),
+      );
       return false;
     }
   }

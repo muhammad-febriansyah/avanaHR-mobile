@@ -2,6 +2,7 @@ import 'package:dio/dio.dart';
 import 'package:get/get.dart' hide Response;
 
 import '../../core/widgets/app_toast.dart';
+import '../../core/widgets/filter_chips.dart';
 import '../../data/models/ess_models.dart';
 import '../../data/providers/api_client.dart';
 import '../../data/providers/avana_api.dart';
@@ -12,6 +13,14 @@ class OvertimeController extends GetxController {
   final isLoading = true.obs;
   final submitting = false.obs;
   final items = <OvertimeItem>[].obs;
+  final statusFilter = 'all'.obs;
+
+  /// Items narrowed to the selected status group ('all' = everything).
+  List<OvertimeItem> get visibleItems => statusFilter.value == 'all'
+      ? items
+      : items
+            .where((e) => statusGroup(e.status) == statusFilter.value)
+            .toList();
 
   @override
   void onInit() {
@@ -29,10 +38,18 @@ class OvertimeController extends GetxController {
     isLoading.value = false;
   }
 
-  Future<bool> submit({required String date, required double hours, String? reason}) async {
+  Future<bool> submit({
+    required String date,
+    required double hours,
+    String? reason,
+  }) async {
     submitting.value = true;
     try {
-      final res = await _api.submitOvertime(date: date, hours: hours, reason: reason);
+      final res = await _api.submitOvertime(
+        date: date,
+        hours: hours,
+        reason: reason,
+      );
       submitting.value = false;
       if (res.statusCode == 201) {
         AppToast.success('Pengajuan lembur terkirim');
@@ -43,7 +60,9 @@ class OvertimeController extends GetxController {
       return false;
     } on DioException catch (e) {
       submitting.value = false;
-      AppToast.error(ApiClient.messageFrom(e.response, 'Gagal terhubung ke server.'));
+      AppToast.error(
+        ApiClient.messageFrom(e.response, 'Gagal terhubung ke server.'),
+      );
       return false;
     }
   }

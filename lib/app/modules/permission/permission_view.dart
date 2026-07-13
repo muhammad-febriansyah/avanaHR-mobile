@@ -7,6 +7,7 @@ import '../../core/theme/app_colors.dart';
 import '../../core/widgets/app_page.dart';
 import '../../core/widgets/app_sheet.dart';
 import '../../core/widgets/app_toast.dart';
+import '../../core/widgets/filter_chips.dart';
 import '../../core/widgets/form_fields.dart';
 import '../../core/widgets/status_chip.dart';
 import '../../core/widgets/ui.dart';
@@ -30,70 +31,89 @@ class PermissionView extends GetView<PermissionController> {
         if (controller.isLoading.value) {
           return const Loading();
         }
-        return RefreshIndicator(
-          onRefresh: controller.load,
-          color: AppColors.primary,
-          child: controller.items.isEmpty
-              ? ListView(
-                  physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
-                  children: [
-                    SizedBox(height: 80.h),
-                    const EmptyState(
-                      icon: Iconsax.calendar_remove,
-                      message: 'Belum ada pengajuan izin.',
-                    ),
-                  ],
-                )
-              : ListView.separated(
-                  physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
-                  padding: EdgeInsets.fromLTRB(20.w, 20.h, 20.w, 90.h),
-                  itemCount: controller.items.length,
-                  separatorBuilder: (_, i) => SizedBox(height: 10.h),
-                  itemBuilder: (_, i) {
-                    final p = controller.items[i];
-                    final time = p.startTime != null
-                        ? ' · ${p.startTime} - ${p.endTime}'
-                        : '';
-                    return ContentCard(
-                      child: Row(
+        return Column(
+          children: [
+            Padding(
+              padding: EdgeInsets.fromLTRB(20.w, 12.h, 20.w, 4.h),
+              child: FilterChips(
+                options: kStatusFilterOptions,
+                selected: controller.statusFilter.value,
+                onSelected: (v) => controller.statusFilter.value = v,
+              ),
+            ),
+            Expanded(
+              child: RefreshIndicator(
+                onRefresh: controller.load,
+                color: AppColors.primary,
+                child: controller.visibleItems.isEmpty
+                    ? ListView(
+                        physics: const AlwaysScrollableScrollPhysics(
+                          parent: BouncingScrollPhysics(),
+                        ),
                         children: [
-                          const IconBubble(
-                            Iconsax.calendar_remove,
-                            Color(0xFF7C3AED),
+                          SizedBox(height: 80.h),
+                          const EmptyState(
+                            icon: Iconsax.calendar_remove,
+                            message: 'Belum ada pengajuan izin.',
                           ),
-                          SizedBox(width: 12.w),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
+                        ],
+                      )
+                    : ListView.separated(
+                        physics: const AlwaysScrollableScrollPhysics(
+                          parent: BouncingScrollPhysics(),
+                        ),
+                        padding: EdgeInsets.fromLTRB(20.w, 20.h, 20.w, 90.h),
+                        itemCount: controller.visibleItems.length,
+                        separatorBuilder: (_, i) => SizedBox(height: 10.h),
+                        itemBuilder: (_, i) {
+                          final p = controller.visibleItems[i];
+                          final time = p.startTime != null
+                              ? ' · ${p.startTime} - ${p.endTime}'
+                              : '';
+                          return ContentCard(
+                            child: Row(
                               children: [
-                                Text(
-                                  p.type,
-                                  style: TextStyle(
-                                    fontWeight: FontWeight.w700,
-                                    color: AppColors.navy,
-                                    fontSize: 13.5.sp,
+                                const IconBubble(
+                                  Iconsax.calendar_remove,
+                                  Color(0xFF7C3AED),
+                                ),
+                                SizedBox(width: 12.w),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        p.type,
+                                        style: TextStyle(
+                                          fontWeight: FontWeight.w700,
+                                          color: AppColors.navy,
+                                          fontSize: 13.5.sp,
+                                        ),
+                                      ),
+                                      SizedBox(height: 2.h),
+                                      Text(
+                                        '${p.date}$time',
+                                        maxLines: 2,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: TextStyle(
+                                          color: AppColors.textMuted,
+                                          fontSize: 12.sp,
+                                        ),
+                                      ),
+                                    ],
                                   ),
                                 ),
-                                SizedBox(height: 2.h),
-                                Text(
-                                  '${p.date}$time',
-                                  maxLines: 2,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: TextStyle(
-                                    color: AppColors.textMuted,
-                                    fontSize: 12.sp,
-                                  ),
-                                ),
+                                SizedBox(width: 8.w),
+                                StatusChip(p.status),
                               ],
                             ),
-                          ),
-                          SizedBox(width: 8.w),
-                          StatusChip(p.status),
-                        ],
+                          );
+                        },
                       ),
-                    );
-                  },
-                ),
+              ),
+            ),
+          ],
         );
       }),
     );

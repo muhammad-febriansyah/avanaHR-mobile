@@ -7,6 +7,7 @@ import '../../core/theme/app_colors.dart';
 import '../../core/widgets/app_page.dart';
 import '../../core/widgets/app_sheet.dart';
 import '../../core/widgets/app_toast.dart';
+import '../../core/widgets/filter_chips.dart';
 import '../../core/widgets/form_fields.dart';
 import '../../core/widgets/status_chip.dart';
 import '../../core/widgets/ui.dart';
@@ -82,13 +83,19 @@ class LeaveView extends GetView<LeaveController> {
               SizedBox(height: 18.h),
               const SectionTitle('Riwayat Pengajuan'),
               SizedBox(height: 12.h),
-              if (controller.requests.isEmpty)
+              FilterChips(
+                options: kStatusFilterOptions,
+                selected: controller.statusFilter.value,
+                onSelected: (v) => controller.statusFilter.value = v,
+              ),
+              SizedBox(height: 12.h),
+              if (controller.visibleRequests.isEmpty)
                 const EmptyState(
                   icon: Iconsax.sun_1,
                   message: 'Belum ada pengajuan cuti.',
                 )
               else
-                ...controller.requests.map(
+                ...controller.visibleRequests.map(
                   (r) => Padding(
                     padding: EdgeInsets.only(bottom: 10.h),
                     child: ContentCard(
