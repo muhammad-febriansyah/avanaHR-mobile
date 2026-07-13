@@ -196,6 +196,120 @@ class ShiftOption {
   }
 }
 
+/// One team member's attendance tally over the recap period.
+class TeamRecapRow {
+  final int id;
+  final String name;
+  final String? employeeNumber;
+  final String initials;
+  final Color avatarColor;
+  final int present;
+  final int late;
+  final int absent;
+  final int leave;
+  final int wfh;
+  final int holiday;
+  final double workHours;
+  final int lateMinutes;
+
+  const TeamRecapRow({
+    required this.id,
+    required this.name,
+    required this.initials,
+    required this.avatarColor,
+    required this.present,
+    required this.late,
+    required this.absent,
+    required this.leave,
+    required this.wfh,
+    required this.holiday,
+    required this.workHours,
+    required this.lateMinutes,
+    this.employeeNumber,
+  });
+
+  factory TeamRecapRow.fromJson(Map<String, dynamic> j) => TeamRecapRow(
+        id: (j['id'] as num?)?.toInt() ?? 0,
+        name: (j['name'] ?? '—').toString(),
+        employeeNumber: j['employee_number']?.toString(),
+        initials: (j['initials'] ?? '?').toString(),
+        avatarColor: _hex(j['avatar_color']),
+        present: (j['present'] as num?)?.toInt() ?? 0,
+        late: (j['late'] as num?)?.toInt() ?? 0,
+        absent: (j['absent'] as num?)?.toInt() ?? 0,
+        leave: (j['leave'] as num?)?.toInt() ?? 0,
+        wfh: (j['wfh'] as num?)?.toInt() ?? 0,
+        holiday: (j['holiday'] as num?)?.toInt() ?? 0,
+        workHours: (j['work_hours'] as num?)?.toDouble() ?? 0,
+        lateMinutes: (j['late_minutes'] as num?)?.toInt() ?? 0,
+      );
+}
+
+/// Team-wide totals for the recap period.
+class TeamRecapSummary {
+  final int members;
+  final int present;
+  final int late;
+  final int absent;
+  final int leave;
+  final int wfh;
+  final int holiday;
+  final double workHours;
+  final int lateMinutes;
+
+  const TeamRecapSummary({
+    required this.members,
+    required this.present,
+    required this.late,
+    required this.absent,
+    required this.leave,
+    required this.wfh,
+    required this.holiday,
+    required this.workHours,
+    required this.lateMinutes,
+  });
+
+  factory TeamRecapSummary.fromJson(Map<String, dynamic> j) => TeamRecapSummary(
+        members: (j['members'] as num?)?.toInt() ?? 0,
+        present: (j['present'] as num?)?.toInt() ?? 0,
+        late: (j['late'] as num?)?.toInt() ?? 0,
+        absent: (j['absent'] as num?)?.toInt() ?? 0,
+        leave: (j['leave'] as num?)?.toInt() ?? 0,
+        wfh: (j['wfh'] as num?)?.toInt() ?? 0,
+        holiday: (j['holiday'] as num?)?.toInt() ?? 0,
+        workHours: (j['work_hours'] as num?)?.toDouble() ?? 0,
+        lateMinutes: (j['late_minutes'] as num?)?.toInt() ?? 0,
+      );
+}
+
+/// The manager's team attendance recap: per-member rows plus a period summary.
+class TeamRecap {
+  final List<TeamRecapRow> rows;
+  final String start;
+  final String end;
+  final TeamRecapSummary summary;
+
+  const TeamRecap({
+    required this.rows,
+    required this.start,
+    required this.end,
+    required this.summary,
+  });
+
+  factory TeamRecap.fromJson(Map<String, dynamic> j) {
+    final meta = Map<String, dynamic>.from(j['meta'] ?? {});
+    return TeamRecap(
+      rows: ((j['data'] as List?) ?? [])
+          .map((e) => TeamRecapRow.fromJson(Map<String, dynamic>.from(e)))
+          .toList(),
+      start: (meta['start'] ?? '').toString(),
+      end: (meta['end'] ?? '').toString(),
+      summary:
+          TeamRecapSummary.fromJson(Map<String, dynamic>.from(meta['summary'] ?? {})),
+    );
+  }
+}
+
 Color _hex(dynamic value) {
   final s = (value ?? '#2F54C9').toString().replaceAll('#', '');
   final v = int.tryParse(s.length == 6 ? 'FF$s' : s, radix: 16) ?? 0xFF2F54C9;

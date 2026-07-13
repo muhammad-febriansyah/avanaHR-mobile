@@ -354,6 +354,28 @@ class AvanaApi {
         'shift_id': shiftId,
       });
 
+  Future<TeamRecap> mssTeamRecap({String? start, String? end}) async {
+    final res = await _dio.get('/mss/attendance/recap', queryParameters: {
+      if (start != null) 'start': start,
+      if (end != null) 'end': end,
+    });
+
+    return TeamRecap.fromJson(Map<String, dynamic>.from(res.data));
+  }
+
+  Future<List<int>> mssTeamRecapExport({String? start, String? end}) async {
+    final res = await _dio.get<List<int>>(
+      '/mss/attendance/recap/export',
+      queryParameters: {
+        if (start != null) 'start': start,
+        if (end != null) 'end': end,
+      },
+      options: Options(responseType: ResponseType.bytes),
+    );
+
+    return res.data ?? <int>[];
+  }
+
   // ---- Documents ----
   Future<List<DocumentItem>> documents() async {
     final res = await _dio.get('/me/documents');
