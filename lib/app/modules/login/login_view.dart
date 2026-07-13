@@ -70,7 +70,7 @@ class LoginView extends GetView<LoginController> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  _brandChip(cfg),
+                  _brandMark(cfg),
                   SizedBox(height: 20.h),
                   Text(
                     'Selamat datang kembali',
@@ -99,54 +99,48 @@ class LoginView extends GetView<LoginController> {
     );
   }
 
-  /// Brand logo in a white chip so any tenant logo (dark or coloured) reads
-  /// cleanly on the blue header.
-  Widget _brandChip(ConfigService cfg) {
+  /// Brand logo shown directly on the blue header (no background). The
+  /// no-logo fallback uses white marks so it still reads on blue.
+  Widget _brandMark(ConfigService cfg) {
     return Obx(() {
       final c = cfg.config.value;
       final logo = c.logoUrl;
       final hasLogo = logo != null && logo.isNotEmpty;
-      return Container(
-        padding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 10.h),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(14.r),
-        ),
-        child: hasLogo
-            ? Image.network(
-                logo,
-                height: 30.h,
-                fit: BoxFit.contain,
-                semanticLabel: c.siteName,
-                errorBuilder: (context, error, stack) =>
-                    _chipFallback(c.siteName),
-              )
-            : _chipFallback(c.siteName),
-      );
+      return hasLogo
+          ? Image.network(
+              logo,
+              height: 42.h,
+              fit: BoxFit.contain,
+              alignment: Alignment.centerLeft,
+              semanticLabel: c.siteName,
+              errorBuilder: (context, error, stack) =>
+                  _markFallback(c.siteName),
+            )
+          : _markFallback(c.siteName);
     });
   }
 
-  Widget _chipFallback(String name) {
+  Widget _markFallback(String name) {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
         Container(
-          height: 30.w,
-          width: 30.w,
+          height: 40.w,
+          width: 40.w,
           alignment: Alignment.center,
           decoration: BoxDecoration(
-            color: AppColors.primary,
-            borderRadius: BorderRadius.circular(9.r),
+            color: Colors.white.withValues(alpha: 0.16),
+            borderRadius: BorderRadius.circular(12.r),
           ),
-          child: Icon(Iconsax.briefcase, color: Colors.white, size: 17.sp),
+          child: Icon(Iconsax.briefcase, color: Colors.white, size: 20.sp),
         ),
         SizedBox(width: 10.w),
         Text(
           name,
           style: TextStyle(
-            fontSize: 17.sp,
+            fontSize: 19.sp,
             fontWeight: FontWeight.w700,
-            color: AppColors.navy,
+            color: Colors.white,
           ),
         ),
       ],
