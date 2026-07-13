@@ -9,6 +9,12 @@ class RiwayatController extends GetxController {
 
   final isLoading = true.obs;
   final items = <ActivityItem>[].obs;
+  final typeFilter = 'all'.obs;
+
+  /// Activities narrowed to the selected type ('all' = everything).
+  List<ActivityItem> get visibleItems => typeFilter.value == 'all'
+      ? items
+      : items.where((e) => e.type == typeFilter.value).toList();
 
   @override
   void onInit() {

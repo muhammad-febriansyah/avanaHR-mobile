@@ -2,6 +2,7 @@ import 'package:dio/dio.dart';
 import 'package:get/get.dart' hide Response;
 
 import '../../core/widgets/app_toast.dart';
+import '../../core/widgets/filter_chips.dart';
 import '../../data/models/ess_models.dart';
 import '../../data/providers/api_client.dart';
 import '../../data/providers/avana_api.dart';
@@ -12,6 +13,14 @@ class ReimbursementController extends GetxController {
   final isLoading = true.obs;
   final submitting = false.obs;
   final items = <ReimbursementItem>[].obs;
+  final statusFilter = 'all'.obs;
+
+  /// Items narrowed to the selected status group ('all' = everything).
+  List<ReimbursementItem> get visibleItems => statusFilter.value == 'all'
+      ? items
+      : items
+            .where((e) => statusGroup(e.status) == statusFilter.value)
+            .toList();
 
   @override
   void onInit() {
@@ -29,21 +38,33 @@ class ReimbursementController extends GetxController {
     isLoading.value = false;
   }
 
-  Future<bool> submit({required String category, required int amount, String? receiptPath}) async {
+  Future<bool> submit({
+    required String category,
+    required int amount,
+    String? receiptPath,
+  }) async {
     submitting.value = true;
     try {
-      final res = await _api.submitReimbursement(category: category, amount: amount, receiptPath: receiptPath);
+      final res = await _api.submitReimbursement(
+        category: category,
+        amount: amount,
+        receiptPath: receiptPath,
+      );
       submitting.value = false;
       if (res.statusCode == 201) {
         AppToast.success('Reimbursement terkirim');
         await load();
         return true;
       }
-      AppToast.error(ApiClient.messageFrom(res, 'Gagal mengajukan reimbursement.'));
+      AppToast.error(
+        ApiClient.messageFrom(res, 'Gagal mengajukan reimbursement.'),
+      );
       return false;
     } on DioException catch (e) {
       submitting.value = false;
-      AppToast.error(ApiClient.messageFrom(e.response, 'Gagal terhubung ke server.'));
+      AppToast.error(
+        ApiClient.messageFrom(e.response, 'Gagal terhubung ke server.'),
+      );
       return false;
     }
   }

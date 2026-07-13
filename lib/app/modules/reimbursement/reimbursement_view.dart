@@ -8,6 +8,7 @@ import '../../core/utils/formats.dart';
 import '../../core/widgets/app_page.dart';
 import '../../core/widgets/app_sheet.dart';
 import '../../core/widgets/app_toast.dart';
+import '../../core/widgets/filter_chips.dart';
 import '../../core/widgets/form_fields.dart';
 import '../../core/widgets/status_chip.dart';
 import '../../core/widgets/ui.dart';
@@ -31,69 +32,84 @@ class ReimbursementView extends GetView<ReimbursementController> {
         if (controller.isLoading.value) {
           return const Loading();
         }
-        return RefreshIndicator(
-          onRefresh: controller.load,
-          color: AppColors.primary,
-          child: controller.items.isEmpty
-              ? ListView(
-                  physics: const AlwaysScrollableScrollPhysics(
-                    parent: BouncingScrollPhysics(),
-                  ),
-                  children: [
-                    SizedBox(height: 80.h),
-                    const EmptyState(
-                      icon: Iconsax.wallet_money,
-                      message: 'Belum ada reimbursement.',
-                    ),
-                  ],
-                )
-              : ListView.separated(
-                  physics: const AlwaysScrollableScrollPhysics(
-                    parent: BouncingScrollPhysics(),
-                  ),
-                  padding: EdgeInsets.fromLTRB(20.w, 20.h, 20.w, 90.h),
-                  itemCount: controller.items.length,
-                  separatorBuilder: (_, i) => SizedBox(height: 10.h),
-                  itemBuilder: (_, i) {
-                    final r = controller.items[i];
-                    return ContentCard(
-                      child: Row(
+        return Column(
+          children: [
+            Padding(
+              padding: EdgeInsets.fromLTRB(20.w, 12.h, 20.w, 4.h),
+              child: FilterChips(
+                options: kStatusFilterOptions,
+                selected: controller.statusFilter.value,
+                onSelected: (v) => controller.statusFilter.value = v,
+              ),
+            ),
+            Expanded(
+              child: RefreshIndicator(
+                onRefresh: controller.load,
+                color: AppColors.primary,
+                child: controller.visibleItems.isEmpty
+                    ? ListView(
+                        physics: const AlwaysScrollableScrollPhysics(
+                          parent: BouncingScrollPhysics(),
+                        ),
                         children: [
-                          const IconBubble(
-                            Iconsax.wallet_money,
-                            Color(0xFFDB2777),
+                          SizedBox(height: 80.h),
+                          const EmptyState(
+                            icon: Iconsax.wallet_money,
+                            message: 'Belum ada reimbursement.',
                           ),
-                          SizedBox(width: 12.w),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
+                        ],
+                      )
+                    : ListView.separated(
+                        physics: const AlwaysScrollableScrollPhysics(
+                          parent: BouncingScrollPhysics(),
+                        ),
+                        padding: EdgeInsets.fromLTRB(20.w, 20.h, 20.w, 90.h),
+                        itemCount: controller.visibleItems.length,
+                        separatorBuilder: (_, i) => SizedBox(height: 10.h),
+                        itemBuilder: (_, i) {
+                          final r = controller.visibleItems[i];
+                          return ContentCard(
+                            child: Row(
                               children: [
-                                Text(
-                                  r.title ?? r.category,
-                                  style: TextStyle(
-                                    fontWeight: FontWeight.w700,
-                                    color: AppColors.navy,
-                                    fontSize: 13.5.sp,
+                                const IconBubble(
+                                  Iconsax.wallet_money,
+                                  Color(0xFFDB2777),
+                                ),
+                                SizedBox(width: 12.w),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        r.title ?? r.category,
+                                        style: TextStyle(
+                                          fontWeight: FontWeight.w700,
+                                          color: AppColors.navy,
+                                          fontSize: 13.5.sp,
+                                        ),
+                                      ),
+                                      SizedBox(height: 2.h),
+                                      Text(
+                                        '${formatRupiah(r.amount)} · ${r.date}',
+                                        style: TextStyle(
+                                          color: AppColors.textMuted,
+                                          fontSize: 12.sp,
+                                        ),
+                                      ),
+                                    ],
                                   ),
                                 ),
-                                SizedBox(height: 2.h),
-                                Text(
-                                  '${formatRupiah(r.amount)} · ${r.date}',
-                                  style: TextStyle(
-                                    color: AppColors.textMuted,
-                                    fontSize: 12.sp,
-                                  ),
-                                ),
+                                SizedBox(width: 8.w),
+                                StatusChip(r.status),
                               ],
                             ),
-                          ),
-                          SizedBox(width: 8.w),
-                          StatusChip(r.status),
-                        ],
+                          );
+                        },
                       ),
-                    );
-                  },
-                ),
+              ),
+            ),
+          ],
         );
       }),
     );
