@@ -123,8 +123,7 @@ class HomeTab extends GetView<HomeController> {
         child: ListView(
           padding: EdgeInsets.fromLTRB(20.w, 22.h, 20.w, 24.h),
           children: [
-            _moodCard(),
-            SizedBox(height: 16.h),
+            _managerBanner(),
             _attendanceCard(),
             SizedBox(height: 14.h),
             _shiftCard(),
@@ -139,6 +138,142 @@ class HomeTab extends GetView<HomeController> {
             _sectionHeader('Pengumuman Terbaru', onTap: () => Get.find<MainController>().changeTab(2)),
             SizedBox(height: 12.h),
             _announcements(),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// Manager-only banner promoting the Manager Self-Service area — makes the
+  /// manager role visibly distinct from a plain employee. Collapses to nothing
+  /// for non-managers.
+  Widget _managerBanner() {
+    return Obx(() {
+      if (!controller.isManager) {
+        return const SizedBox.shrink();
+      }
+      final pending = controller.pendingApprovals.value;
+      final team = controller.teamCount.value;
+      return Container(
+        margin: EdgeInsets.only(bottom: 14.h),
+        padding: EdgeInsets.all(16.w),
+        decoration: BoxDecoration(
+          color: const Color(0xFF4F46E5),
+          borderRadius: BorderRadius.circular(20.r),
+          boxShadow: [
+            BoxShadow(
+              color: const Color(0xFF4F46E5).withValues(alpha: 0.22),
+              blurRadius: 16,
+              offset: const Offset(0, 6),
+            ),
+          ],
+        ),
+        child: Column(
+          children: [
+            Row(
+              children: [
+                Container(
+                  width: 42.w,
+                  height: 42.w,
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.18),
+                    borderRadius: BorderRadius.circular(12.r),
+                  ),
+                  child: Icon(Iconsax.people, color: Colors.white, size: 21.sp),
+                ),
+                SizedBox(width: 12.w),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Mode Manajer',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 15.sp,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                      SizedBox(height: 2.h),
+                      Text(
+                        '$team anggota tim'
+                        '${pending > 0 ? ' · $pending menunggu persetujuan' : ' · semua permintaan beres'}',
+                        style: TextStyle(
+                          color: Colors.white.withValues(alpha: 0.85),
+                          fontSize: 11.5.sp,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                if (pending > 0)
+                  Container(
+                    padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 5.h),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF59E0B),
+                      borderRadius: BorderRadius.circular(999),
+                    ),
+                    child: Text(
+                      '$pending',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 13.sp,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+            SizedBox(height: 14.h),
+            Row(
+              children: [
+                Expanded(
+                  child: _managerBtn(
+                    Iconsax.task_square,
+                    'Persetujuan',
+                    () => Get.toNamed(Routes.MSS),
+                  ),
+                ),
+                SizedBox(width: 10.w),
+                Expanded(
+                  child: _managerBtn(
+                    Iconsax.chart_2,
+                    'Rekap Tim',
+                    () => Get.toNamed(Routes.MSS_RECAP),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      );
+    });
+  }
+
+  Widget _managerBtn(IconData icon, String label, VoidCallback onTap) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        height: 42.h,
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          color: Colors.white.withValues(alpha: 0.16),
+          borderRadius: BorderRadius.circular(12.r),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, color: Colors.white, size: 17.sp),
+            SizedBox(width: 7.w),
+            Text(
+              label,
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 13.sp,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
           ],
         ),
       ),
@@ -233,79 +368,6 @@ class HomeTab extends GetView<HomeController> {
             ],
           ),
         ],
-      ),
-    );
-  }
-
-  static const _moods = <(String, String, String)>[
-    ('sangat_baik', '😄', 'Sangat baik'),
-    ('baik', '🙂', 'Baik'),
-    ('biasa', '😐', 'Biasa'),
-    ('kurang', '🙁', 'Kurang'),
-    ('buruk', '😣', 'Buruk'),
-  ];
-
-  /// Anonymous daily mood check-in.
-  Widget _moodCard() {
-    return Obx(() {
-      final done = controller.moodCheckedIn.value;
-      final selected = controller.selectedMood.value;
-
-      return Container(
-        width: double.infinity,
-        padding: EdgeInsets.all(16.w),
-        decoration: BoxDecoration(
-          color: AppColors.primary,
-          borderRadius: BorderRadius.circular(20.r),
-          boxShadow: [BoxShadow(color: AppColors.navy.withValues(alpha: 0.08), blurRadius: 16, offset: const Offset(0, 6))],
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('Bagaimana perasaanmu hari ini?', style: TextStyle(color: Colors.white, fontSize: 15.sp, fontWeight: FontWeight.w700)),
-            SizedBox(height: 4.h),
-            Text(
-              done ? 'Terima kasih, perasaanmu tercatat. Ketuk untuk ganti.' : 'Sekali ketuk. Hanya untukmu & HR, anonim.',
-              style: TextStyle(color: Colors.white.withValues(alpha: 0.8), fontSize: 11.5.sp),
-            ),
-            SizedBox(height: 14.h),
-            Row(children: _moods.map((m) => _moodButton(m, selected == m.$1)).toList()),
-          ],
-        ),
-      );
-    });
-  }
-
-  Widget _moodButton((String, String, String) m, bool selected) {
-    return Expanded(
-      child: GestureDetector(
-        onTap: controller.moodSubmitting.value ? null : () => controller.submitMood(m.$1),
-        child: Padding(
-          padding: EdgeInsets.symmetric(horizontal: 3.w),
-          child: Column(
-            children: [
-              Container(
-                width: double.infinity,
-                padding: EdgeInsets.symmetric(vertical: 9.h),
-                decoration: BoxDecoration(
-                  color: selected ? Colors.white : Colors.white.withValues(alpha: 0.16),
-                  borderRadius: BorderRadius.circular(14.r),
-                  border: selected ? Border.all(color: Colors.white, width: 2) : null,
-                ),
-                alignment: Alignment.center,
-                child: Text(m.$2, style: TextStyle(fontSize: 22.sp)),
-              ),
-              SizedBox(height: 6.h),
-              Text(
-                m.$3,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                textAlign: TextAlign.center,
-                style: TextStyle(color: Colors.white.withValues(alpha: 0.95), fontSize: 9.5.sp, fontWeight: selected ? FontWeight.w700 : FontWeight.w500),
-              ),
-            ],
-          ),
-        ),
       ),
     );
   }
@@ -473,7 +535,7 @@ class HomeTab extends GetView<HomeController> {
 
       return Row(
         children: [
-          Expanded(child: _statCard(Iconsax.sun_1, const Color(0xFF16A34A), 'Sisa Cuti', s == null ? '—' : '${s.leaveAvailable.toInt()} hari')),
+          Expanded(child: _statCard(Iconsax.sun_1, const Color(0xFF22C55E), 'Sisa Cuti', s == null ? '—' : '${s.leaveAvailable.toInt()} hari')),
           SizedBox(width: 10.w),
           Expanded(child: _statCard(Iconsax.clock, AppColors.primary, 'Jam Bln Ini', s == null ? '—' : '${s.workHoursMonth.toStringAsFixed(0)} jam')),
           SizedBox(width: 10.w),
@@ -487,7 +549,7 @@ class HomeTab extends GetView<HomeController> {
     return Container(
       padding: EdgeInsets.symmetric(vertical: 14.h, horizontal: 10.w),
       decoration: BoxDecoration(
-        color: AppColors.background,
+        color: AppColors.surface,
         borderRadius: BorderRadius.circular(14.r),
         border: Border.all(color: AppColors.border),
       ),
@@ -511,14 +573,12 @@ class HomeTab extends GetView<HomeController> {
   /// Every quick action in priority order, paged 8-per-slide by the carousel.
   List<_Action> _allActions() {
     return [
-      if (controller.isManager)
-        _Action('Persetujuan', Iconsax.people, const Color(0xFF4F46E5), () => Get.toNamed(Routes.MSS)),
-      _Action('Feeling', Iconsax.emoji_happy, const Color(0xFF2F54C9), _openMoodSheet),
+      _Action('Feeling', Iconsax.emoji_happy, const Color(0xFF2547F9), controller.openMoodDialog),
       _Action('Slip Gaji', Iconsax.receipt_2, const Color(0xFF0891B2), () => Get.toNamed(Routes.PAYSLIP)),
-      _Action('Cuti', Iconsax.sun_1, const Color(0xFF16A34A), () => Get.toNamed(Routes.LEAVE)),
+      _Action('Cuti', Iconsax.sun_1, const Color(0xFF22C55E), () => Get.toNamed(Routes.LEAVE)),
       _Action('Jadwal', Iconsax.calendar_1, const Color(0xFF0D9488), () => Get.toNamed(Routes.SCHEDULE)),
       _Action('Dashboard', Iconsax.category, const Color(0xFF7C3AED), () => Get.find<MainController>().changeTab(1)),
-      _Action('Lembur', Iconsax.timer_1, const Color(0xFFD97706), () => Get.toNamed(Routes.OVERTIME)),
+      _Action('Lembur', Iconsax.timer_1, const Color(0xFFF59E0B), () => Get.toNamed(Routes.OVERTIME)),
       _Action('Izin', Iconsax.calendar_remove, const Color(0xFF9333EA), () => Get.toNamed(Routes.PERMISSION)),
       _Action('Reimburse', Iconsax.wallet_money, const Color(0xFFDB2777), () => Get.toNamed(Routes.REIMBURSEMENT)),
       _Action('WFH', Iconsax.house, const Color(0xFF0EA5E9), () => Get.toNamed(Routes.WFH)),
@@ -528,59 +588,6 @@ class HomeTab extends GetView<HomeController> {
       _Action('Tukar Shift', Iconsax.arrow_swap_horizontal, const Color(0xFF0D9488), () => Get.toNamed(Routes.SHIFT_SWAP)),
       _Action('Pengumuman', Iconsax.volume_high, const Color(0xFFEA580C), () => Get.find<MainController>().changeTab(2)),
     ];
-  }
-
-  /// Quick mood check-in in a bottom sheet (mirrors the home mood card).
-  void _openMoodSheet() {
-    Get.bottomSheet(
-      Container(
-        padding: EdgeInsets.fromLTRB(20.w, 18.h, 20.w, 28.h),
-        decoration: BoxDecoration(
-          color: AppColors.background,
-          borderRadius: BorderRadius.vertical(top: Radius.circular(24.r)),
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('Bagaimana perasaanmu hari ini?', style: TextStyle(fontWeight: FontWeight.w700, color: AppColors.navy, fontSize: 15.sp)),
-            SizedBox(height: 4.h),
-            Text('Sekali ketuk. Hanya untukmu & HR, anonim.', style: TextStyle(color: AppColors.textMuted, fontSize: 12.sp)),
-            SizedBox(height: 18.h),
-            Row(
-              children: _moods.map((m) {
-                return Expanded(
-                  child: GestureDetector(
-                    onTap: () {
-                      Get.back();
-                      controller.submitMood(m.$1);
-                    },
-                    child: Padding(
-                      padding: EdgeInsets.symmetric(horizontal: 4.w),
-                      child: Column(
-                        children: [
-                          Container(
-                            width: double.infinity,
-                            padding: EdgeInsets.symmetric(vertical: 12.h),
-                            decoration: BoxDecoration(color: AppColors.muted, borderRadius: BorderRadius.circular(14.r)),
-                            alignment: Alignment.center,
-                            child: Text(m.$2, style: TextStyle(fontSize: 24.sp)),
-                          ),
-                          SizedBox(height: 6.h),
-                          Text(m.$3, maxLines: 1, overflow: TextOverflow.ellipsis, textAlign: TextAlign.center,
-                              style: TextStyle(color: AppColors.textMuted, fontSize: 9.5.sp)),
-                        ],
-                      ),
-                    ),
-                  ),
-                );
-              }).toList(),
-            ),
-          ],
-        ),
-      ),
-      isScrollControlled: true,
-    );
   }
 
   Widget _announcements() {
