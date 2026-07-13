@@ -42,7 +42,11 @@ class HomeView extends GetView<HomeController> {
   }
 
   String get _initials {
-    final parts = controller.name.trim().split(RegExp(r'\s+')).where((e) => e.isNotEmpty).toList();
+    final parts = controller.name
+        .trim()
+        .split(RegExp(r'\s+'))
+        .where((e) => e.isNotEmpty)
+        .toList();
     if (parts.isEmpty) return '?';
     return parts.take(2).map((e) => e[0].toUpperCase()).join();
   }
@@ -58,25 +62,49 @@ class HomeView extends GetView<HomeController> {
             borderRadius: BorderRadius.circular(14.r),
           ),
           alignment: Alignment.center,
-          child: Obx(() => Text(controller.name.isEmpty ? '' : _initials,
-              style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 16.sp))),
+          child: Obx(
+            () => Text(
+              controller.name.isEmpty ? '' : _initials,
+              style: TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.w700,
+                fontSize: 16.sp,
+              ),
+            ),
+          ),
         ),
         SizedBox(width: 12.w),
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('Selamat datang,', style: TextStyle(color: AppColors.textMuted, fontSize: 12.5.sp)),
-              Obx(() => Text(controller.name, maxLines: 1, overflow: TextOverflow.ellipsis,
-                  style: TextStyle(fontSize: 18.sp, fontWeight: FontWeight.w700, color: AppColors.navy, letterSpacing: -0.3))),
+              Text(
+                'Selamat datang,',
+                style: TextStyle(color: AppColors.textMuted, fontSize: 12.5.sp),
+              ),
+              Obx(
+                () => Text(
+                  controller.name,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: 18.sp,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.navy,
+                    letterSpacing: -0.3,
+                  ),
+                ),
+              ),
             ],
           ),
         ),
-        Obx(() => _iconButton(
-              Iconsax.notification,
-              () => Get.toNamed(Routes.NOTIFICATION),
-              badge: controller.unread.value,
-            )),
+        Obx(
+          () => _iconButton(
+            Iconsax.notification,
+            () => Get.toNamed(Routes.NOTIFICATION),
+            badge: controller.unread.value,
+          ),
+        ),
         SizedBox(width: 8.w),
         _iconButton(Iconsax.logout, controller.logout),
       ],
@@ -101,9 +129,20 @@ class HomeView extends GetView<HomeController> {
               top: 4.h,
               child: Container(
                 padding: EdgeInsets.all(3.w),
-                decoration: BoxDecoration(color: AppColors.destructive, shape: BoxShape.circle, border: Border.all(color: Colors.white, width: 1.5)),
+                decoration: BoxDecoration(
+                  color: AppColors.destructive,
+                  shape: BoxShape.circle,
+                ),
                 constraints: BoxConstraints(minWidth: 16.w, minHeight: 16.w),
-                child: Text('$badge', textAlign: TextAlign.center, style: TextStyle(color: Colors.white, fontSize: 9.sp, fontWeight: FontWeight.w700)),
+                child: Text(
+                  '$badge',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 9.sp,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
               ),
             ),
         ],
@@ -117,7 +156,6 @@ class HomeView extends GetView<HomeController> {
       decoration: BoxDecoration(
         color: AppColors.primary,
         borderRadius: BorderRadius.circular(20.r),
-        boxShadow: [BoxShadow(color: AppColors.navy.withValues(alpha: 0.08), blurRadius: 16, offset: const Offset(0, 6))],
       ),
       child: Obx(() {
         final t = controller.today.value;
@@ -131,12 +169,32 @@ class HomeView extends GetView<HomeController> {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text('Absensi Hari Ini', style: TextStyle(color: Colors.white.withValues(alpha: 0.85), fontSize: 13.sp, fontWeight: FontWeight.w500)),
+                Text(
+                  'Absensi Hari Ini',
+                  style: TextStyle(
+                    color: Colors.white.withValues(alpha: 0.85),
+                    fontSize: 13.sp,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
                 if (status != null)
                   Container(
-                    padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 4.h),
-                    decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.2), borderRadius: BorderRadius.circular(100.r)),
-                    child: Text(status, style: TextStyle(color: Colors.white, fontSize: 10.5.sp, fontWeight: FontWeight.w600)),
+                    padding: EdgeInsets.symmetric(
+                      horizontal: 10.w,
+                      vertical: 4.h,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.2),
+                      borderRadius: BorderRadius.circular(100.r),
+                    ),
+                    child: Text(
+                      status,
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 10.5.sp,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
                   ),
               ],
             ),
@@ -144,7 +202,12 @@ class HomeView extends GetView<HomeController> {
             Row(
               children: [
                 _clockStat(Iconsax.login, 'Masuk', clockIn),
-                Container(width: 1, height: 34.h, color: Colors.white.withValues(alpha: 0.25), margin: EdgeInsets.symmetric(horizontal: 18.w)),
+                Container(
+                  width: 1,
+                  height: 34.h,
+                  color: Colors.white.withValues(alpha: 0.25),
+                  margin: EdgeInsets.symmetric(horizontal: 18.w),
+                ),
                 _clockStat(Iconsax.logout, 'Pulang', clockOut),
               ],
             ),
@@ -159,7 +222,10 @@ class HomeView extends GetView<HomeController> {
                   elevation: 0,
                 ),
                 onPressed: () => Get.toNamed(Routes.ATTENDANCE),
-                icon: Icon(next ? Iconsax.finger_scan : Iconsax.logout, size: 20.sp),
+                icon: Icon(
+                  next ? Iconsax.finger_scan : Iconsax.logout,
+                  size: 20.sp,
+                ),
                 label: Text(next ? 'Clock In Sekarang' : 'Clock Out'),
               ),
             ),
@@ -177,8 +243,21 @@ class HomeView extends GetView<HomeController> {
         Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(label, style: TextStyle(color: Colors.white.withValues(alpha: 0.8), fontSize: 11.sp)),
-            Text(value, style: TextStyle(color: Colors.white, fontSize: 19.sp, fontWeight: FontWeight.w700)),
+            Text(
+              label,
+              style: TextStyle(
+                color: Colors.white.withValues(alpha: 0.8),
+                fontSize: 11.sp,
+              ),
+            ),
+            Text(
+              value,
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 19.sp,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
           ],
         ),
       ],
@@ -187,18 +266,68 @@ class HomeView extends GetView<HomeController> {
 
   Widget _actionsGrid() {
     final items = [
-      _Action('Absensi', Iconsax.finger_scan, Routes.ATTENDANCE, const Color(0xFF2F54C9)),
-      _Action('Cuti', Iconsax.sun_1, Routes.LEAVE, const Color(0xFF16A34A)),
-      _Action('Lembur', Iconsax.timer_1, Routes.OVERTIME, const Color(0xFFD97706)),
-      _Action('Izin', Iconsax.calendar_remove, Routes.PERMISSION, const Color(0xFF7C3AED)),
+      _Action(
+        'Absensi',
+        Iconsax.finger_scan,
+        Routes.ATTENDANCE,
+        const Color(0xFF2547F9),
+      ),
+      _Action('Cuti', Iconsax.sun_1, Routes.LEAVE, const Color(0xFF22C55E)),
+      _Action(
+        'Lembur',
+        Iconsax.timer_1,
+        Routes.OVERTIME,
+        const Color(0xFFF59E0B),
+      ),
+      _Action(
+        'Izin',
+        Iconsax.calendar_remove,
+        Routes.PERMISSION,
+        const Color(0xFF7C3AED),
+      ),
       _Action('WFH', Iconsax.house, Routes.WFH, const Color(0xFF0EA5E9)),
-      _Action('Reimburse', Iconsax.wallet_money, Routes.REIMBURSEMENT, const Color(0xFFDB2777)),
-      _Action('Slip Gaji', Iconsax.receipt_2, Routes.PAYSLIP, const Color(0xFF0891B2)),
-      _Action('Tukar Shift', Iconsax.arrow_swap_horizontal, Routes.SHIFT_SWAP, const Color(0xFF0D9488)),
-      _Action('Dokumen', Iconsax.document_text, Routes.DOKUMEN, const Color(0xFF9333EA)),
-      _Action('Visiting', Iconsax.location, Routes.VISITING, const Color(0xFFE11D48)),
-      _Action('Pengumuman', Iconsax.volume_high, Routes.ANNOUNCEMENT, const Color(0xFFEA580C)),
-      _Action('Daftar Wajah', Iconsax.scan, Routes.FACE_ENROLL, const Color(0xFF4F46E5)),
+      _Action(
+        'Reimburse',
+        Iconsax.wallet_money,
+        Routes.REIMBURSEMENT,
+        const Color(0xFFDB2777),
+      ),
+      _Action(
+        'Slip Gaji',
+        Iconsax.receipt_2,
+        Routes.PAYSLIP,
+        const Color(0xFF0891B2),
+      ),
+      _Action(
+        'Tukar Shift',
+        Iconsax.arrow_swap_horizontal,
+        Routes.SHIFT_SWAP,
+        const Color(0xFF0D9488),
+      ),
+      _Action(
+        'Dokumen',
+        Iconsax.document_text,
+        Routes.DOKUMEN,
+        const Color(0xFF9333EA),
+      ),
+      _Action(
+        'Visiting',
+        Iconsax.location,
+        Routes.VISITING,
+        const Color(0xFFE11D48),
+      ),
+      _Action(
+        'Pengumuman',
+        Iconsax.volume_high,
+        Routes.ANNOUNCEMENT,
+        const Color(0xFFEA580C),
+      ),
+      _Action(
+        'Daftar Wajah',
+        Iconsax.scan,
+        Routes.FACE_ENROLL,
+        const Color(0xFF4F46E5),
+      ),
       _Action('Profil', Iconsax.user, Routes.PROFILE, const Color(0xFF475569)),
     ];
     return GridView.count(
@@ -225,8 +354,18 @@ class HomeView extends GetView<HomeController> {
                     child: Icon(a.icon, color: a.color, size: 25.sp),
                   ),
                   SizedBox(height: 7.h),
-                  Text(a.label, maxLines: 2, textAlign: TextAlign.center, overflow: TextOverflow.ellipsis,
-                      style: TextStyle(fontWeight: FontWeight.w600, color: AppColors.navy, fontSize: 11.sp, height: 1.15)),
+                  Text(
+                    a.label,
+                    maxLines: 2,
+                    textAlign: TextAlign.center,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.navy,
+                      fontSize: 11.sp,
+                      height: 1.15,
+                    ),
+                  ),
                 ],
               ),
             ),

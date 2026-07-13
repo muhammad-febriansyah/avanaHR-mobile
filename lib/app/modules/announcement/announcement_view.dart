@@ -17,6 +17,7 @@ class AnnouncementView extends GetView<AnnouncementController> {
       title: 'Pengumuman',
       subtitle: 'Info terbaru',
       showBack: false,
+      reserveBottomNav: true,
       child: Obx(() {
         if (controller.isLoading.value) {
           return const Loading();

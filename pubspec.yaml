@@ -46,6 +46,7 @@ dependencies:
   get_storage: ^2.1.1
   flutter_svg: ^2.3.0
   geolocator: ^14.0.3
+  geocoding: ^4.0.0
   flutter_map: ^8.2.1
   latlong2: ^0.9.1
   intl: ^0.20.3
@@ -62,6 +63,7 @@ dependencies:
   path_provider: ^2.1.6
   open_filex: ^4.7.0
   share_plus: ^13.2.0
+  persistent_bottom_nav_bar_v2: ^6.3.2
 
 # file_picker (Windows impl) pins win32 ^5, but geolocator/device_info_plus
 # need win32 ^6. win32 is Windows-only; on Android/iOS it never compiles, so we
@@ -79,6 +81,15 @@ dev_dependencies:
   # package. See that file for information about deactivating specific lint
   # rules and activating additional ones.
   flutter_lints: ^6.0.0
+  flutter_launcher_icons: ^0.14.4
+
+# Launcher icon generation. Run: dart run flutter_launcher_icons
+flutter_launcher_icons:
+  image_path: "assets/AvanaHR.png"
+  android: true
+  ios: true
+  remove_alpha_ios: true
+  min_sdk_android: 21
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec

@@ -16,12 +16,14 @@ class WorkLocationItem {
   });
 
   factory WorkLocationItem.fromJson(Map<String, dynamic> j) => WorkLocationItem(
-        id: j['id'] ?? 0,
-        name: (j['name'] ?? '').toString(),
-        latitude: (j['latitude'] as num?)?.toDouble(),
-        longitude: (j['longitude'] as num?)?.toDouble(),
-        radius: (j['radius'] ?? 0) is int ? j['radius'] : int.tryParse('${j['radius']}') ?? 0,
-      );
+    id: j['id'] ?? 0,
+    name: (j['name'] ?? '').toString(),
+    latitude: (j['latitude'] as num?)?.toDouble(),
+    longitude: (j['longitude'] as num?)?.toDouble(),
+    radius: (j['radius'] ?? 0) is int
+        ? j['radius']
+        : int.tryParse('${j['radius']}') ?? 0,
+  );
 }
 
 /// Compact home dashboard summary from `/me/dashboard`.
@@ -30,6 +32,9 @@ class DashboardSummary {
   final int workMinutesMonth;
   final double workHoursMonth;
   final int pendingCount;
+  final int presentDays;
+  final int absentDays;
+  final int lateDays;
   final TodayShift? todayShift;
 
   const DashboardSummary({
@@ -37,18 +42,32 @@ class DashboardSummary {
     required this.workMinutesMonth,
     required this.workHoursMonth,
     required this.pendingCount,
+    this.presentDays = 0,
+    this.absentDays = 0,
+    this.lateDays = 0,
     this.todayShift,
   });
 
-  factory DashboardSummary.fromJson(Map<String, dynamic> j) => DashboardSummary(
-        leaveAvailable: (j['leave_available'] as num?)?.toDouble() ?? 0,
-        workMinutesMonth: (j['work_minutes_month'] ?? 0) is int ? j['work_minutes_month'] : 0,
-        workHoursMonth: (j['work_hours_month'] as num?)?.toDouble() ?? 0,
-        pendingCount: (j['pending_count'] ?? 0) is int ? j['pending_count'] : 0,
-        todayShift: j['today_shift'] is Map
-            ? TodayShift.fromJson(Map<String, dynamic>.from(j['today_shift']))
-            : null,
-      );
+  factory DashboardSummary.fromJson(Map<String, dynamic> j) {
+    final att = j['attendance_month'];
+    final m = att is Map
+        ? Map<String, dynamic>.from(att)
+        : const <String, dynamic>{};
+    return DashboardSummary(
+      leaveAvailable: (j['leave_available'] as num?)?.toDouble() ?? 0,
+      workMinutesMonth: (j['work_minutes_month'] ?? 0) is int
+          ? j['work_minutes_month']
+          : 0,
+      workHoursMonth: (j['work_hours_month'] as num?)?.toDouble() ?? 0,
+      pendingCount: (j['pending_count'] ?? 0) is int ? j['pending_count'] : 0,
+      presentDays: (m['present'] as num?)?.toInt() ?? 0,
+      absentDays: (m['absent'] as num?)?.toInt() ?? 0,
+      lateDays: (m['late'] as num?)?.toInt() ?? 0,
+      todayShift: j['today_shift'] is Map
+          ? TodayShift.fromJson(Map<String, dynamic>.from(j['today_shift']))
+          : null,
+    );
+  }
 }
 
 /// Today's shift for the home card: a scheduled shift or an explicit day off.
@@ -61,9 +80,9 @@ class TodayShift {
   const TodayShift({required this.isOff, this.shiftName, this.start, this.end});
 
   factory TodayShift.fromJson(Map<String, dynamic> j) => TodayShift(
-        isOff: j['is_off'] == true,
-        shiftName: j['shift_name']?.toString(),
-        start: j['start']?.toString(),
-        end: j['end']?.toString(),
-      );
+    isOff: j['is_off'] == true,
+    shiftName: j['shift_name']?.toString(),
+    start: j['start']?.toString(),
+    end: j['end']?.toString(),
+  );
 }

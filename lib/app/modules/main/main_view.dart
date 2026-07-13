@@ -35,7 +35,11 @@ class MainView extends GetView<MainController> {
   Widget _tabView() {
     return PersistentTabView(
       controller: controller.pageController,
-      backgroundColor: AppColors.surface,
+      // Transparent + full overlap: tab content extends behind the nav bar so
+      // Style 13's floating-button gutter shows the page (seamless) instead of
+      // a white strip. Scroll views reserve bottom space for the bar height.
+      backgroundColor: Colors.transparent,
+      navBarOverlap: const NavBarOverlap.full(),
       handleAndroidBackButtonPress: true,
       stateManagement: true,
       tabs: [
