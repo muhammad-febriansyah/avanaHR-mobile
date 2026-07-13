@@ -70,8 +70,8 @@ class LoginView extends GetView<LoginController> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  _eyebrow('PORTAL KARYAWAN'),
-                  SizedBox(height: 18.h),
+                  _brandChip(cfg),
+                  SizedBox(height: 20.h),
                   Text(
                     'Selamat datang kembali',
                     style: TextStyle(
@@ -99,64 +99,52 @@ class LoginView extends GetView<LoginController> {
     );
   }
 
-  Widget _eyebrow(String text) {
-    return Container(
-      padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 6.h),
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.18),
-        borderRadius: BorderRadius.circular(100.r),
-      ),
-      child: Text(
-        text,
-        style: TextStyle(
-          color: Colors.white,
-          fontSize: 10.5.sp,
-          fontWeight: FontWeight.w700,
-          letterSpacing: 1.2,
-        ),
-      ),
-    );
-  }
-
-  /// Logo pulled from the settings table (`logo_url`), shown on the white sheet
-  /// where any brand color reads naturally.
-  Widget _logo(ConfigService cfg) {
+  /// Brand logo in a white chip so any tenant logo (dark or coloured) reads
+  /// cleanly on the blue header.
+  Widget _brandChip(ConfigService cfg) {
     return Obx(() {
       final c = cfg.config.value;
       final logo = c.logoUrl;
       final hasLogo = logo != null && logo.isNotEmpty;
-      if (hasLogo) {
-        return Image.network(
-          logo,
-          height: 60.h,
-          fit: BoxFit.contain,
-          alignment: Alignment.centerLeft,
-          semanticLabel: c.siteName,
-          errorBuilder: (context, error, stack) => _logoFallback(c.siteName),
-        );
-      }
-      return _logoFallback(c.siteName);
+      return Container(
+        padding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 10.h),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(14.r),
+        ),
+        child: hasLogo
+            ? Image.network(
+                logo,
+                height: 30.h,
+                fit: BoxFit.contain,
+                semanticLabel: c.siteName,
+                errorBuilder: (context, error, stack) =>
+                    _chipFallback(c.siteName),
+              )
+            : _chipFallback(c.siteName),
+      );
     });
   }
 
-  Widget _logoFallback(String name) {
+  Widget _chipFallback(String name) {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
         Container(
-          height: 54.w,
-          width: 54.w,
+          height: 30.w,
+          width: 30.w,
+          alignment: Alignment.center,
           decoration: BoxDecoration(
             color: AppColors.primary,
-            borderRadius: BorderRadius.circular(15.r),
+            borderRadius: BorderRadius.circular(9.r),
           ),
-          child: Icon(Iconsax.briefcase, color: Colors.white, size: 28.sp),
+          child: Icon(Iconsax.briefcase, color: Colors.white, size: 17.sp),
         ),
-        SizedBox(width: 12.w),
+        SizedBox(width: 10.w),
         Text(
           name,
           style: TextStyle(
-            fontSize: 24.sp,
+            fontSize: 17.sp,
             fontWeight: FontWeight.w700,
             color: AppColors.navy,
           ),
@@ -177,8 +165,6 @@ class LoginView extends GetView<LoginController> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Align(alignment: Alignment.centerLeft, child: _logo(cfg)),
-            SizedBox(height: 22.h),
             Text(
               'Masuk ke akun',
               style: TextStyle(
