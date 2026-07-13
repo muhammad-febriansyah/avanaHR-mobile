@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:get/get.dart';
 import 'package:iconsax/iconsax.dart';
+import 'package:persistent_bottom_nav_bar_v2/persistent_bottom_nav_bar_v2.dart';
 
 import '../../core/theme/app_colors.dart';
 import '../../data/services/connectivity_service.dart';
@@ -12,18 +13,11 @@ import '../profile/profile_view.dart';
 import '../riwayat/riwayat_view.dart';
 import 'main_controller.dart';
 
-/// App shell: an IndexedStack of the four primary tabs behind a custom bottom
-/// navigation bar. Keeps each tab's scroll/state alive when switching.
+/// App shell: five persistent tabs behind a `persistent_bottom_nav_bar_v2`
+/// Style 8 nav bar (the selected item expands into a pill). Absensi sits in the
+/// center. Each tab keeps its scroll/state alive when switching.
 class MainView extends GetView<MainController> {
   const MainView({super.key});
-
-  // Four side tabs; Absensi lives in the center floating action button.
-  static const _tabs = <_NavItem>[
-    _NavItem('Beranda', Iconsax.home_2),
-    _NavItem('Riwayat', Iconsax.clock),
-    _NavItem('Pengumuman', Iconsax.volume_high),
-    _NavItem('Profil', Iconsax.user),
-  ];
 
   @override
   Widget build(BuildContext context) {
@@ -32,58 +26,84 @@ class MainView extends GetView<MainController> {
       body: Column(
         children: [
           _offlineBanner(),
-          Expanded(
-            child: Obx(
-              () => IndexedStack(
-                index: controller.tab.value,
-                children: [
-                  const HomeTab(),
-                  const RiwayatView(),
-                  const AnnouncementView(),
-                  const ProfileView(),
-                  // Absensi tab: built only once first opened, so its GPS/camera
-                  // init doesn't fire at app launch.
-                  controller.attendanceOpened.value
-                      ? const AttendanceView()
-                      : const SizedBox.shrink(),
-                ],
-              ),
-            ),
-          ),
+          Expanded(child: _tabView()),
         ],
       ),
-      floatingActionButton: _absensiFab(),
-      floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
-      bottomNavigationBar: _bottomNav(),
     );
   }
 
-  /// Prominent center button that opens the attendance (clock-in/out) tab,
-  /// keeping the bottom navigation bar in place.
-  Widget _absensiFab() {
-    return Obx(() {
-      final active = controller.tab.value == MainController.attendanceTab;
-      return GestureDetector(
-        onTap: () => controller.changeTab(MainController.attendanceTab),
-        child: Container(
-          width: 62.w,
-          height: 62.w,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            color: active ? AppColors.accent : AppColors.primary,
-            border: Border.all(color: Colors.white, width: 4),
-            boxShadow: [
-              BoxShadow(
-                color: AppColors.navy.withValues(alpha: 0.18),
-                blurRadius: 14,
-                offset: const Offset(0, 6),
-              ),
-            ],
-          ),
-          child: Icon(Iconsax.finger_scan, color: Colors.white, size: 26.sp),
+  Widget _tabView() {
+    return PersistentTabView(
+      controller: controller.pageController,
+      backgroundColor: AppColors.surface,
+      handleAndroidBackButtonPress: true,
+      stateManagement: true,
+      tabs: [
+        PersistentTabConfig(
+          screen: const HomeTab(),
+          item: _item(Iconsax.home_2, 'Beranda'),
         ),
-      );
-    });
+        PersistentTabConfig(
+          screen: const RiwayatView(),
+          item: _item(Iconsax.clock, 'Riwayat'),
+        ),
+        // Center item (index 2) — rendered as the floating circle by Style 13.
+        PersistentTabConfig(
+          screen: _absensiScreen(),
+          item: _middleItem(Iconsax.finger_scan),
+        ),
+        PersistentTabConfig(
+          screen: const AnnouncementView(),
+          item: _item(Iconsax.volume_high, 'Pengumuman'),
+        ),
+        PersistentTabConfig(
+          screen: const ProfileView(),
+          item: _item(Iconsax.user, 'Profil'),
+        ),
+      ],
+      navBarBuilder: (navBarConfig) => Style13BottomNavBar(
+        navBarConfig: navBarConfig,
+        height: 64.h,
+        middleItemSize: 58.w,
+        navBarDecoration: NavBarDecoration(
+          color: AppColors.surface,
+          border: const Border(top: BorderSide(color: AppColors.border)),
+          padding: EdgeInsets.symmetric(horizontal: 4.w, vertical: 6.h),
+        ),
+      ),
+    );
+  }
+
+  ItemConfig _item(IconData icon, String title) {
+    return ItemConfig(
+      icon: Icon(icon),
+      title: title,
+      iconSize: 22.sp,
+      activeForegroundColor: AppColors.primary,
+      inactiveForegroundColor: AppColors.textMuted,
+      textStyle: TextStyle(fontSize: 11.sp, fontWeight: FontWeight.w700),
+    );
+  }
+
+  /// Center floating item: a blue circle (`activeForegroundColor`) with a white
+  /// icon (`inactiveForegroundColor`). No label — the circle is self-evident.
+  ItemConfig _middleItem(IconData icon) {
+    return ItemConfig(
+      icon: Icon(icon),
+      iconSize: 26.sp,
+      activeForegroundColor: AppColors.primary, // circle fill
+      inactiveForegroundColor: Colors.white, // icon inside circle
+    );
+  }
+
+  /// Absensi is built only once first opened, so its GPS/camera init doesn't
+  /// fire at app launch. Until then the tab shows nothing.
+  Widget _absensiScreen() {
+    return Obx(
+      () => controller.attendanceOpened.value
+          ? const AttendanceView()
+          : const SizedBox.shrink(),
+    );
   }
 
   /// A slim red bar shown whenever the device loses its network connection.
@@ -94,7 +114,7 @@ class MainView extends GetView<MainController> {
         duration: const Duration(milliseconds: 200),
         height: connectivity.online.value ? 0 : 30.h,
         width: double.infinity,
-        color: const Color(0xFFDC2626),
+        color: AppColors.destructive,
         alignment: Alignment.center,
         child: connectivity.online.value
             ? const SizedBox.shrink()
@@ -119,90 +139,4 @@ class MainView extends GetView<MainController> {
       ),
     );
   }
-
-  Widget _bottomNav() {
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        border: Border(top: BorderSide(color: AppColors.border)),
-        boxShadow: [
-          BoxShadow(
-            color: AppColors.navy.withValues(alpha: 0.06),
-            blurRadius: 20,
-            offset: const Offset(0, -4),
-          ),
-        ],
-      ),
-      child: SafeArea(
-        top: false,
-        child: Padding(
-          padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 8.h),
-          child: Obx(
-            () => Row(
-              children: [
-                _navTab(0),
-                _navTab(1),
-                SizedBox(width: 56.w), // gap for the center Absensi FAB
-                _navTab(2),
-                _navTab(3),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _navTab(int i) {
-    final item = _tabs[i];
-    final active = controller.tab.value == i;
-
-    return Expanded(
-      child: InkWell(
-        onTap: () => controller.changeTab(i),
-        borderRadius: BorderRadius.circular(14.r),
-        child: Padding(
-          padding: EdgeInsets.symmetric(vertical: 6.h),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              AnimatedContainer(
-                duration: const Duration(milliseconds: 200),
-                padding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 5.h),
-                decoration: BoxDecoration(
-                  color: active
-                      ? AppColors.primary.withValues(alpha: 0.12)
-                      : Colors.transparent,
-                  borderRadius: BorderRadius.circular(100.r),
-                ),
-                child: Icon(
-                  item.icon,
-                  size: 22.sp,
-                  color: active ? AppColors.primary : AppColors.textMuted,
-                ),
-              ),
-              SizedBox(height: 4.h),
-              Text(
-                item.label,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontSize: 9.5.sp,
-                  fontWeight: active ? FontWeight.w700 : FontWeight.w500,
-                  color: active ? AppColors.primary : AppColors.textMuted,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _NavItem {
-  final String label;
-  final IconData icon;
-  const _NavItem(this.label, this.icon);
 }

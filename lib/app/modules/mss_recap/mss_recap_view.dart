@@ -17,10 +17,14 @@ class MssRecapView extends GetView<MssRecapController> {
       title: 'Rekap Absensi Tim',
       subtitle: 'Manager Self-Service',
       actions: [
-        Obx(() => HeaderAction(
-              controller.isExporting.value ? Iconsax.timer_1 : Iconsax.document_download,
-              controller.export,
-            )),
+        Obx(
+          () => HeaderAction(
+            controller.isExporting.value
+                ? Iconsax.timer_1
+                : Iconsax.document_download,
+            controller.export,
+          ),
+        ),
       ],
       onRefresh: controller.load,
       child: Obx(() {
@@ -28,7 +32,9 @@ class MssRecapView extends GetView<MssRecapController> {
           return const _Loading();
         }
         return ListView(
-          physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
+          physics: const AlwaysScrollableScrollPhysics(
+            parent: BouncingScrollPhysics(),
+          ),
           padding: EdgeInsets.fromLTRB(16.w, 8.h, 16.w, 24.h),
           children: [
             _monthBar(),
@@ -58,21 +64,25 @@ class MssRecapView extends GetView<MssRecapController> {
         children: [
           _chevron(Iconsax.arrow_left_2, true, controller.prevMonth),
           Expanded(
-            child: Obx(() => Text(
-                  controller.rangeLabel,
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    fontSize: 14.sp,
-                    fontWeight: FontWeight.w700,
-                    color: AppColors.navy,
-                  ),
-                )),
+            child: Obx(
+              () => Text(
+                controller.rangeLabel,
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 14.sp,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.navy,
+                ),
+              ),
+            ),
           ),
-          Obx(() => _chevron(
-                Iconsax.arrow_right_3,
-                controller.canGoNext,
-                controller.nextMonth,
-              )),
+          Obx(
+            () => _chevron(
+              Iconsax.arrow_right_3,
+              controller.canGoNext,
+              controller.nextMonth,
+            ),
+          ),
         ],
       ),
     );
@@ -105,9 +115,8 @@ class MssRecapView extends GetView<MssRecapController> {
       return Container(
         padding: EdgeInsets.all(16.w),
         decoration: BoxDecoration(
-          color: AppColors.background,
+          color: AppColors.surface,
           borderRadius: BorderRadius.circular(16.r),
-          border: Border.all(color: AppColors.border),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -193,9 +202,8 @@ class MssRecapView extends GetView<MssRecapController> {
       margin: EdgeInsets.only(bottom: 10.h),
       padding: EdgeInsets.all(14.w),
       decoration: BoxDecoration(
-        color: AppColors.background,
+        color: AppColors.surface,
         borderRadius: BorderRadius.circular(16.r),
-        border: Border.all(color: AppColors.border),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -206,7 +214,10 @@ class MssRecapView extends GetView<MssRecapController> {
                 width: 42.w,
                 height: 42.w,
                 alignment: Alignment.center,
-                decoration: BoxDecoration(shape: BoxShape.circle, color: m.avatarColor),
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: m.avatarColor,
+                ),
                 child: Text(
                   m.initials,
                   style: TextStyle(
@@ -233,7 +244,10 @@ class MssRecapView extends GetView<MssRecapController> {
                       SizedBox(height: 2.h),
                       Text(
                         'NIK ${m.employeeNumber}',
-                        style: TextStyle(fontSize: 11.sp, color: AppColors.textMuted),
+                        style: TextStyle(
+                          fontSize: 11.sp,
+                          color: AppColors.textMuted,
+                        ),
                       ),
                     ],
                   ],
@@ -254,7 +268,10 @@ class MssRecapView extends GetView<MssRecapController> {
                     SizedBox(height: 2.h),
                     Text(
                       'telat ${m.lateMinutes}m',
-                      style: TextStyle(fontSize: 11.sp, color: AppColors.warning),
+                      style: TextStyle(
+                        fontSize: 11.sp,
+                        color: AppColors.warning,
+                      ),
                     ),
                   ],
                 ],

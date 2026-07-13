@@ -59,31 +59,30 @@ class MssView extends GetView<MssController> {
       ),
       child: TabBar(
         indicator: BoxDecoration(
-          color: AppColors.background,
+          color: AppColors.surface,
           borderRadius: BorderRadius.circular(10.r),
-          boxShadow: [
-            BoxShadow(
-              color: AppColors.navy.withValues(alpha: 0.06),
-              blurRadius: 8,
-              offset: const Offset(0, 2),
-            ),
-          ],
         ),
         indicatorSize: TabBarIndicatorSize.tab,
         dividerColor: Colors.transparent,
         labelColor: AppColors.primary,
         unselectedLabelColor: AppColors.textMuted,
         labelStyle: TextStyle(fontSize: 13.sp, fontWeight: FontWeight.w700),
-        unselectedLabelStyle:
-            TextStyle(fontSize: 13.sp, fontWeight: FontWeight.w600),
+        unselectedLabelStyle: TextStyle(
+          fontSize: 13.sp,
+          fontWeight: FontWeight.w600,
+        ),
         padding: EdgeInsets.all(4.w),
         tabs: [
-          Obx(() => Tab(
-                height: 38.h,
-                child: Text(controller.approvals.isEmpty
+          Obx(
+            () => Tab(
+              height: 38.h,
+              child: Text(
+                controller.approvals.isEmpty
                     ? 'Persetujuan'
-                    : 'Persetujuan (${controller.approvals.length})'),
-              )),
+                    : 'Persetujuan (${controller.approvals.length})',
+              ),
+            ),
+          ),
           const Tab(height: 38, child: Text('Riwayat')),
           const Tab(height: 38, child: Text('Tim')),
         ],
@@ -109,7 +108,9 @@ class MssView extends GetView<MssController> {
                       'Semua permintaan tim sudah diproses.',
                     )
                   : ListView.separated(
-                      physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
+                      physics: const AlwaysScrollableScrollPhysics(
+                        parent: BouncingScrollPhysics(),
+                      ),
                       padding: EdgeInsets.fromLTRB(16.w, 8.h, 16.w, 24.h),
                       itemCount: items.length,
                       separatorBuilder: (_, __) => SizedBox(height: 10.h),
@@ -131,7 +132,6 @@ class MssView extends GetView<MssController> {
         decoration: BoxDecoration(
           color: AppColors.primary.withValues(alpha: 0.08),
           borderRadius: BorderRadius.circular(12.r),
-          border: Border.all(color: AppColors.primary.withValues(alpha: 0.25)),
         ),
         child: Row(
           children: [
@@ -139,23 +139,37 @@ class MssView extends GetView<MssController> {
               onTap: controller.clearSelection,
               child: Padding(
                 padding: EdgeInsets.all(4.w),
-                child: Icon(Iconsax.close_square,
-                    size: 20.sp, color: AppColors.textMuted),
+                child: Icon(
+                  Iconsax.close_square,
+                  size: 20.sp,
+                  color: AppColors.textMuted,
+                ),
               ),
             ),
             SizedBox(width: 8.w),
             Expanded(
-              child: Text('$n dipilih',
-                  style: TextStyle(
-                      fontSize: 13.sp,
-                      fontWeight: FontWeight.w700,
-                      color: AppColors.navy)),
+              child: Text(
+                '$n dipilih',
+                style: TextStyle(
+                  fontSize: 13.sp,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.navy,
+                ),
+              ),
             ),
-            _bulkBtn('Tolak', AppColors.destructive, false,
-                () => controller.bulk('reject')),
+            _bulkBtn(
+              'Tolak',
+              AppColors.destructive,
+              false,
+              () => controller.bulk('reject'),
+            ),
             SizedBox(width: 8.w),
-            _bulkBtn('Setujui', AppColors.success, true,
-                () => controller.bulk('approve')),
+            _bulkBtn(
+              'Setujui',
+              AppColors.success,
+              true,
+              () => controller.bulk('approve'),
+            ),
           ],
         ),
       );
@@ -169,15 +183,16 @@ class MssView extends GetView<MssController> {
         padding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 8.h),
         decoration: BoxDecoration(
           color: filled ? color : Colors.transparent,
-          border: Border.all(color: color),
           borderRadius: BorderRadius.circular(9.r),
         ),
-        child: Text(label,
-            style: TextStyle(
-              fontSize: 12.5.sp,
-              fontWeight: FontWeight.w700,
-              color: filled ? Colors.white : color,
-            )),
+        child: Text(
+          label,
+          style: TextStyle(
+            fontSize: 12.5.sp,
+            fontWeight: FontWeight.w700,
+            color: filled ? Colors.white : color,
+          ),
+        ),
       ),
     );
   }
@@ -189,12 +204,8 @@ class MssView extends GetView<MssController> {
       return Container(
         padding: EdgeInsets.all(14.w),
         decoration: BoxDecoration(
-          color: AppColors.background,
+          color: AppColors.surface,
           borderRadius: BorderRadius.circular(16.r),
-          border: Border.all(
-            color: isSelected ? AppColors.primary : AppColors.border,
-            width: isSelected ? 1.5 : 1,
-          ),
         ),
         child: Column(
           children: [
@@ -237,14 +248,19 @@ class MssView extends GetView<MssController> {
                       SizedBox(height: 2.h),
                       Row(
                         children: [
-                          Icon(Iconsax.calendar_1,
-                              size: 12.sp, color: AppColors.textMuted),
+                          Icon(
+                            Iconsax.calendar_1,
+                            size: 12.sp,
+                            color: AppColors.textMuted,
+                          ),
                           SizedBox(width: 4.w),
                           Expanded(
                             child: Text(
                               a.detail,
                               style: TextStyle(
-                                  fontSize: 12.sp, color: AppColors.textMuted),
+                                fontSize: 12.sp,
+                                color: AppColors.textMuted,
+                              ),
                             ),
                           ),
                         ],
@@ -271,13 +287,23 @@ class MssView extends GetView<MssController> {
             Row(
               children: [
                 Expanded(
-                  child: _actBtn('Tolak', Iconsax.close_circle,
-                      AppColors.destructive, false, () => _reject(a)),
+                  child: _actBtn(
+                    'Tolak',
+                    Iconsax.close_circle,
+                    AppColors.destructive,
+                    false,
+                    () => _reject(a),
+                  ),
                 ),
                 SizedBox(width: 10.w),
                 Expanded(
-                  child: _actBtn('Setujui', Iconsax.tick_circle,
-                      AppColors.success, true, () => controller.act(a.id, 'approve')),
+                  child: _actBtn(
+                    'Setujui',
+                    Iconsax.tick_circle,
+                    AppColors.success,
+                    true,
+                    () => controller.act(a.id, 'approve'),
+                  ),
                 ),
               ],
             ),
@@ -319,13 +345,21 @@ class MssView extends GetView<MssController> {
       child: Text(
         label,
         style: TextStyle(
-            fontSize: 10.5.sp, fontWeight: FontWeight.w700, color: color),
+          fontSize: 10.5.sp,
+          fontWeight: FontWeight.w700,
+          color: color,
+        ),
       ),
     );
   }
 
-  Widget _actBtn(String label, IconData icon, Color color, bool filled,
-      VoidCallback onTap) {
+  Widget _actBtn(
+    String label,
+    IconData icon,
+    Color color,
+    bool filled,
+    VoidCallback onTap,
+  ) {
     return GestureDetector(
       onTap: controller.acting.value ? null : onTap,
       child: Container(
@@ -334,19 +368,20 @@ class MssView extends GetView<MssController> {
         decoration: BoxDecoration(
           color: filled ? color : color.withValues(alpha: 0.08),
           borderRadius: BorderRadius.circular(11.r),
-          border: filled ? null : Border.all(color: color.withValues(alpha: 0.4)),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
             Icon(icon, size: 16.sp, color: filled ? Colors.white : color),
             SizedBox(width: 6.w),
-            Text(label,
-                style: TextStyle(
-                  fontSize: 13.sp,
-                  fontWeight: FontWeight.w700,
-                  color: filled ? Colors.white : color,
-                )),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 13.sp,
+                fontWeight: FontWeight.w700,
+                color: filled ? Colors.white : color,
+              ),
+            ),
           ],
         ),
       ),
@@ -357,18 +392,22 @@ class MssView extends GetView<MssController> {
     final ctrl = TextEditingController();
     Get.dialog(
       AlertDialog(
-        backgroundColor: AppColors.background,
-        shape:
-            RoundedRectangleBorder(borderRadius: BorderRadius.circular(16.r)),
-        title: Text('Tolak permintaan?',
-            style: TextStyle(fontSize: 16.sp, fontWeight: FontWeight.w700)),
+        backgroundColor: AppColors.surface,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16.r),
+        ),
+        title: Text(
+          'Tolak permintaan?',
+          style: TextStyle(fontSize: 16.sp, fontWeight: FontWeight.w700),
+        ),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('${a.employeeName} · ${a.title}',
-                style:
-                    TextStyle(fontSize: 12.5.sp, color: AppColors.textMuted)),
+            Text(
+              '${a.employeeName} · ${a.title}',
+              style: TextStyle(fontSize: 12.5.sp, color: AppColors.textMuted),
+            ),
             SizedBox(height: 12.h),
             TextField(
               controller: ctrl,
@@ -389,12 +428,16 @@ class MssView extends GetView<MssController> {
           TextButton(onPressed: Get.back, child: const Text('Batal')),
           ElevatedButton(
             style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.destructive,
-                foregroundColor: Colors.white),
+              backgroundColor: AppColors.destructive,
+              foregroundColor: Colors.white,
+            ),
             onPressed: () {
               Get.back();
-              controller.act(a.id, 'reject',
-                  reason: ctrl.text.trim().isEmpty ? null : ctrl.text.trim());
+              controller.act(
+                a.id,
+                'reject',
+                reason: ctrl.text.trim().isEmpty ? null : ctrl.text.trim(),
+              );
             },
             child: const Text('Tolak'),
           ),
@@ -417,7 +460,9 @@ class MssView extends GetView<MssController> {
                 'Keputusan yang kamu buat akan tampil di sini.',
               )
             : ListView.separated(
-                physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
+                physics: const AlwaysScrollableScrollPhysics(
+                  parent: BouncingScrollPhysics(),
+                ),
                 padding: EdgeInsets.fromLTRB(16.w, 8.h, 16.w, 24.h),
                 itemCount: items.length,
                 separatorBuilder: (_, __) => SizedBox(height: 10.h),
@@ -435,9 +480,8 @@ class MssView extends GetView<MssController> {
     return Container(
       padding: EdgeInsets.all(14.w),
       decoration: BoxDecoration(
-        color: AppColors.background,
+        color: AppColors.surface,
         borderRadius: BorderRadius.circular(16.r),
-        border: Border.all(color: AppColors.border),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -446,9 +490,18 @@ class MssView extends GetView<MssController> {
             width: 44.w,
             height: 44.w,
             alignment: Alignment.center,
-            decoration: BoxDecoration(shape: BoxShape.circle, color: a.avatarColor),
-            child: Text(a.initials,
-                style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 14.sp)),
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: a.avatarColor,
+            ),
+            child: Text(
+              a.initials,
+              style: TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.w700,
+                fontSize: 14.sp,
+              ),
+            ),
           ),
           SizedBox(width: 12.w),
           Expanded(
@@ -458,23 +511,40 @@ class MssView extends GetView<MssController> {
                 Row(
                   children: [
                     Expanded(
-                      child: Text(a.employeeName,
-                          style: TextStyle(
-                              fontSize: 13.5.sp, fontWeight: FontWeight.w700, color: AppColors.navy)),
+                      child: Text(
+                        a.employeeName,
+                        style: TextStyle(
+                          fontSize: 13.5.sp,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.navy,
+                        ),
+                      ),
                     ),
                     _typeChip(a.typeLabel, typeColor),
                   ],
                 ),
                 SizedBox(height: 4.h),
-                Text(a.title,
-                    style: TextStyle(fontSize: 13.sp, fontWeight: FontWeight.w600, color: AppColors.textPrimary)),
+                Text(
+                  a.title,
+                  style: TextStyle(
+                    fontSize: 13.sp,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.textPrimary,
+                  ),
+                ),
                 SizedBox(height: 2.h),
-                Text(a.detail, style: TextStyle(fontSize: 12.sp, color: AppColors.textMuted)),
+                Text(
+                  a.detail,
+                  style: TextStyle(fontSize: 12.sp, color: AppColors.textMuted),
+                ),
                 SizedBox(height: 8.h),
                 Row(
                   children: [
                     Container(
-                      padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 3.h),
+                      padding: EdgeInsets.symmetric(
+                        horizontal: 8.w,
+                        vertical: 3.h,
+                      ),
                       decoration: BoxDecoration(
                         color: statusColor.withValues(alpha: 0.1),
                         borderRadius: BorderRadius.circular(999),
@@ -482,19 +552,34 @@ class MssView extends GetView<MssController> {
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          Icon(approved ? Iconsax.tick_circle : Iconsax.close_circle,
-                              size: 12.sp, color: statusColor),
+                          Icon(
+                            approved
+                                ? Iconsax.tick_circle
+                                : Iconsax.close_circle,
+                            size: 12.sp,
+                            color: statusColor,
+                          ),
                           SizedBox(width: 4.w),
-                          Text(approved ? 'Disetujui' : 'Ditolak',
-                              style: TextStyle(
-                                  fontSize: 10.5.sp, fontWeight: FontWeight.w700, color: statusColor)),
+                          Text(
+                            approved ? 'Disetujui' : 'Ditolak',
+                            style: TextStyle(
+                              fontSize: 10.5.sp,
+                              fontWeight: FontWeight.w700,
+                              color: statusColor,
+                            ),
+                          ),
                         ],
                       ),
                     ),
                     if (a.decidedAt != null) ...[
                       const Spacer(),
-                      Text(a.decidedAt!,
-                          style: TextStyle(fontSize: 10.5.sp, color: AppColors.textMuted)),
+                      Text(
+                        a.decidedAt!,
+                        style: TextStyle(
+                          fontSize: 10.5.sp,
+                          color: AppColors.textMuted,
+                        ),
+                      ),
                     ],
                   ],
                 ),
@@ -512,13 +597,18 @@ class MssView extends GetView<MssController> {
     return Obx(() {
       final members = controller.team;
       if (members.isEmpty) {
-        return _empty(Iconsax.people, 'Belum ada anggota tim',
-            'Anda belum menjadi atasan siapa pun.');
+        return _empty(
+          Iconsax.people,
+          'Belum ada anggota tim',
+          'Anda belum menjadi atasan siapa pun.',
+        );
       }
       return RefreshIndicator(
         onRefresh: controller.load,
         child: ListView.separated(
-          physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
+          physics: const AlwaysScrollableScrollPhysics(
+            parent: BouncingScrollPhysics(),
+          ),
           padding: EdgeInsets.fromLTRB(16.w, 8.h, 16.w, 24.h),
           itemCount: members.length,
           separatorBuilder: (_, __) => SizedBox(height: 10.h),
@@ -535,51 +625,72 @@ class MssView extends GetView<MssController> {
       child: Container(
         padding: EdgeInsets.all(14.w),
         decoration: BoxDecoration(
-          color: AppColors.background,
+          color: AppColors.surface,
           borderRadius: BorderRadius.circular(16.r),
-          border: Border.all(color: AppColors.border),
         ),
         child: Row(
           children: [
-          Container(
-            width: 46.w,
-            height: 46.w,
-            alignment: Alignment.center,
-            decoration:
-                BoxDecoration(shape: BoxShape.circle, color: m.avatarColor),
-            child: Text(m.initials,
+            Container(
+              width: 46.w,
+              height: 46.w,
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: m.avatarColor,
+              ),
+              child: Text(
+                m.initials,
                 style: TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.w700,
-                    fontSize: 15.sp)),
-          ),
-          SizedBox(width: 12.w),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(m.name,
-                    style: TextStyle(
-                        fontSize: 13.5.sp,
-                        fontWeight: FontWeight.w700,
-                        color: AppColors.navy)),
-                SizedBox(height: 2.h),
-                Text(
-                  [m.position, m.department].where((e) => e != null).join(' · '),
-                  style: TextStyle(fontSize: 12.sp, color: AppColors.textMuted),
+                  color: Colors.white,
+                  fontWeight: FontWeight.w700,
+                  fontSize: 15.sp,
                 ),
-                if (m.employeeNumber != null) ...[
+              ),
+            ),
+            SizedBox(width: 12.w),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    m.name,
+                    style: TextStyle(
+                      fontSize: 13.5.sp,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.navy,
+                    ),
+                  ),
+                  SizedBox(height: 2.h),
+                  Text(
+                    [
+                      m.position,
+                      m.department,
+                    ].where((e) => e != null).join(' · '),
+                    style: TextStyle(
+                      fontSize: 12.sp,
+                      color: AppColors.textMuted,
+                    ),
+                  ),
+                  if (m.employeeNumber != null) ...[
                     SizedBox(height: 2.h),
-                    Text('NIK ${m.employeeNumber}',
-                        style: TextStyle(
-                            fontSize: 11.sp, color: AppColors.textMuted)),
+                    Text(
+                      'NIK ${m.employeeNumber}',
+                      style: TextStyle(
+                        fontSize: 11.sp,
+                        color: AppColors.textMuted,
+                      ),
+                    ),
                   ],
                 ],
               ),
             ),
             _statusChip(m.status),
             SizedBox(width: 6.w),
-            Icon(Iconsax.arrow_right_3, size: 16.sp, color: AppColors.textMuted),
+            Icon(
+              Iconsax.arrow_right_3,
+              size: 16.sp,
+              color: AppColors.textMuted,
+            ),
           ],
         ),
       ),
@@ -595,9 +706,14 @@ class MssView extends GetView<MssController> {
         color: color.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(999),
       ),
-      child: Text(active ? 'Aktif' : status,
-          style: TextStyle(
-              fontSize: 10.5.sp, fontWeight: FontWeight.w700, color: color)),
+      child: Text(
+        active ? 'Aktif' : status,
+        style: TextStyle(
+          fontSize: 10.5.sp,
+          fontWeight: FontWeight.w700,
+          color: color,
+        ),
+      ),
     );
   }
 
@@ -605,21 +721,28 @@ class MssView extends GetView<MssController> {
 
   Widget _empty(IconData icon, String title, String hint) {
     return ListView(
-      physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
+      physics: const AlwaysScrollableScrollPhysics(
+        parent: BouncingScrollPhysics(),
+      ),
       children: [
         SizedBox(height: 80.h),
         Icon(icon, size: 56.sp, color: AppColors.border),
         SizedBox(height: 16.h),
-        Text(title,
-            textAlign: TextAlign.center,
-            style: TextStyle(
-                fontSize: 15.sp,
-                fontWeight: FontWeight.w700,
-                color: AppColors.navy)),
+        Text(
+          title,
+          textAlign: TextAlign.center,
+          style: TextStyle(
+            fontSize: 15.sp,
+            fontWeight: FontWeight.w700,
+            color: AppColors.navy,
+          ),
+        ),
         SizedBox(height: 6.h),
-        Text(hint,
-            textAlign: TextAlign.center,
-            style: TextStyle(fontSize: 12.5.sp, color: AppColors.textMuted)),
+        Text(
+          hint,
+          textAlign: TextAlign.center,
+          style: TextStyle(fontSize: 12.5.sp, color: AppColors.textMuted),
+        ),
       ],
     );
   }

@@ -181,9 +181,6 @@ class PayslipView extends GetView<PayslipController> {
               ? AppColors.primary
               : AppColors.primary.withValues(alpha: 0.08),
           borderRadius: BorderRadius.circular(12.r),
-          border: filled
-              ? null
-              : Border.all(color: AppColors.primary.withValues(alpha: 0.4)),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,

@@ -38,7 +38,11 @@ class MoodDialog extends StatelessWidget {
                 Expanded(
                   child: Text(
                     'Bagaimana perasaanmu hari ini?',
-                    style: TextStyle(fontWeight: FontWeight.w700, color: AppColors.navy, fontSize: 15.sp),
+                    style: TextStyle(
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.navy,
+                      fontSize: 15.sp,
+                    ),
                   ),
                 ),
                 GestureDetector(
@@ -46,7 +50,11 @@ class MoodDialog extends StatelessWidget {
                   behavior: HitTestBehavior.opaque,
                   child: Padding(
                     padding: EdgeInsets.all(4.w),
-                    child: Icon(Iconsax.close_circle, size: 22.sp, color: AppColors.textMuted),
+                    child: Icon(
+                      Iconsax.close_circle,
+                      size: 22.sp,
+                      color: AppColors.textMuted,
+                    ),
                   ),
                 ),
               ],
@@ -60,7 +68,9 @@ class MoodDialog extends StatelessWidget {
             Obx(() {
               final selected = controller.selectedMood.value;
               return Row(
-                children: _moods.map((m) => _moodButton(controller, m, selected == m.$1)).toList(),
+                children: _moods
+                    .map((m) => _moodButton(controller, m, selected == m.$1))
+                    .toList(),
               );
             }),
             SizedBox(height: 12.h),
@@ -73,7 +83,10 @@ class MoodDialog extends StatelessWidget {
                 ),
                 child: Text(
                   'Nanti saja',
-                  style: TextStyle(fontSize: 12.5.sp, fontWeight: FontWeight.w600),
+                  style: TextStyle(
+                    fontSize: 12.5.sp,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
               ),
             ),
@@ -83,7 +96,11 @@ class MoodDialog extends StatelessWidget {
     );
   }
 
-  Widget _moodButton(HomeController controller, (String, String, String) m, bool selected) {
+  Widget _moodButton(
+    HomeController controller,
+    (String, String, String) m,
+    bool selected,
+  ) {
     return Expanded(
       child: GestureDetector(
         onTap: () {
@@ -99,9 +116,10 @@ class MoodDialog extends StatelessWidget {
                 width: double.infinity,
                 padding: EdgeInsets.symmetric(vertical: 12.h),
                 decoration: BoxDecoration(
-                  color: selected ? AppColors.primary.withValues(alpha: 0.12) : AppColors.muted,
+                  color: selected
+                      ? AppColors.primary.withValues(alpha: 0.12)
+                      : AppColors.muted,
                   borderRadius: BorderRadius.circular(14.r),
-                  border: selected ? Border.all(color: AppColors.primary, width: 2) : null,
                 ),
                 alignment: Alignment.center,
                 child: Text(m.$2, style: TextStyle(fontSize: 24.sp)),

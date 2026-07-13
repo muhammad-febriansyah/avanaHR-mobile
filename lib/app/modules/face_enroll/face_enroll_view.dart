@@ -67,8 +67,9 @@ class FaceEnrollView extends GetView<FaceEnrollController> {
         width: 250.w,
         height: 320.w,
         child: Obx(() {
-          final color =
-              controller.isBusy.value ? AppColors.success : Colors.white;
+          final color = controller.isBusy.value
+              ? AppColors.success
+              : Colors.white;
           return CustomPaint(painter: _CornerPainter(color));
         }),
       ),
@@ -89,52 +90,58 @@ class FaceEnrollView extends GetView<FaceEnrollController> {
             children: [
               Obx(() => _stepChip()),
               SizedBox(height: 14.h),
-              Obx(() => Text(
-                    controller.instruction,
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 13.sp,
-                      height: 1.4,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  )),
+              Obx(
+                () => Text(
+                  controller.instruction,
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 13.sp,
+                    height: 1.4,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ),
               SizedBox(height: 18.h),
-              Obx(() => SizedBox(
-                    width: double.infinity,
-                    height: 52.h,
-                    child: ElevatedButton.icon(
-                      onPressed:
-                          controller.isBusy.value ? null : controller.capture,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.success,
-                        disabledBackgroundColor:
-                            AppColors.success.withValues(alpha: 0.5),
-                        foregroundColor: Colors.white,
-                        elevation: 0,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(14.r),
-                        ),
+              Obx(
+                () => SizedBox(
+                  width: double.infinity,
+                  height: 52.h,
+                  child: ElevatedButton.icon(
+                    onPressed: controller.isBusy.value
+                        ? null
+                        : controller.capture,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.success,
+                      disabledBackgroundColor: AppColors.success.withValues(
+                        alpha: 0.5,
                       ),
-                      icon: controller.isBusy.value
-                          ? SizedBox(
-                              width: 18.w,
-                              height: 18.w,
-                              child: const CircularProgressIndicator(
-                                color: Colors.white,
-                                strokeWidth: 2,
-                              ),
-                            )
-                          : Icon(Iconsax.camera, size: 20.sp),
-                      label: Text(
-                        controller.isBusy.value ? 'Memproses…' : 'Ambil Wajah',
-                        style: TextStyle(
-                          fontSize: 14.5.sp,
-                          fontWeight: FontWeight.w700,
-                        ),
+                      foregroundColor: Colors.white,
+                      elevation: 0,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14.r),
                       ),
                     ),
-                  )),
+                    icon: controller.isBusy.value
+                        ? SizedBox(
+                            width: 18.w,
+                            height: 18.w,
+                            child: const CircularProgressIndicator(
+                              color: Colors.white,
+                              strokeWidth: 2,
+                            ),
+                          )
+                        : Icon(Iconsax.camera, size: 20.sp),
+                    label: Text(
+                      controller.isBusy.value ? 'Memproses…' : 'Ambil Wajah',
+                      style: TextStyle(
+                        fontSize: 14.5.sp,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
               SizedBox(height: 12.h),
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
@@ -166,7 +173,6 @@ class FaceEnrollView extends GetView<FaceEnrollController> {
       decoration: BoxDecoration(
         color: Colors.white.withValues(alpha: 0.10),
         borderRadius: BorderRadius.circular(999),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.18)),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -213,8 +219,7 @@ class _ScrimPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final center = Offset(size.width / 2, size.height * 0.41);
-    final hole =
-        Rect.fromCenter(center: center, width: 250.w, height: 320.w);
+    final hole = Rect.fromCenter(center: center, width: 250.w, height: 320.w);
 
     final scrim = Path()..addRect(Offset.zero & size);
     final ovalPath = Path()..addOval(hole);

@@ -67,8 +67,9 @@ class FaceVerifyView extends GetView<FaceVerifyController> {
         width: 250.w,
         height: 320.w,
         child: Obx(() {
-          final color =
-              controller.isBusy.value ? AppColors.success : Colors.white;
+          final color = controller.isBusy.value
+              ? AppColors.success
+              : Colors.white;
           return CustomPaint(painter: _CornerPainter(color));
         }),
       ),
@@ -89,43 +90,47 @@ class FaceVerifyView extends GetView<FaceVerifyController> {
             children: [
               _hintRow(),
               SizedBox(height: 16.h),
-              Obx(() => SizedBox(
-                    width: double.infinity,
-                    height: 52.h,
-                    child: ElevatedButton.icon(
-                      onPressed:
-                          controller.isBusy.value ? null : controller.capture,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.success,
-                        disabledBackgroundColor:
-                            AppColors.success.withValues(alpha: 0.5),
-                        foregroundColor: Colors.white,
-                        elevation: 0,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(14.r),
-                        ),
+              Obx(
+                () => SizedBox(
+                  width: double.infinity,
+                  height: 52.h,
+                  child: ElevatedButton.icon(
+                    onPressed: controller.isBusy.value
+                        ? null
+                        : controller.capture,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.success,
+                      disabledBackgroundColor: AppColors.success.withValues(
+                        alpha: 0.5,
                       ),
-                      icon: controller.isBusy.value
-                          ? SizedBox(
-                              width: 18.w,
-                              height: 18.w,
-                              child: const CircularProgressIndicator(
-                                color: Colors.white,
-                                strokeWidth: 2,
-                              ),
-                            )
-                          : Icon(Iconsax.scan, size: 20.sp),
-                      label: Text(
-                        controller.isBusy.value
-                            ? 'Memproses…'
-                            : 'Verifikasi Wajah',
-                        style: TextStyle(
-                          fontSize: 14.5.sp,
-                          fontWeight: FontWeight.w700,
-                        ),
+                      foregroundColor: Colors.white,
+                      elevation: 0,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14.r),
                       ),
                     ),
-                  )),
+                    icon: controller.isBusy.value
+                        ? SizedBox(
+                            width: 18.w,
+                            height: 18.w,
+                            child: const CircularProgressIndicator(
+                              color: Colors.white,
+                              strokeWidth: 2,
+                            ),
+                          )
+                        : Icon(Iconsax.scan, size: 20.sp),
+                    label: Text(
+                      controller.isBusy.value
+                          ? 'Memproses…'
+                          : 'Verifikasi Wajah',
+                      style: TextStyle(
+                        fontSize: 14.5.sp,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
             ],
           ),
         ),
@@ -139,7 +144,6 @@ class FaceVerifyView extends GetView<FaceVerifyController> {
       decoration: BoxDecoration(
         color: Colors.white.withValues(alpha: 0.10),
         borderRadius: BorderRadius.circular(12.r),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.18)),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -150,7 +154,10 @@ class FaceVerifyView extends GetView<FaceVerifyController> {
             child: Text(
               'Posisikan wajah di dalam bingkai, cahaya cukup, mata terbuka.',
               style: TextStyle(
-                  color: Colors.white, fontSize: 11.5.sp, height: 1.35),
+                color: Colors.white,
+                fontSize: 11.5.sp,
+                height: 1.35,
+              ),
             ),
           ),
         ],
@@ -166,9 +173,7 @@ class _SpotlightScrim extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return IgnorePointer(
-      child: CustomPaint(painter: _ScrimPainter()),
-    );
+    return IgnorePointer(child: CustomPaint(painter: _ScrimPainter()));
   }
 }
 

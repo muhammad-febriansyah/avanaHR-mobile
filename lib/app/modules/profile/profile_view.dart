@@ -70,13 +70,6 @@ class ProfileView extends GetView<ProfileController> {
       decoration: BoxDecoration(
         color: AppColors.primary,
         borderRadius: BorderRadius.circular(22.r),
-        boxShadow: [
-          BoxShadow(
-            color: AppColors.navy.withValues(alpha: 0.08),
-            blurRadius: 18,
-            offset: const Offset(0, 8),
-          ),
-        ],
       ),
       child: Column(
         children: [
@@ -196,7 +189,6 @@ class ProfileView extends GetView<ProfileController> {
         decoration: BoxDecoration(
           color: AppColors.primary.withValues(alpha: 0.06),
           borderRadius: BorderRadius.circular(14.r),
-          border: Border.all(color: AppColors.primary.withValues(alpha: 0.25)),
         ),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -255,9 +247,6 @@ class ProfileView extends GetView<ProfileController> {
         decoration: BoxDecoration(
           color: AppColors.destructive.withValues(alpha: 0.06),
           borderRadius: BorderRadius.circular(14.r),
-          border: Border.all(
-            color: AppColors.destructive.withValues(alpha: 0.25),
-          ),
         ),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
