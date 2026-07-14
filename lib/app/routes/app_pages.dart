@@ -25,6 +25,8 @@ import '../modules/mss_member/mss_member_binding.dart';
 import '../modules/mss_member/mss_member_view.dart';
 import '../modules/mss_recap/mss_recap_binding.dart';
 import '../modules/mss_recap/mss_recap_view.dart';
+import '../modules/dashboard/dashboard_binding.dart';
+import '../modules/dashboard/dashboard_view.dart';
 import '../modules/overtime/overtime_binding.dart';
 import '../modules/overtime/overtime_view.dart';
 import '../modules/permission/permission_binding.dart';
@@ -173,6 +175,11 @@ class AppPages {
       name: _Paths.MSS_RECAP,
       page: () => const MssRecapView(),
       binding: MssRecapBinding(),
+    ),
+    GetPage(
+      name: _Paths.DASHBOARD,
+      page: () => const DashboardView(),
+      binding: DashboardBinding(),
     ),
   ];
 }
