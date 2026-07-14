@@ -73,8 +73,13 @@ class AttendanceView extends GetView<AttendanceController> {
           physics: const AlwaysScrollableScrollPhysics(
             parent: BouncingScrollPhysics(),
           ),
-          // Extra bottom inset so the map/content clears the docked center FAB.
-          padding: EdgeInsets.fromLTRB(20.w, 4.h, 20.w, 72.h),
+          // Bottom inset so the map/content clears the floating nav bar.
+          padding: EdgeInsets.fromLTRB(
+            20.w,
+            4.h,
+            20.w,
+            AppPage.bottomNavClearance(Get.context!),
+          ),
           child: Center(
             child: ConstrainedBox(
               constraints: const BoxConstraints(maxWidth: 480),

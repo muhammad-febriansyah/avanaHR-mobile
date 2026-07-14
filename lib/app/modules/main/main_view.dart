@@ -71,7 +71,16 @@ class MainView extends GetView<MainController> {
         middleItemSize: 58.w,
         navBarDecoration: NavBarDecoration(
           color: AppColors.surface,
-          border: const Border(top: BorderSide(color: AppColors.border)),
+          // A soft upward shadow so the bar reads as floating over the page —
+          // a hard top border draws a full-width line that looks like the
+          // content is cut off above the bar.
+          boxShadow: [
+            BoxShadow(
+              color: AppColors.navy.withValues(alpha: 0.08),
+              blurRadius: 24,
+              offset: const Offset(0, -6),
+            ),
+          ],
           padding: EdgeInsets.symmetric(horizontal: 4.w, vertical: 6.h),
         ),
       ),

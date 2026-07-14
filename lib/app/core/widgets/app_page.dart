@@ -20,10 +20,6 @@ class AppPage extends StatelessWidget {
   /// Show the back button (false for bottom-nav tabs).
   final bool showBack;
 
-  /// Reserve bottom space equal to the persistent nav bar so scroll content is
-  /// not hidden behind it. Enable only on bottom-nav tab screens.
-  final bool reserveBottomNav;
-
   /// Pull-to-refresh handler. When set, [child] must be scrollable.
   final Future<void> Function()? onRefresh;
 
@@ -38,17 +34,17 @@ class AppPage extends StatelessWidget {
     this.subtitle,
     this.actions = const [],
     this.showBack = true,
-    this.reserveBottomNav = false,
     this.onRefresh,
     this.floatingActionButton,
     this.floatingActionButtonLocation,
   });
 
   /// Vertical space the persistent Style 13 nav bar occupies (floating-button
-  /// gutter + bar + bottom safe area) — scroll views on tab screens pad their
-  /// bottom by this so their last item clears the bar.
+  /// gutter + bar + bottom safe area). Bottom-nav tab screens add this to their
+  /// SCROLL VIEW's own bottom padding (not a wrapping Container — that would
+  /// shrink the viewport and clip content) so the last item clears the bar.
   static double bottomNavClearance(BuildContext context) =>
-      87.h + MediaQuery.of(context).viewPadding.bottom;
+      88.h + MediaQuery.of(context).viewPadding.bottom;
 
   @override
   Widget build(BuildContext context) {
@@ -74,9 +70,6 @@ class AppPage extends StatelessWidget {
               child: Container(
                 width: double.infinity,
                 color: Colors.white,
-                padding: reserveBottomNav
-                    ? EdgeInsets.only(bottom: bottomNavClearance(context))
-                    : EdgeInsets.zero,
                 child: content,
               ),
             ),

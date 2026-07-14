@@ -7,8 +7,10 @@ import 'package:iconsax/iconsax.dart';
 import '../../core/theme/app_colors.dart';
 import 'face_enroll_controller.dart';
 
-const _bg = Color(0xFF0B1020); // deep brand navy for camera immersion
+const _bg = Color(0xFF0B1020);
 
+/// Face enrollment screen: full-bleed camera with green corner brackets framing
+/// the centre, a light top bar, and a step/status card at the bottom.
 class FaceEnrollView extends StatefulWidget {
   const FaceEnrollView({super.key});
 
@@ -21,8 +23,7 @@ class _FaceEnrollViewState extends State<FaceEnrollView>
   final FaceEnrollController c = Get.find();
   late final AnimationController _sweep;
 
-  double get _ovalW => 290.w;
-  double get _ovalH => 370.w;
+  double get _frame => 280.w;
 
   @override
   void initState() {
@@ -49,12 +50,8 @@ class _FaceEnrollViewState extends State<FaceEnrollView>
           fit: StackFit.expand,
           children: [
             _preview(),
-            const Positioned.fill(
-              child: IgnorePointer(
-                child: CustomPaint(painter: _ScrimPainter()),
-              ),
-            ),
-            _ovalArea(),
+            const Positioned.fill(child: IgnorePointer(child: _EdgeGradient())),
+            _frameArea(),
             _topBar(),
             _bottomPanel(),
           ],
@@ -95,12 +92,12 @@ class _FaceEnrollViewState extends State<FaceEnrollView>
     );
   }
 
-  Widget _ovalArea() {
+  Widget _frameArea() {
     return Align(
-      alignment: const Alignment(0, -0.2),
+      alignment: const Alignment(0, -0.16),
       child: SizedBox(
-        width: _ovalW,
-        height: _ovalH,
+        width: _frame,
+        height: _frame,
         child: Stack(
           children: [
             Obx(() {
@@ -108,20 +105,21 @@ class _FaceEnrollViewState extends State<FaceEnrollView>
               final reduceMotion =
                   MediaQuery.maybeOf(context)?.disableAnimations ?? false;
               if (!searching || reduceMotion) return const SizedBox.shrink();
-              return ClipOval(
+              return ClipRRect(
+                borderRadius: BorderRadius.circular(28.r),
                 child: AnimatedBuilder(
                   animation: _sweep,
                   builder: (_, _) => Align(
                     alignment: Alignment(0, (_sweep.value * 2) - 1),
                     child: Container(
                       height: 2,
-                      margin: EdgeInsets.symmetric(horizontal: 28.w),
+                      margin: EdgeInsets.symmetric(horizontal: 20.w),
                       decoration: BoxDecoration(
                         gradient: LinearGradient(
                           colors: [
-                            AppColors.primary.withValues(alpha: 0),
-                            AppColors.primary,
-                            AppColors.primary.withValues(alpha: 0),
+                            AppColors.success.withValues(alpha: 0),
+                            AppColors.success,
+                            AppColors.success.withValues(alpha: 0),
                           ],
                         ),
                       ),
@@ -133,9 +131,8 @@ class _FaceEnrollViewState extends State<FaceEnrollView>
             Positioned.fill(
               child: Obx(
                 () => CustomPaint(
-                  painter: _RingPainter(
+                  painter: _CornerPainter(
                     c.faceOk.value ? AppColors.success : Colors.white,
-                    glow: c.faceOk.value,
                   ),
                 ),
               ),
@@ -147,25 +144,26 @@ class _FaceEnrollViewState extends State<FaceEnrollView>
   }
 
   Widget _topBar() {
-    return SafeArea(
-      child: Padding(
-        padding: EdgeInsets.fromLTRB(12.w, 6.h, 12.w, 0),
-        child: Row(
-          children: [
-            _glassButton(Iconsax.close_circle, c.cancel),
-            Expanded(
-              child: Text(
+    return Align(
+      alignment: Alignment.topCenter,
+      child: SafeArea(
+        bottom: false,
+        child: Padding(
+          padding: EdgeInsets.fromLTRB(12.w, 6.h, 12.w, 0),
+          child: Row(
+            children: [
+              _glassButton(Iconsax.arrow_left_2, c.cancel),
+              SizedBox(width: 8.w),
+              Text(
                 'Daftar Wajah',
-                textAlign: TextAlign.center,
                 style: TextStyle(
                   color: Colors.white,
-                  fontSize: 15.sp,
+                  fontSize: 16.sp,
                   fontWeight: FontWeight.w700,
                 ),
               ),
-            ),
-            SizedBox(width: 44.w),
-          ],
+            ],
+          ),
         ),
       ),
     );
@@ -176,14 +174,14 @@ class _FaceEnrollViewState extends State<FaceEnrollView>
       onTap: onTap,
       borderRadius: BorderRadius.circular(100.r),
       child: Container(
-        width: 44.w,
-        height: 44.w,
+        width: 42.w,
+        height: 42.w,
         alignment: Alignment.center,
         decoration: BoxDecoration(
-          color: Colors.white.withValues(alpha: 0.14),
+          color: Colors.white.withValues(alpha: 0.16),
           shape: BoxShape.circle,
         ),
-        child: Icon(icon, color: Colors.white, size: 22.sp),
+        child: Icon(icon, color: Colors.white, size: 20.sp),
       ),
     );
   }
@@ -194,7 +192,7 @@ class _FaceEnrollViewState extends State<FaceEnrollView>
       child: SafeArea(
         top: false,
         child: Padding(
-          padding: EdgeInsets.fromLTRB(20.w, 0, 20.w, 22.h),
+          padding: EdgeInsets.fromLTRB(20.w, 0, 20.w, 24.h),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -205,13 +203,13 @@ class _FaceEnrollViewState extends State<FaceEnrollView>
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(Iconsax.shield_tick, size: 12.sp, color: Colors.white54),
+                  Icon(Iconsax.shield_tick, size: 12.sp, color: Colors.white60),
                   SizedBox(width: 6.w),
                   Flexible(
                     child: Text(
                       'Hanya data wajah (bukan foto) yang dikirim.',
                       style: TextStyle(
-                        color: Colors.white54,
+                        color: Colors.white60,
                         fontSize: 10.5.sp,
                       ),
                     ),
@@ -230,7 +228,7 @@ class _FaceEnrollViewState extends State<FaceEnrollView>
     return Container(
       padding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 7.h),
       decoration: BoxDecoration(
-        color: AppColors.primary.withValues(alpha: 0.18),
+        color: AppColors.primary.withValues(alpha: 0.9),
         borderRadius: BorderRadius.circular(100.r),
       ),
       child: Row(
@@ -258,7 +256,7 @@ class _FaceEnrollViewState extends State<FaceEnrollView>
       width: 7.w,
       height: 7.w,
       decoration: BoxDecoration(
-        color: active ? AppColors.primary : Colors.white.withValues(alpha: 0.3),
+        color: active ? Colors.white : Colors.white.withValues(alpha: 0.4),
         shape: BoxShape.circle,
       ),
     );
@@ -283,11 +281,10 @@ class _FaceEnrollViewState extends State<FaceEnrollView>
     }
 
     return Container(
-      padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.h),
+      padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 13.h),
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.10),
+        color: Colors.black.withValues(alpha: 0.42),
         borderRadius: BorderRadius.circular(14.r),
-        border: Border.all(color: color.withValues(alpha: ok ? 0.5 : 0.18)),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -312,54 +309,81 @@ class _FaceEnrollViewState extends State<FaceEnrollView>
   }
 }
 
-class _ScrimPainter extends CustomPainter {
-  const _ScrimPainter();
+class _EdgeGradient extends StatelessWidget {
+  const _EdgeGradient();
 
   @override
-  void paint(Canvas canvas, Size size) {
-    final center = Offset(size.width / 2, size.height * 0.4);
-    final hole = Rect.fromCenter(center: center, width: 290.w, height: 370.w);
-    final scrim = Path()..addRect(Offset.zero & size);
-    final oval = Path()..addOval(hole);
-    canvas.drawPath(
-      Path.combine(PathOperation.difference, scrim, oval),
-      Paint()..color = _bg.withValues(alpha: 0.86),
+  Widget build(BuildContext context) {
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          stops: const [0, 0.18, 0.72, 1],
+          colors: [
+            _bg.withValues(alpha: 0.8),
+            _bg.withValues(alpha: 0),
+            _bg.withValues(alpha: 0),
+            _bg.withValues(alpha: 0.88),
+          ],
+        ),
+      ),
     );
   }
-
-  @override
-  bool shouldRepaint(covariant _ScrimPainter oldDelegate) => false;
 }
 
-class _RingPainter extends CustomPainter {
-  _RingPainter(this.color, {this.glow = false});
+/// Four rounded L-shaped corner brackets framing the capture window; turns
+/// green once a valid face is detected.
+class _CornerPainter extends CustomPainter {
+  _CornerPainter(this.color);
   final Color color;
-  final bool glow;
 
   @override
   void paint(Canvas canvas, Size size) {
-    final oval = (Offset.zero & size).deflate(2);
-    if (glow) {
-      canvas.drawOval(
-        oval,
-        Paint()
-          ..color = color.withValues(alpha: 0.35)
-          ..style = PaintingStyle.stroke
-          ..strokeWidth = 10
-          ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 6),
-      );
-    }
-    canvas.drawOval(
-      oval,
-      Paint()
-        ..color = color
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 3
-        ..strokeCap = StrokeCap.round,
+    final p = Paint()
+      ..color = color
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 4
+      ..strokeCap = StrokeCap.round;
+    const len = 36.0;
+    const r = 20.0;
+    final w = size.width;
+    final h = size.height;
+
+    canvas.drawPath(
+      Path()
+        ..moveTo(0, len + r)
+        ..lineTo(0, r)
+        ..arcToPoint(const Offset(r, 0), radius: const Radius.circular(r))
+        ..lineTo(len + r, 0),
+      p,
+    );
+    canvas.drawPath(
+      Path()
+        ..moveTo(w - len - r, 0)
+        ..lineTo(w - r, 0)
+        ..arcToPoint(Offset(w, r), radius: const Radius.circular(r))
+        ..lineTo(w, len + r),
+      p,
+    );
+    canvas.drawPath(
+      Path()
+        ..moveTo(0, h - len - r)
+        ..lineTo(0, h - r)
+        ..arcToPoint(Offset(r, h), radius: const Radius.circular(r))
+        ..lineTo(len + r, h),
+      p,
+    );
+    canvas.drawPath(
+      Path()
+        ..moveTo(w - len - r, h)
+        ..lineTo(w - r, h)
+        ..arcToPoint(Offset(w, h - r), radius: const Radius.circular(r))
+        ..lineTo(w, h - len - r),
+      p,
     );
   }
 
   @override
-  bool shouldRepaint(covariant _RingPainter oldDelegate) =>
-      oldDelegate.color != color || oldDelegate.glow != glow;
+  bool shouldRepaint(covariant _CornerPainter old) => old.color != color;
 }

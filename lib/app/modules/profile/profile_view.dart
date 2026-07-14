@@ -20,7 +20,6 @@ class ProfileView extends GetView<ProfileController> {
       title: 'Profil Saya',
       subtitle: 'Akun & keamanan',
       showBack: false,
-      reserveBottomNav: true,
       onRefresh: controller.load,
       child: Obx(() {
         if (controller.isLoading.value) {
@@ -34,7 +33,12 @@ class ProfileView extends GetView<ProfileController> {
           physics: const AlwaysScrollableScrollPhysics(
             parent: BouncingScrollPhysics(),
           ),
-          padding: EdgeInsets.fromLTRB(20.w, 20.h, 20.w, 28.h),
+          padding: EdgeInsets.fromLTRB(
+            20.w,
+            20.h,
+            20.w,
+            28.h + AppPage.bottomNavClearance(context),
+          ),
           children: [
             _header(p),
             SizedBox(height: 16.h),
