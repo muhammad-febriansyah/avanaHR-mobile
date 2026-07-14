@@ -36,7 +36,9 @@ class AttendanceQueueService extends GetxService {
     final raw = _box.read<String>(_key);
     if (raw == null || raw.isEmpty) return [];
     try {
-      return (jsonDecode(raw) as List).map((e) => Map<String, dynamic>.from(e as Map)).toList();
+      return (jsonDecode(raw) as List)
+          .map((e) => Map<String, dynamic>.from(e as Map))
+          .toList();
     } catch (_) {
       return [];
     }
@@ -73,6 +75,7 @@ class AttendanceQueueService extends GetxService {
             deviceId: entry['device_id'] as String?,
             isMockLocation: entry['is_mock_location'] as bool?,
             isRooted: entry['is_rooted'] as bool?,
+            isEmulator: entry['is_emulator'] as bool?,
             clockedAt: entry['clocked_at'] as String?,
           );
           final code = res.statusCode ?? 0;

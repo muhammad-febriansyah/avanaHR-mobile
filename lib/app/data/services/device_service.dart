@@ -26,13 +26,13 @@ class DeviceMeta {
   final String appVersion;
 
   Map<String, dynamic> toJson() => {
-        'device_id': deviceId,
-        'platform': platform,
-        'model': model,
-        'os_version': osVersion,
-        'device_name': deviceName,
-        'app_version': appVersion,
-      };
+    'device_id': deviceId,
+    'platform': platform,
+    'model': model,
+    'os_version': osVersion,
+    'device_name': deviceName,
+    'app_version': appVersion,
+  };
 }
 
 /// Resolves a stable per-install device id (persisted in secure storage so it
@@ -95,14 +95,31 @@ class DeviceService extends GetxService {
     }
   }
 
+  /// True when running on an emulator/simulator rather than real hardware.
+  /// Uses device_info's `isPhysicalDevice`; fails open (false) if unavailable.
+  Future<bool> isEmulator() async {
+    try {
+      if (Platform.isAndroid) {
+        return !(await _info.androidInfo).isPhysicalDevice;
+      }
+      if (Platform.isIOS) {
+        return !(await _info.iosInfo).isPhysicalDevice;
+      }
+    } catch (_) {
+      // Fall through.
+    }
+    return false;
+  }
+
   Future<String> _deviceId() async {
     final existing = await _secure.read(key: _kDeviceId);
     if (existing != null && existing.isNotEmpty) return existing;
 
     final rand = Random.secure();
-    final id = List<int>.generate(16, (_) => rand.nextInt(256))
-        .map((b) => b.toRadixString(16).padLeft(2, '0'))
-        .join();
+    final id = List<int>.generate(
+      16,
+      (_) => rand.nextInt(256),
+    ).map((b) => b.toRadixString(16).padLeft(2, '0')).join();
 
     await _secure.write(key: _kDeviceId, value: id);
     return id;

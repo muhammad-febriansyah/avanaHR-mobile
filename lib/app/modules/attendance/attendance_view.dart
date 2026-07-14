@@ -278,57 +278,94 @@ class AttendanceView extends GetView<AttendanceController> {
       padding: EdgeInsets.all(18.w),
       decoration: BoxDecoration(
         color: AppColors.surface,
-        borderRadius: BorderRadius.circular(18.r),
+        borderRadius: BorderRadius.circular(20.r),
       ),
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            t?.date ?? '-',
-            style: TextStyle(color: AppColors.textMuted, fontSize: 12.5.sp),
-          ),
-          SizedBox(height: 14.h),
           Row(
-            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
             children: [
-              _stat('Masuk', t?.clockIn ?? '--:--', Iconsax.login),
-              Container(width: 1, height: 42.h, color: AppColors.border),
-              _stat('Pulang', t?.clockOut ?? '--:--', Iconsax.logout),
+              Text(
+                'Absensi Hari Ini',
+                style: TextStyle(
+                  fontSize: 14.5.sp,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.navy,
+                ),
+              ),
+              const Spacer(),
+              if (t?.status != null) _statusChip(t!.status!),
             ],
           ),
-          if (t?.status != null) ...[
-            SizedBox(height: 12.h),
-            Container(
-              padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 5.h),
-              decoration: BoxDecoration(
-                color: AppColors.muted,
-                borderRadius: BorderRadius.circular(999),
+          SizedBox(height: 16.h),
+          Row(
+            children: [
+              Expanded(
+                child: _timeCol(
+                  Iconsax.login_1,
+                  'Masuk',
+                  t?.clockIn ?? '--:--',
+                  AppColors.success,
+                ),
               ),
-              child: Text(
-                'Status: ${t!.status}',
-                style: TextStyle(color: AppColors.textMuted, fontSize: 12.sp),
+              Container(width: 1, height: 46.h, color: AppColors.border),
+              Expanded(
+                child: _timeCol(
+                  Iconsax.logout_1,
+                  'Pulang',
+                  t?.clockOut ?? '--:--',
+                  AppColors.destructive,
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ],
       ),
     );
   }
 
-  Widget _stat(String label, String value, IconData icon) {
+  Widget _statusChip(String status) {
+    return Container(
+      padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 4.h),
+      decoration: BoxDecoration(
+        color: AppColors.primaryLight,
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Text(
+        status,
+        style: TextStyle(
+          color: AppColors.primary,
+          fontSize: 10.5.sp,
+          fontWeight: FontWeight.w700,
+        ),
+      ),
+    );
+  }
+
+  Widget _timeCol(IconData icon, String label, String value, Color color) {
     return Column(
       children: [
         Row(
-          mainAxisSize: MainAxisSize.min,
+          mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(icon, size: 13.sp, color: AppColors.textMuted),
-            SizedBox(width: 5.w),
+            Container(
+              width: 26.w,
+              height: 26.w,
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                color: color.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(8.r),
+              ),
+              child: Icon(icon, color: color, size: 14.sp),
+            ),
+            SizedBox(width: 7.w),
             Text(
               label,
               style: TextStyle(color: AppColors.textMuted, fontSize: 12.sp),
             ),
           ],
         ),
-        SizedBox(height: 6.h),
+        SizedBox(height: 8.h),
         Text(
           value,
           style: TextStyle(
@@ -455,17 +492,11 @@ class _GeofenceMapState extends State<_GeofenceMap> {
                       ),
                     MarkerLayer(
                       markers: [
-                        if (office != null)
+                        // Single default pin at the user's position (fallback to
+                        // the office point when GPS isn't available yet).
+                        if (user != null || office != null)
                           Marker(
-                            point: office,
-                            width: 48.w,
-                            height: 52.w,
-                            alignment: Alignment.bottomCenter,
-                            child: _officePin(),
-                          ),
-                        if (user != null)
-                          Marker(
-                            point: user,
+                            point: (user ?? office)!,
                             width: 40.w,
                             height: 40.w,
                             alignment: Alignment.bottomCenter,
@@ -523,39 +554,6 @@ class _GeofenceMapState extends State<_GeofenceMap> {
             );
           }),
         ),
-      ),
-    );
-  }
-
-  /// Office location pin — a teardrop whose tip sits on the office point, with
-  /// a white badge holding a building glyph. Uses Material icons so it always
-  /// renders (the old Iconsax glyph showed as a tofu box on some builds).
-  Widget _officePin() {
-    return SizedBox(
-      width: 48.w,
-      height: 52.w,
-      child: Stack(
-        alignment: Alignment.topCenter,
-        clipBehavior: Clip.none,
-        children: [
-          Icon(Icons.location_on, size: 50.sp, color: AppColors.primary),
-          Positioned(
-            top: 6.w,
-            child: Container(
-              width: 22.w,
-              height: 22.w,
-              decoration: const BoxDecoration(
-                color: Colors.white,
-                shape: BoxShape.circle,
-              ),
-              child: Icon(
-                Icons.business_rounded,
-                size: 13.sp,
-                color: AppColors.primary,
-              ),
-            ),
-          ),
-        ],
       ),
     );
   }

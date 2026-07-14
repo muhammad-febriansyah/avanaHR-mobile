@@ -1,13 +1,17 @@
+import 'dart:async';
+
 import 'package:camera/camera.dart';
+import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 
-import '../../core/widgets/app_toast.dart';
 import '../../data/services/face_detector_service.dart';
 import '../../data/services/face_embedder_service.dart';
 
-/// One-shot face capture used at clock-in. Returns the 192-d embedding to the
-/// caller via `Get.back(result: ...)`; enrollment already did the active
-/// liveness, so here a single frontal, open-eyes frame is enough.
+/// Live face verification used at clock-in. The front camera runs continuously
+/// and a scan loop grabs frames a few times a second, detecting a frontal,
+/// open-eyes face automatically — no shutter button. On the first good frame it
+/// embeds the face on-device and returns the 192-d vector via
+/// `Get.back(result: ...)`.
 class FaceVerifyController extends GetxController {
   final FaceDetectorService _detector = FaceDetectorService();
   final FaceEmbedderService _embedder = Get.find<FaceEmbedderService>();
@@ -15,7 +19,13 @@ class FaceVerifyController extends GetxController {
   CameraController? camera;
 
   final isReady = false.obs;
-  final isBusy = false.obs;
+  final isBusy = false.obs; // embedding / finishing
+  final faceOk = false.obs; // a valid face is framed right now
+  final hint = 'Menyiapkan kamera…'.obs;
+
+  Timer? _scanTimer;
+  bool _scanning = false; // a scan cycle is in flight
+  bool _done = false; // captured & returning
 
   @override
   void onInit() {
@@ -27,8 +37,7 @@ class FaceVerifyController extends GetxController {
     try {
       final cams = await availableCameras();
       if (cams.isEmpty) {
-        AppToast.error('Kamera tidak tersedia di perangkat ini.');
-
+        hint.value = 'Kamera tidak tersedia di perangkat ini.';
         return;
       }
       final front = cams.firstWhere(
@@ -43,52 +52,88 @@ class FaceVerifyController extends GetxController {
       await controller.initialize();
       camera = controller;
       isReady.value = true;
+      hint.value = 'Posisikan wajah di dalam bingkai';
+      _startScan();
     } catch (_) {
-      AppToast.error('Gagal membuka kamera. Beri izin kamera lalu coba lagi.');
+      hint.value = 'Gagal membuka kamera. Beri izin kamera lalu coba lagi.';
     }
   }
 
-  Future<void> capture() async {
-    final controller = camera;
-    if (controller == null || !controller.value.isInitialized || isBusy.value) {
-      return;
-    }
+  void _startScan() {
+    _scanTimer?.cancel();
+    _scanTimer = Timer.periodic(
+      const Duration(milliseconds: 1300),
+      (_) => _scanOnce(),
+    );
+  }
 
-    isBusy.value = true;
+  Future<void> _scanOnce() async {
+    if (_scanning || _done || isBusy.value) return;
+    final cam = camera;
+    if (cam == null || !cam.value.isInitialized) return;
+
+    _scanning = true;
     try {
-      final shot = await controller.takePicture();
+      final shot = await cam.takePicture();
       final faces = await _detector.detectFile(shot.path);
 
-      if (faces.length != 1) {
-        AppToast.warning('Pastikan hanya wajah Anda yang terlihat di kamera.');
-
+      if (faces.isEmpty) {
+        faceOk.value = false;
+        hint.value = 'Wajah tidak terdeteksi — dekatkan wajah';
         return;
       }
-
+      if (faces.length > 1) {
+        faceOk.value = false;
+        hint.value = 'Hanya wajah Anda yang boleh terlihat';
+        return;
+      }
       final face = faces.first;
       if (!_detector.isFrontalOpenEyes(face)) {
-        AppToast.warning('Hadapkan wajah lurus ke kamera dan buka mata.');
-
+        faceOk.value = false;
+        hint.value = 'Hadapkan wajah lurus & buka mata';
         return;
       }
 
-      final embedding = await _embedder.embedFromFile(shot.path, face.boundingBox);
+      // Good frame → verify.
+      faceOk.value = true;
+      hint.value = 'Wajah terdeteksi — memverifikasi…';
+      isBusy.value = true;
+      HapticFeedback.mediumImpact();
+
+      final embedding = await _embedder.embedFromFile(
+        shot.path,
+        face.boundingBox,
+      );
       if (embedding == null) {
-        AppToast.error('Model wajah tidak tersedia. Hubungi admin.');
-
+        isBusy.value = false;
+        faceOk.value = false;
+        hint.value = 'Model wajah tidak tersedia. Hubungi admin.';
         return;
       }
 
-      Get.back(result: embedding);
+      _done = true;
+      _scanTimer?.cancel();
+      // Return the embedding (for server-side verification) AND the captured
+      // frame path so the clock action can upload it as the attendance selfie.
+      Get.back(result: {'embedding': embedding, 'photo': shot.path});
     } catch (_) {
-      AppToast.error('Gagal memverifikasi wajah. Coba lagi.');
+      // Transient capture/detect error — keep scanning.
+      faceOk.value = false;
+      hint.value = 'Menyesuaikan kamera…';
     } finally {
-      isBusy.value = false;
+      _scanning = false;
     }
+  }
+
+  /// Cancel and return nothing.
+  void cancel() {
+    _scanTimer?.cancel();
+    Get.back();
   }
 
   @override
   void onClose() {
+    _scanTimer?.cancel();
     camera?.dispose();
     _detector.dispose();
     super.onClose();
