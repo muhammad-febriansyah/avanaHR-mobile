@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:get/get.dart';
@@ -140,49 +142,58 @@ class DashboardView extends GetView<DashboardController> {
 
   Widget _todayCard() {
     final t = controller.today.value;
+    final segments = t == null
+        ? <_Seg>[]
+        : <_Seg>[
+            _Seg('Hadir', t.present, AppColors.success),
+            _Seg('Terlambat', t.late, AppColors.warning),
+            _Seg('Alpa', t.absent, AppColors.destructive),
+            _Seg('Cuti', t.leave, const Color(0xFF9333EA)),
+            _Seg('WFH', t.wfh, const Color(0xFF0EA5E9)),
+          ];
+    final total = segments.fold<int>(0, (s, e) => s + e.value);
+
     return _card(
       title: 'Absensi Tim Hari Ini',
-      child: t == null
+      child: total == 0
           ? _emptyLine('Belum ada data absensi hari ini.')
-          : Wrap(
-              spacing: 8.w,
-              runSpacing: 8.h,
+          : Row(
               children: [
-                _tally('Hadir', t.present, AppColors.success),
-                _tally('Terlambat', t.late, AppColors.warning),
-                _tally('Alpa', t.absent, AppColors.destructive),
-                _tally('Cuti', t.leave, const Color(0xFF9333EA)),
-                _tally('WFH', t.wfh, const Color(0xFF0EA5E9)),
+                _DonutChart(segments: segments, total: total),
+                SizedBox(width: 18.w),
+                Expanded(
+                  child: Column(
+                    children: [for (final s in segments) _legendRow(s)],
+                  ),
+                ),
               ],
             ),
     );
   }
 
-  Widget _tally(String label, int value, Color color) {
-    return Container(
-      padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 8.h),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(12.r),
-      ),
+  Widget _legendRow(_Seg s) {
+    return Padding(
+      padding: EdgeInsets.symmetric(vertical: 3.h),
       child: Row(
-        mainAxisSize: MainAxisSize.min,
         children: [
-          Text(
-            '$value',
-            style: TextStyle(
-              fontSize: 15.sp,
-              fontWeight: FontWeight.w800,
-              color: color,
+          Container(
+            width: 9.w,
+            height: 9.w,
+            decoration: BoxDecoration(color: s.color, shape: BoxShape.circle),
+          ),
+          SizedBox(width: 8.w),
+          Expanded(
+            child: Text(
+              s.label,
+              style: TextStyle(fontSize: 12.sp, color: AppColors.textPrimary),
             ),
           ),
-          SizedBox(width: 6.w),
           Text(
-            label,
+            '${s.value}',
             style: TextStyle(
-              fontSize: 11.5.sp,
-              fontWeight: FontWeight.w600,
-              color: color,
+              fontSize: 12.5.sp,
+              fontWeight: FontWeight.w700,
+              color: AppColors.navy,
             ),
           ),
         ],
@@ -375,4 +386,94 @@ class DashboardView extends GetView<DashboardController> {
       style: TextStyle(fontSize: 12.5.sp, color: AppColors.textMuted),
     );
   }
+}
+
+/// One slice of the attendance donut.
+class _Seg {
+  final String label;
+  final int value;
+  final Color color;
+  const _Seg(this.label, this.value, this.color);
+}
+
+/// A flat donut chart with a total in the centre, drawn without any package.
+class _DonutChart extends StatelessWidget {
+  final List<_Seg> segments;
+  final int total;
+
+  const _DonutChart({required this.segments, required this.total});
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: 96.w,
+      height: 96.w,
+      child: CustomPaint(
+        painter: _DonutPainter(segments, total),
+        child: Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                '$total',
+                style: TextStyle(
+                  fontSize: 20.sp,
+                  fontWeight: FontWeight.w800,
+                  color: AppColors.navy,
+                ),
+              ),
+              Text(
+                'total',
+                style: TextStyle(fontSize: 10.sp, color: AppColors.textMuted),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _DonutPainter extends CustomPainter {
+  final List<_Seg> segments;
+  final int total;
+
+  _DonutPainter(this.segments, this.total);
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    if (total <= 0) {
+      return;
+    }
+    final stroke = size.width * 0.16;
+    final rect =
+        Offset(stroke / 2, stroke / 2) &
+        Size(size.width - stroke, size.height - stroke);
+    var start = -math.pi / 2;
+    const gap = 0.05; // radians of spacing between slices
+
+    for (final s in segments) {
+      if (s.value <= 0) {
+        continue;
+      }
+      final sweep = (s.value / total) * (2 * math.pi);
+      final paint = Paint()
+        ..color = s.color
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = stroke
+        ..strokeCap = StrokeCap.butt;
+      canvas.drawArc(
+        rect,
+        start + gap / 2,
+        math.max(sweep - gap, 0.001),
+        false,
+        paint,
+      );
+      start += sweep;
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _DonutPainter old) =>
+      old.total != total || old.segments != segments;
 }
