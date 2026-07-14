@@ -8,7 +8,6 @@ import 'package:iconsax/iconsax.dart';
 
 import '../../../core/theme/app_colors.dart';
 import '../../../core/widgets/app_page.dart';
-import '../../../core/widgets/app_sheet.dart';
 import '../../../data/models/ess_models.dart';
 import '../../../routes/app_pages.dart';
 import '../../main/main_controller.dart';
@@ -236,8 +235,6 @@ class HomeTab extends GetView<HomeController> {
             _monthlyHeader(),
             SizedBox(height: 12.h),
             _monthlyStats(),
-            SizedBox(height: 14.h),
-            _requestButton(),
             SizedBox(height: 26.h),
             _sectionHeader('Menu Cepat'),
             SizedBox(height: 14.h),
@@ -275,7 +272,7 @@ class HomeTab extends GetView<HomeController> {
               SizedBox(width: 5.w),
               Flexible(
                 child: Text(
-                  controller.todayLabel,
+                  controller.todayShort,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
@@ -320,9 +317,6 @@ class HomeTab extends GetView<HomeController> {
                           : AppColors.destructive,
                       foregroundColor: Colors.white,
                       elevation: 0,
-                      // Override the theme's full-width Size.fromHeight so the
-                      // button sizes to its content inside the Row (an infinite
-                      // width min in an unbounded Row axis would crash layout).
                       minimumSize: Size(0, 46.h),
                       padding: EdgeInsets.symmetric(horizontal: 20.w),
                       shape: RoundedRectangleBorder(
@@ -359,19 +353,19 @@ class HomeTab extends GetView<HomeController> {
                 _clockCol(
                   Iconsax.login_1,
                   'Masuk',
-                  t?.clockIn ?? '--:--',
+                  _clockValueText(t?.clockIn ?? '--:--'),
                   AppColors.success,
                 ),
                 _clockCol(
                   Iconsax.logout_1,
                   'Keluar',
-                  t?.clockOut ?? '--:--',
+                  _clockValueText(t?.clockOut ?? '--:--'),
                   AppColors.destructive,
                 ),
                 _clockCol(
                   Iconsax.clock,
                   'Jam Kerja',
-                  _hms(t?.workMinutes ?? 0),
+                  const _LiveWorkedHours(),
                   AppColors.primary,
                 ),
               ],
@@ -410,7 +404,7 @@ class HomeTab extends GetView<HomeController> {
     });
   }
 
-  Widget _clockCol(IconData icon, String label, String value, Color color) {
+  Widget _clockCol(IconData icon, String label, Widget value, Color color) {
     return Expanded(
       child: Column(
         children: [
@@ -424,16 +418,7 @@ class HomeTab extends GetView<HomeController> {
             child: Icon(icon, color: color, size: 16.sp),
           ),
           SizedBox(height: 8.h),
-          Text(
-            value,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: TextStyle(
-              fontWeight: FontWeight.w800,
-              color: AppColors.navy,
-              fontSize: 13.sp,
-            ),
-          ),
+          value,
           SizedBox(height: 2.h),
           Text(
             label,
@@ -446,11 +431,19 @@ class HomeTab extends GetView<HomeController> {
     );
   }
 
-  /// Worked minutes → HH:mm:ss (seconds fixed at 00, mirrors the reference).
-  String _hms(int minutes) {
-    final h = (minutes ~/ 60).toString().padLeft(2, '0');
-    final m = (minutes % 60).toString().padLeft(2, '0');
-    return '$h:$m:00';
+  /// Bold value text for a clock column (tabular figures for stable width).
+  Widget _clockValueText(String v) {
+    return Text(
+      v,
+      maxLines: 1,
+      overflow: TextOverflow.ellipsis,
+      style: TextStyle(
+        fontWeight: FontWeight.w800,
+        color: AppColors.navy,
+        fontSize: 13.sp,
+        fontFeatures: const [FontFeature.tabularFigures()],
+      ),
+    );
   }
 
   // ── Monthly attendance ──────────────────────────────────────────────────────
@@ -565,147 +558,6 @@ class HomeTab extends GetView<HomeController> {
                   ),
                 ],
               ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _requestButton() {
-    return SizedBox(
-      width: double.infinity,
-      height: 50.h,
-      child: OutlinedButton.icon(
-        style: OutlinedButton.styleFrom(
-          foregroundColor: AppColors.primary,
-          side: BorderSide.none,
-          backgroundColor: AppColors.primaryLight,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(14.r),
-          ),
-        ),
-        onPressed: _openRequestSheet,
-        icon: Icon(Iconsax.add, size: 20.sp),
-        label: Text(
-          'Ajukan',
-          style: TextStyle(fontSize: 14.sp, fontWeight: FontWeight.w700),
-        ),
-      ),
-    );
-  }
-
-  void _openRequestSheet() {
-    final items = <_Action>[
-      _Action(
-        'Cuti',
-        Iconsax.sun_1,
-        AppColors.success,
-        () => Get.toNamed(Routes.LEAVE),
-      ),
-      _Action(
-        'Izin',
-        Iconsax.calendar_remove,
-        const Color(0xFF9333EA),
-        () => Get.toNamed(Routes.PERMISSION),
-      ),
-      _Action(
-        'Lembur',
-        Iconsax.timer_1,
-        AppColors.warning,
-        () => Get.toNamed(Routes.OVERTIME),
-      ),
-      _Action(
-        'WFH',
-        Iconsax.house,
-        AppColors.info,
-        () => Get.toNamed(Routes.WFH),
-      ),
-      _Action(
-        'Reimburse',
-        Iconsax.wallet_money,
-        const Color(0xFFDB2777),
-        () => Get.toNamed(Routes.REIMBURSEMENT),
-      ),
-      _Action(
-        'Koreksi',
-        Iconsax.clock,
-        const Color(0xFF4F46E5),
-        () => Get.toNamed(Routes.ATTENDANCE_CORRECTION),
-      ),
-      _Action(
-        'Tukar Shift',
-        Iconsax.arrow_swap_horizontal,
-        const Color(0xFF0D9488),
-        () => Get.toNamed(Routes.SHIFT_SWAP),
-      ),
-    ];
-    showAppSheet(
-      Get.context!,
-      child: Padding(
-        padding: EdgeInsets.fromLTRB(20.w, 16.h, 20.w, 28.h),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Center(
-              child: Container(
-                width: 40.w,
-                height: 4.h,
-                decoration: BoxDecoration(
-                  color: AppColors.border,
-                  borderRadius: BorderRadius.circular(100.r),
-                ),
-              ),
-            ),
-            SizedBox(height: 16.h),
-            Text(
-              'Ajukan Permintaan',
-              style: TextStyle(
-                fontWeight: FontWeight.w700,
-                color: AppColors.navy,
-                fontSize: 15.sp,
-              ),
-            ),
-            SizedBox(height: 14.h),
-            Wrap(
-              spacing: 12.w,
-              runSpacing: 14.h,
-              children: items.map((a) {
-                return SizedBox(
-                  width: (Get.width - 40.w - 24.w) / 3,
-                  child: GestureDetector(
-                    onTap: () {
-                      Get.back();
-                      a.onTap();
-                    },
-                    child: Column(
-                      children: [
-                        Container(
-                          width: 52.w,
-                          height: 52.w,
-                          decoration: BoxDecoration(
-                            color: a.color.withValues(alpha: 0.12),
-                            borderRadius: BorderRadius.circular(16.r),
-                          ),
-                          child: Icon(a.icon, color: a.color, size: 24.sp),
-                        ),
-                        SizedBox(height: 7.h),
-                        Text(
-                          a.label,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                            fontSize: 11.sp,
-                            fontWeight: FontWeight.w600,
-                            color: AppColors.navy,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                );
-              }).toList(),
             ),
           ],
         ),
@@ -899,12 +751,13 @@ class HomeTab extends GetView<HomeController> {
         const Color(0xFF0D9488),
         () => Get.toNamed(Routes.SCHEDULE),
       ),
-      _Action(
-        'Dasbor',
-        Iconsax.category,
-        const Color(0xFF7C3AED),
-        () => Get.find<MainController>().changeTab(1),
-      ),
+      if (controller.isManager)
+        _Action(
+          'Dasbor',
+          Iconsax.category,
+          const Color(0xFF7C3AED),
+          () => Get.toNamed(Routes.DASHBOARD),
+        ),
       _Action(
         'Lembur',
         Iconsax.timer_1,
@@ -1104,6 +957,95 @@ class _LiveClockState extends State<_LiveClock> {
         fontFeatures: const [FontFeature.tabularFigures()],
       ),
     );
+  }
+}
+
+/// Live worked-hours ticker: counts up from today's clock-in each second until
+/// clock-out, then shows the final total (work_minutes) from the server.
+class _LiveWorkedHours extends StatefulWidget {
+  const _LiveWorkedHours();
+
+  @override
+  State<_LiveWorkedHours> createState() => _LiveWorkedHoursState();
+}
+
+class _LiveWorkedHoursState extends State<_LiveWorkedHours> {
+  final HomeController _c = Get.find();
+  Timer? _timer;
+
+  @override
+  void initState() {
+    super.initState();
+    _timer = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (mounted) setState(() {});
+    });
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
+  }
+
+  String _format(
+    String? clockInAt,
+    String? clockIn,
+    String? clockOut,
+    int workMinutes,
+  ) {
+    bool empty(String? s) => s == null || s.isEmpty || s == '--:--';
+
+    // Clocked out → final total from the server.
+    if (!empty(clockOut)) {
+      final h = (workMinutes ~/ 60).toString().padLeft(2, '0');
+      final m = (workMinutes % 60).toString().padLeft(2, '0');
+      return '$h:$m:00';
+    }
+
+    // Prefer the full ISO timestamp (second precision); fall back to HH:mm.
+    DateTime? start;
+    if (clockInAt != null && clockInAt.isNotEmpty) {
+      start = DateTime.tryParse(clockInAt)?.toLocal();
+    }
+    if (start == null && !empty(clockIn)) {
+      final p = clockIn!.split(':');
+      if (p.length >= 2) {
+        final now = DateTime.now();
+        start = DateTime(
+          now.year,
+          now.month,
+          now.day,
+          int.tryParse(p[0]) ?? 0,
+          int.tryParse(p[1]) ?? 0,
+        );
+      }
+    }
+    if (start == null) return '00:00:00';
+
+    var d = DateTime.now().difference(start);
+    if (d.isNegative) d = Duration.zero;
+    final h = d.inHours.toString().padLeft(2, '0');
+    final m = (d.inMinutes % 60).toString().padLeft(2, '0');
+    final s = (d.inSeconds % 60).toString().padLeft(2, '0');
+    return '$h:$m:$s';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Obx(() {
+      final t = _c.today.value;
+      return Text(
+        _format(t?.clockInAt, t?.clockIn, t?.clockOut, t?.workMinutes ?? 0),
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        style: TextStyle(
+          fontWeight: FontWeight.w800,
+          color: AppColors.navy,
+          fontSize: 13.sp,
+          fontFeatures: const [FontFeature.tabularFigures()],
+        ),
+      );
+    });
   }
 }
 

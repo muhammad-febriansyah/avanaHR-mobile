@@ -162,14 +162,18 @@ class AppPage extends StatelessWidget {
 /// Subtle diagonal crosshatch (mesh) painted behind the brand blue header —
 /// shared by every page header and the home screen for one visual language.
 class BrandMeshPainter extends CustomPainter {
-  const BrandMeshPainter();
+  /// Line color (pre-applied alpha). Defaults to a faint white for blue headers;
+  /// pass a tinted color for the mesh on light backgrounds (e.g. the splash).
+  final Color color;
+
+  const BrandMeshPainter({this.color = const Color(0x0FFFFFFF)});
 
   @override
   void paint(Canvas canvas, Size size) {
     final line = Paint()
       ..style = PaintingStyle.stroke
       ..strokeWidth = 1.0
-      ..color = Colors.white.withValues(alpha: 0.06);
+      ..color = color;
 
     const gap = 24.0;
     final h = size.height;
@@ -185,7 +189,8 @@ class BrandMeshPainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(covariant BrandMeshPainter oldDelegate) => false;
+  bool shouldRepaint(covariant BrandMeshPainter oldDelegate) =>
+      oldDelegate.color != color;
 }
 
 /// A translucent white icon button for the [AppPage] header.

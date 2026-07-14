@@ -102,6 +102,27 @@ class HomeController extends GetxController {
     return '${days[d.weekday - 1]}, ${d.day} ${months[d.month - 1]} ${d.year}';
   }
 
+  /// Compact date without the weekday, e.g. "14 Jul 2026" — for tight rows.
+  String get todayShort {
+    const months = [
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'Mei',
+      'Jun',
+      'Jul',
+      'Agu',
+      'Sep',
+      'Okt',
+      'Nov',
+      'Des',
+    ];
+    final d = DateTime.now();
+
+    return '${d.day} ${months[d.month - 1]} ${d.year}';
+  }
+
   @override
   void onInit() {
     super.onInit();

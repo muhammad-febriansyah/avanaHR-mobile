@@ -58,8 +58,6 @@ class _SplashViewState extends State<SplashView> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              // Bundled brand logo (designed for white) — instant first frame,
-              // no network dependency.
               Image.asset(
                 'assets/AvanaHR.png',
                 width: 200.w,
