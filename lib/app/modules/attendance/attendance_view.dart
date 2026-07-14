@@ -9,7 +9,6 @@ import '../../core/theme/app_colors.dart';
 import '../../core/widgets/app_page.dart';
 import '../../data/services/attendance_queue_service.dart';
 import 'attendance_controller.dart';
-import 'on_page_face_scan.dart';
 
 class AttendanceView extends GetView<AttendanceController> {
   const AttendanceView({super.key});
@@ -86,11 +85,10 @@ class AttendanceView extends GetView<AttendanceController> {
                   SizedBox(height: 14.h),
                   _todayCard(),
                   SizedBox(height: 18.h),
-                  // Live face scanner embedded right here — no separate screen.
-                  const OnPageFaceScan(),
+                  _clockButton(),
                   SizedBox(height: 8.h),
                   Text(
-                    'Lokasi & perangkat direkam saat absen.',
+                    'Wajah, lokasi & perangkat direkam saat absen.',
                     style: TextStyle(
                       color: AppColors.textMuted,
                       fontSize: 11.5.sp,
@@ -103,6 +101,53 @@ class AttendanceView extends GetView<AttendanceController> {
                 ],
               ),
             ),
+          ),
+        ),
+      );
+    });
+  }
+
+  /// Primary clock action. Runs the geofence + face gate: taps launch the
+  /// full-screen face page ([Routes.FACE_VERIFY] / [Routes.FACE_ENROLL]) via
+  /// [AttendanceController.clock], then submit.
+  Widget _clockButton() {
+    return Obx(() {
+      final isIn = controller.today.value?.canClockIn ?? true;
+      final busy = controller.isClocking.value;
+      final blocked = !controller.canClockByLocation;
+      return SizedBox(
+        width: double.infinity,
+        height: 54.h,
+        child: ElevatedButton.icon(
+          onPressed: busy || blocked ? null : controller.clock,
+          style: ElevatedButton.styleFrom(
+            backgroundColor: isIn ? AppColors.primary : AppColors.destructive,
+            disabledBackgroundColor: AppColors.textMuted.withValues(alpha: 0.3),
+            foregroundColor: Colors.white,
+            elevation: 0,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(14.r),
+            ),
+          ),
+          icon: busy
+              ? SizedBox(
+                  width: 18.w,
+                  height: 18.w,
+                  child: const CircularProgressIndicator(
+                    color: Colors.white,
+                    strokeWidth: 2,
+                  ),
+                )
+              : Icon(isIn ? Iconsax.login_1 : Iconsax.logout_1, size: 20.sp),
+          label: Text(
+            busy
+                ? 'Memproses…'
+                : blocked
+                ? 'Di luar radius kantor'
+                : isIn
+                ? 'Absen Masuk (Scan Wajah)'
+                : 'Absen Pulang (Scan Wajah)',
+            style: TextStyle(fontSize: 14.5.sp, fontWeight: FontWeight.w700),
           ),
         ),
       );
@@ -312,6 +357,32 @@ class _GeofenceMapState extends State<_GeofenceMap> {
 
   static const _fallback = LatLng(-6.2088, 106.8456); // Jakarta
 
+  Worker? _centerWorker;
+  bool _autoCentered = false;
+
+  @override
+  void initState() {
+    super.initState();
+    final c = Get.find<AttendanceController>();
+    // Auto-center on the user's live GPS location the moment it's detected.
+    _centerWorker = ever(c.userLat, (_) => _autoCenterUser(c));
+    WidgetsBinding.instance.addPostFrameCallback((_) => _autoCenterUser(c));
+  }
+
+  void _autoCenterUser(AttendanceController c) {
+    if (_autoCentered) return;
+    final u = _userOf(c);
+    if (u == null) return;
+    _autoCentered = true;
+    _map.move(u, 16);
+  }
+
+  @override
+  void dispose() {
+    _centerWorker?.dispose();
+    super.dispose();
+  }
+
   LatLng? _officeOf(AttendanceController c) {
     final o = c.nearest.value;
     if (o?.latitude == null || o?.longitude == null) return null;
@@ -325,7 +396,7 @@ class _GeofenceMapState extends State<_GeofenceMap> {
 
   void _recenter() {
     final c = Get.find<AttendanceController>();
-    _map.move(_officeOf(c) ?? _userOf(c) ?? _fallback, 16);
+    _map.move(_userOf(c) ?? _officeOf(c) ?? _fallback, 16);
   }
 
   @override
@@ -341,7 +412,7 @@ class _GeofenceMapState extends State<_GeofenceMap> {
           child: Obx(() {
             final office = _officeOf(controller);
             final user = _userOf(controller);
-            final center = office ?? user ?? _fallback;
+            final center = user ?? office ?? _fallback;
             final radius = (controller.nearest.value?.radius ?? 0).toDouble();
 
             return Stack(
@@ -395,9 +466,14 @@ class _GeofenceMapState extends State<_GeofenceMap> {
                         if (user != null)
                           Marker(
                             point: user,
-                            width: 26.w,
-                            height: 26.w,
-                            child: _pulseDot(),
+                            width: 40.w,
+                            height: 40.w,
+                            alignment: Alignment.bottomCenter,
+                            child: Icon(
+                              Icons.location_pin,
+                              color: AppColors.primary,
+                              size: 40.sp,
+                            ),
                           ),
                       ],
                     ),
@@ -480,15 +556,6 @@ class _GeofenceMapState extends State<_GeofenceMap> {
             ),
           ),
         ],
-      ),
-    );
-  }
-
-  Widget _pulseDot() {
-    return Container(
-      decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        color: AppColors.accent,
       ),
     );
   }

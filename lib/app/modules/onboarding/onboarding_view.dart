@@ -16,7 +16,12 @@ class _Slide {
   final String? imageUrl;
   final String title;
   final String body;
-  const _Slide({this.asset, this.imageUrl, required this.title, required this.body});
+  const _Slide({
+    this.asset,
+    this.imageUrl,
+    required this.title,
+    required this.body,
+  });
 
   bool get isSvg => (imageUrl ?? asset ?? '').toLowerCase().endsWith('.svg');
 }
@@ -26,17 +31,20 @@ const _fallbackSlides = <_Slide>[
   _Slide(
     asset: 'assets/avanahr_onboarding_attendance.svg',
     title: 'Absensi Anti Ribet',
-    body: 'Clock-in & clock-out berbasis GPS dan face recognition — langsung dari ponsel, di mana saja.',
+    body:
+        'Clock-in & clock-out berbasis GPS dan face recognition — langsung dari ponsel, di mana saja.',
   ),
   _Slide(
     asset: 'assets/avanahr_onboarding_leave_payroll.svg',
     title: 'Cuti & Slip Gaji',
-    body: 'Ajukan cuti, lembur, dan reimbursement. Pantau status & lihat slip gaji kapan saja.',
+    body:
+        'Ajukan cuti, lembur, dan reimbursement. Pantau status & lihat slip gaji kapan saja.',
   ),
   _Slide(
     asset: 'assets/avanahr_onboarding_growth.svg',
     title: 'Tumbuh Bersama',
-    body: 'Semua kebutuhan HR dalam satu aplikasi. Advancing People, Empowering Growth.',
+    body:
+        'Semua kebutuhan HR dalam satu aplikasi. Advancing People, Empowering Growth.',
   ),
 ];
 
@@ -59,7 +67,15 @@ class _OnboardingViewState extends State<OnboardingView> {
     // bundled assets when none are available/offline.
     final remote = Get.find<ConfigService>().slides;
     _slides = remote.isNotEmpty
-        ? remote.map((s) => _Slide(imageUrl: s.imageUrl, title: s.title, body: s.subtitle)).toList()
+        ? remote
+              .map(
+                (s) => _Slide(
+                  imageUrl: s.imageUrl,
+                  title: s.title,
+                  body: s.subtitle,
+                ),
+              )
+              .toList()
         : _fallbackSlides;
   }
 
@@ -76,7 +92,10 @@ class _OnboardingViewState extends State<OnboardingView> {
     if (_isLast) {
       _finish();
     } else {
-      _pageC.nextPage(duration: const Duration(milliseconds: 320), curve: Curves.easeOutCubic);
+      _pageC.nextPage(
+        duration: const Duration(milliseconds: 320),
+        curve: Curves.easeOutCubic,
+      );
     }
   }
 
@@ -109,7 +128,11 @@ class _OnboardingViewState extends State<OnboardingView> {
                           onPressed: _isLast ? null : _finish,
                           child: Text(
                             'Lewati',
-                            style: TextStyle(color: AppColors.textMuted, fontSize: 14.sp, fontWeight: FontWeight.w600),
+                            style: TextStyle(
+                              color: AppColors.textMuted,
+                              fontSize: 14.sp,
+                              fontWeight: FontWeight.w600,
+                            ),
                           ),
                         ),
                       ),
@@ -143,7 +166,9 @@ class _OnboardingViewState extends State<OnboardingView> {
                             height: 8.w,
                             width: active ? 24.w : 8.w,
                             decoration: BoxDecoration(
-                              color: active ? AppColors.primary : AppColors.border,
+                              color: active
+                                  ? AppColors.primary
+                                  : AppColors.border,
                               borderRadius: BorderRadius.circular(8.r),
                             ),
                           );
@@ -159,7 +184,12 @@ class _OnboardingViewState extends State<OnboardingView> {
                             children: [
                               Text(_isLast ? 'Mulai Sekarang' : 'Lanjut'),
                               SizedBox(width: 8.w),
-                              Icon(_isLast ? Iconsax.tick_circle : Iconsax.arrow_right_3, size: 18.sp),
+                              Icon(
+                                _isLast
+                                    ? Iconsax.tick_circle
+                                    : Iconsax.arrow_right_3,
+                                size: 18.sp,
+                              ),
                             ],
                           ),
                         ),
@@ -184,7 +214,11 @@ class _SlideContent extends StatelessWidget {
     final url = slide.imageUrl;
     if (url != null && url.isNotEmpty) {
       return slide.isSvg
-          ? SvgPicture.network(url, fit: BoxFit.contain, placeholderBuilder: (_) => const SizedBox.shrink())
+          ? SvgPicture.network(
+              url,
+              fit: BoxFit.contain,
+              placeholderBuilder: (_) => const SizedBox.shrink(),
+            )
           : Image.network(url, fit: BoxFit.contain);
     }
     return SvgPicture.asset(
@@ -214,13 +248,23 @@ class _SlideContent extends StatelessWidget {
           Text(
             slide.title,
             textAlign: TextAlign.center,
-            style: TextStyle(fontSize: 24.sp, fontWeight: FontWeight.w800, color: AppColors.navy, height: 1.2, letterSpacing: -0.4),
+            style: TextStyle(
+              fontSize: 24.sp,
+              fontWeight: FontWeight.w800,
+              color: AppColors.navy,
+              height: 1.2,
+              letterSpacing: -0.4,
+            ),
           ),
           SizedBox(height: 14.h),
           Text(
             slide.body,
             textAlign: TextAlign.center,
-            style: TextStyle(fontSize: 14.sp, color: AppColors.textMuted, height: 1.6),
+            style: TextStyle(
+              fontSize: 14.sp,
+              color: AppColors.textMuted,
+              height: 1.6,
+            ),
           ),
           SizedBox(height: 12.h),
         ],
