@@ -3,12 +3,14 @@ import 'package:geolocator/geolocator.dart';
 import 'package:get/get.dart' hide Response;
 import 'package:get_storage/get_storage.dart';
 
+import '../../core/utils/selfie_stamp.dart';
 import '../../core/widgets/app_toast.dart';
 import '../../data/models/attendance.dart';
 import '../../data/models/dashboard.dart';
 import '../../data/providers/api_client.dart';
 import '../../data/providers/avana_api.dart';
 import '../../data/services/attendance_queue_service.dart';
+import '../../data/services/auth_service.dart';
 import '../../data/services/connectivity_service.dart';
 import '../../data/services/device_service.dart';
 import '../../routes/app_pages.dart';
@@ -233,6 +235,21 @@ class AttendanceController extends GetxController {
       final device = await deviceService.current();
       final isRooted = await deviceService.isCompromised();
       final isEmulator = await deviceService.isEmulator();
+
+      // Un-mirror the front-camera selfie and stamp company/identity/time/GPS
+      // onto it before upload. The face embedding was already computed from the
+      // raw shot, so this only affects the stored photo.
+      if (selfiePath != null) {
+        final me = Get.find<AuthService>().user.value;
+        selfiePath = await SelfieStamp.apply(
+          path: selfiePath,
+          company: me?.employee?.employment?.company,
+          subtitle: me?.employee?.fullName ?? me?.name,
+          latitude: pos?.latitude,
+          longitude: pos?.longitude,
+          at: DateTime.now(),
+        );
+      }
 
       final entry = <String, dynamic>{
         'type': type,
