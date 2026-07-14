@@ -181,15 +181,26 @@ class AvanaApi {
       filename: 'selfie.jpg',
     );
 
-    // In multipart, booleans serialise to "true"/"false" strings which Laravel's
-    // `boolean` rule rejects — send them as '1'/'0' instead.
-    final form = <String, dynamic>{};
+    // Multipart quirks vs Laravel validation:
+    //  - bools serialise to "true"/"false" strings the `boolean` rule rejects
+    //    → send '1'/'0'.
+    //  - a List repeats the bare key, which Laravel reads as a scalar (fails
+    //    the `array` rule) → emit `face_embedding[]` entries instead.
+    final form = FormData();
     fields.forEach((key, value) {
-      form[key] = value is bool ? (value ? '1' : '0') : value;
+      if (value is List) {
+        for (final element in value) {
+          form.fields.add(MapEntry('$key[]', element.toString()));
+        }
+      } else if (value is bool) {
+        form.fields.add(MapEntry(key, value ? '1' : '0'));
+      } else {
+        form.fields.add(MapEntry(key, value.toString()));
+      }
     });
-    form['selfie'] = selfie;
+    form.files.add(MapEntry('selfie', selfie));
 
-    return _dio.post('/me/attendance/clock', data: FormData.fromMap(form));
+    return _dio.post('/me/attendance/clock', data: form);
   }
 
   // ---- Attendance corrections (koreksi absen) ----
