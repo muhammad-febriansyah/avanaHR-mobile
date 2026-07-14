@@ -17,7 +17,6 @@ class AnnouncementView extends GetView<AnnouncementController> {
       title: 'Pengumuman',
       subtitle: 'Info terbaru',
       showBack: false,
-      reserveBottomNav: true,
       child: Obx(() {
         if (controller.isLoading.value) {
           return const Loading();
@@ -27,7 +26,9 @@ class AnnouncementView extends GetView<AnnouncementController> {
           color: AppColors.primary,
           child: controller.items.isEmpty
               ? ListView(
-                  physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
+                  physics: const AlwaysScrollableScrollPhysics(
+                    parent: BouncingScrollPhysics(),
+                  ),
                   children: [
                     SizedBox(height: 80.h),
                     const EmptyState(
@@ -37,8 +38,15 @@ class AnnouncementView extends GetView<AnnouncementController> {
                   ],
                 )
               : ListView.separated(
-                  physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
-                  padding: EdgeInsets.fromLTRB(20.w, 20.h, 20.w, 24.h),
+                  physics: const AlwaysScrollableScrollPhysics(
+                    parent: BouncingScrollPhysics(),
+                  ),
+                  padding: EdgeInsets.fromLTRB(
+                    20.w,
+                    20.h,
+                    20.w,
+                    24.h + AppPage.bottomNavClearance(context),
+                  ),
                   itemCount: controller.items.length,
                   separatorBuilder: (_, i) => SizedBox(height: 10.h),
                   itemBuilder: (_, i) {

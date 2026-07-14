@@ -181,10 +181,15 @@ class AvanaApi {
       filename: 'selfie.jpg',
     );
 
-    return _dio.post(
-      '/me/attendance/clock',
-      data: FormData.fromMap({...fields, 'selfie': selfie}),
-    );
+    // In multipart, booleans serialise to "true"/"false" strings which Laravel's
+    // `boolean` rule rejects — send them as '1'/'0' instead.
+    final form = <String, dynamic>{};
+    fields.forEach((key, value) {
+      form[key] = value is bool ? (value ? '1' : '0') : value;
+    });
+    form['selfie'] = selfie;
+
+    return _dio.post('/me/attendance/clock', data: FormData.fromMap(form));
   }
 
   // ---- Attendance corrections (koreksi absen) ----

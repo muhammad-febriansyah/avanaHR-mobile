@@ -11,10 +11,41 @@ class RiwayatController extends GetxController {
   final items = <ActivityItem>[].obs;
   final typeFilter = 'all'.obs;
 
-  /// Activities narrowed to the selected type ('all' = everything).
-  List<ActivityItem> get visibleItems => typeFilter.value == 'all'
-      ? items
-      : items.where((e) => e.type == typeFilter.value).toList();
+  /// Inclusive date range filter (day precision); null = no date filter.
+  final dateFrom = Rxn<DateTime>();
+  final dateTo = Rxn<DateTime>();
+
+  bool get hasDateFilter => dateFrom.value != null && dateTo.value != null;
+
+  /// Activities narrowed to the selected type ('all' = everything) and, when
+  /// set, the selected date range.
+  List<ActivityItem> get visibleItems {
+    var list = typeFilter.value == 'all'
+        ? items.toList()
+        : items.where((e) => e.type == typeFilter.value).toList();
+
+    final from = dateFrom.value;
+    final to = dateTo.value;
+    if (from != null && to != null) {
+      list = list.where((e) {
+        final d = e.occurredAt;
+        if (d == null) return false;
+        final day = DateTime(d.year, d.month, d.day);
+        return !day.isBefore(from) && !day.isAfter(to);
+      }).toList();
+    }
+    return list;
+  }
+
+  void setDateRange(DateTime from, DateTime to) {
+    dateFrom.value = DateTime(from.year, from.month, from.day);
+    dateTo.value = DateTime(to.year, to.month, to.day);
+  }
+
+  void clearDateRange() {
+    dateFrom.value = null;
+    dateTo.value = null;
+  }
 
   @override
   void onInit() {

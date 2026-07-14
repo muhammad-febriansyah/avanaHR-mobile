@@ -29,7 +29,6 @@ class RiwayatView extends GetView<RiwayatController> {
       title: 'Riwayat Aktivitas',
       subtitle: 'Aktivitas terbaru',
       showBack: false,
-      reserveBottomNav: true,
       child: Obx(() {
         if (controller.isLoading.value) {
           return const Center(child: CircularProgressIndicator());
@@ -45,16 +44,124 @@ class RiwayatView extends GetView<RiwayatController> {
                 onSelected: (v) => controller.typeFilter.value = v,
               ),
             ),
+            Padding(
+              padding: EdgeInsets.fromLTRB(16.w, 4.h, 16.w, 8.h),
+              child: _dateBar(context),
+            ),
             Expanded(
               child: RefreshIndicator(
                 onRefresh: controller.load,
-                child: controller.visibleItems.isEmpty ? _empty() : _list(),
+                child: controller.visibleItems.isEmpty
+                    ? _empty()
+                    : _list(context),
               ),
             ),
           ],
         );
       }),
     );
+  }
+
+  /// Date-range filter chip: opens a range picker; shows the active range with
+  /// a clear button.
+  Widget _dateBar(BuildContext context) {
+    return Obx(() {
+      final active = controller.hasDateFilter;
+      final label = active
+          ? '${_fmtDate(controller.dateFrom.value!)} – ${_fmtDate(controller.dateTo.value!)}'
+          : 'Filter Tanggal';
+      return InkWell(
+        onTap: () => _pickRange(context),
+        borderRadius: BorderRadius.circular(12.r),
+        child: Container(
+          padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 10.h),
+          decoration: BoxDecoration(
+            color: active ? AppColors.primaryLight : AppColors.muted,
+            borderRadius: BorderRadius.circular(12.r),
+          ),
+          child: Row(
+            children: [
+              Icon(
+                Iconsax.calendar_1,
+                size: 16.sp,
+                color: active ? AppColors.primary : AppColors.textMuted,
+              ),
+              SizedBox(width: 8.w),
+              Expanded(
+                child: Text(
+                  label,
+                  style: TextStyle(
+                    color: active ? AppColors.primary : AppColors.textMuted,
+                    fontSize: 12.5.sp,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+              if (active)
+                InkWell(
+                  onTap: controller.clearDateRange,
+                  borderRadius: BorderRadius.circular(100.r),
+                  child: Padding(
+                    padding: EdgeInsets.all(2.w),
+                    child: Icon(
+                      Iconsax.close_circle,
+                      size: 17.sp,
+                      color: AppColors.primary,
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        ),
+      );
+    });
+  }
+
+  Future<void> _pickRange(BuildContext context) async {
+    final now = DateTime.now();
+    final res = await showDateRangePicker(
+      context: context,
+      firstDate: DateTime(now.year - 2),
+      lastDate: now,
+      initialDateRange: controller.hasDateFilter
+          ? DateTimeRange(
+              start: controller.dateFrom.value!,
+              end: controller.dateTo.value!,
+            )
+          : null,
+      helpText: 'Pilih rentang tanggal',
+      saveText: 'Terapkan',
+      builder: (ctx, child) => Theme(
+        data: Theme.of(ctx).copyWith(
+          colorScheme: ColorScheme.light(
+            primary: AppColors.primary,
+            onPrimary: Colors.white,
+            surface: AppColors.surface,
+            onSurface: AppColors.navy,
+          ),
+        ),
+        child: child!,
+      ),
+    );
+    if (res != null) controller.setDateRange(res.start, res.end);
+  }
+
+  String _fmtDate(DateTime d) {
+    const m = [
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'Mei',
+      'Jun',
+      'Jul',
+      'Agu',
+      'Sep',
+      'Okt',
+      'Nov',
+      'Des',
+    ];
+    return '${d.day} ${m[d.month - 1]} ${d.year}';
   }
 
   Widget _empty() {
@@ -76,12 +183,17 @@ class RiwayatView extends GetView<RiwayatController> {
     );
   }
 
-  Widget _list() {
+  Widget _list(BuildContext context) {
     return ListView.separated(
       physics: const AlwaysScrollableScrollPhysics(
         parent: BouncingScrollPhysics(),
       ),
-      padding: EdgeInsets.fromLTRB(16.w, 12.h, 16.w, 20.h),
+      padding: EdgeInsets.fromLTRB(
+        16.w,
+        12.h,
+        16.w,
+        20.h + AppPage.bottomNavClearance(context),
+      ),
       itemCount: controller.visibleItems.length,
       separatorBuilder: (_, __) => SizedBox(height: 10.h),
       itemBuilder: (_, i) => _tile(controller.visibleItems[i]),

@@ -232,24 +232,42 @@ class HomeTab extends GetView<HomeController> {
           children: [
             // Attendance hero card straddles the blue header / white sheet seam.
             Transform.translate(offset: Offset(0, -poke), child: _heroCard()),
-            _managerBanner(),
-            // ── Monthly attendance ──
-            _monthlyHeader(),
-            SizedBox(height: 14.h),
-            _monthlyStats(),
-            SizedBox(height: 28.h),
-            // ── Quick menu ──
-            _sectionHeader('Menu Cepat'),
-            SizedBox(height: 14.h),
-            _MenuCarousel(_allActions()),
-            SizedBox(height: 28.h),
-            // ── Announcements ──
-            _sectionHeader(
-              'Pengumuman Terbaru',
-              onTap: () => Get.find<MainController>().changeTab(3),
+            // Lift the rest up so it doesn't sit a full `poke` gap below the
+            // card (Transform.translate leaves the card's original slot), while
+            // keeping a small, even gap under it.
+            Transform.translate(
+              offset: Offset(0, -(poke - 14.h)),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  _managerBanner(),
+                  // ── Monthly attendance ──
+                  _monthlyHeader(),
+                  SizedBox(height: 14.h),
+                  _monthlyStats(),
+                  SizedBox(height: 28.h),
+                  // ── Quick menu ──
+                  _sectionHeader('Menu Cepat'),
+                  SizedBox(height: 14.h),
+                  Container(
+                    padding: EdgeInsets.fromLTRB(6.w, 16.h, 6.w, 14.h),
+                    decoration: BoxDecoration(
+                      color: AppColors.surface,
+                      borderRadius: BorderRadius.circular(20.r),
+                    ),
+                    child: _MenuCarousel(_allActions()),
+                  ),
+                  SizedBox(height: 28.h),
+                  // ── Announcements ──
+                  _sectionHeader(
+                    'Pengumuman Terbaru',
+                    onTap: () => Get.find<MainController>().changeTab(3),
+                  ),
+                  SizedBox(height: 14.h),
+                  _announcements(),
+                ],
+              ),
             ),
-            SizedBox(height: 14.h),
-            _announcements(),
           ],
         ),
       ),
