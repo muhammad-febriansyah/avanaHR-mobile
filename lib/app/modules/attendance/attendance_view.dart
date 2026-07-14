@@ -37,6 +37,7 @@ class AttendanceView extends GetView<AttendanceController> {
       if (queue.pendingCount.value == 0) return const SizedBox.shrink();
       return Container(
         width: double.infinity,
+        margin: EdgeInsets.only(top: 12.h),
         color: const Color(0xFFFEF3C7),
         padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 8.h),
         child: Row(
@@ -73,10 +74,11 @@ class AttendanceView extends GetView<AttendanceController> {
           physics: const AlwaysScrollableScrollPhysics(
             parent: BouncingScrollPhysics(),
           ),
-          // Bottom inset so the map/content clears the floating nav bar.
+          // Top gap so the status alert isn't flush against the app bar; bottom
+          // inset so the map/content clears the floating nav bar.
           padding: EdgeInsets.fromLTRB(
             20.w,
-            4.h,
+            16.h,
             20.w,
             AppPage.bottomNavClearance(Get.context!),
           ),
