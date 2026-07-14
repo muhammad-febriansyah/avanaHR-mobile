@@ -216,8 +216,11 @@ class AttendanceController extends GetxController {
         faceEmbedding = List<double>.from(result['embedding'] as List);
         selfiePath = result['photo'] as String?;
       } else {
-        final enrolledOk = await Get.toNamed(Routes.FACE_ENROLL);
-        if (enrolledOk != true) {
+        // Not enrolled yet → register the face now, then reuse the just-captured
+        // template + frame for this same punch (backend blocks a clock with no
+        // embedding, so a fall-through without one would 422).
+        final result = await Get.toNamed(Routes.FACE_ENROLL);
+        if (result is! Map || result['embedding'] is! List) {
           AppToast.warning(
             'Absen butuh verifikasi wajah. Daftarkan wajah dulu.',
           );
@@ -225,6 +228,8 @@ class AttendanceController extends GetxController {
           return;
         }
         markFaceEnrolled();
+        faceEmbedding = List<double>.from(result['embedding'] as List);
+        selfiePath = result['photo'] as String?;
       }
     }
 

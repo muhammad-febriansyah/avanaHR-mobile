@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:camera/camera.dart';
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart' hide Response;
 
@@ -34,6 +35,10 @@ class FaceEnrollController extends GetxController {
   final step = 0.obs;
 
   final List<List<double>> _captures = [];
+
+  /// Path of the most recent captured frame, reused as the clock-in selfie when
+  /// enrollment feeds straight into an attendance punch.
+  String? _lastShotPath;
 
   Timer? _scanTimer;
   bool _scanning = false;
@@ -102,6 +107,7 @@ class FaceEnrollController extends GetxController {
     try {
       final shot = await cam.takePicture();
       final faces = await _detector.detectFile(shot.path);
+      debugPrint('[FaceEnroll] step=${step.value} faces=${faces.length}');
 
       if (faces.length != 1) {
         faceOk.value = false;
@@ -110,12 +116,18 @@ class FaceEnrollController extends GetxController {
       }
       final face = faces.first;
       if (!_detector.isFrontalOpenEyes(face)) {
+        debugPrint(
+          '[FaceEnroll] not frontal/open — yaw=${face.headEulerAngleY} '
+          'roll=${face.headEulerAngleZ} leftEye=${face.leftEyeOpenProbability} '
+          'rightEye=${face.rightEyeOpenProbability}',
+        );
         faceOk.value = false;
         hint.value = 'Hadapkan wajah lurus & buka mata';
         return;
       }
 
       final smiling = face.smilingProbability ?? 0;
+      debugPrint('[FaceEnroll] smiling=$smiling');
       if (step.value == 0 && smiling > 0.5) {
         faceOk.value = false;
         hint.value = 'Wajah netral dulu (jangan senyum)';
@@ -140,12 +152,17 @@ class FaceEnrollController extends GetxController {
         face.boundingBox,
       );
       if (embedding == null) {
+        debugPrint('[FaceEnroll] embedding null (see [FaceEmbedder] logs)');
         isBusy.value = false;
         faceOk.value = false;
         hint.value = 'Model wajah tidak tersedia. Hubungi admin.';
         return;
       }
+      debugPrint(
+        '[FaceEnroll] captured step=${step.value} len=${embedding.length}',
+      );
       _captures.add(embedding);
+      _lastShotPath = shot.path;
 
       if (step.value == 0) {
         step.value = 1;
@@ -157,7 +174,8 @@ class FaceEnrollController extends GetxController {
         _scanTimer?.cancel();
         await _submit();
       }
-    } catch (_) {
+    } catch (e, st) {
+      debugPrint('[FaceEnroll] scan error: $e\n$st');
       faceOk.value = false;
       hint.value = 'Menyesuaikan kamera…';
     } finally {
@@ -174,7 +192,9 @@ class FaceEnrollController extends GetxController {
       final code = res.statusCode ?? 0;
       if (code >= 200 && code < 300) {
         enrolled.value = true;
-        Get.back(result: true);
+        // Hand the freshly registered template + last frame back so the caller
+        // can clock in immediately without a second face scan.
+        Get.back(result: {'embedding': template, 'photo': _lastShotPath});
       } else {
         AppToast.error(ApiClient.messageFrom(res, 'Gagal mendaftar wajah.'));
         _resetAndResume();
