@@ -85,8 +85,9 @@ class AttendanceController extends GetxController {
     geoState.value = GeoState.loading;
     try {
       final locations = await _api.workLocations();
-      final withCoords =
-          locations.where((l) => l.latitude != null && l.longitude != null).toList();
+      final withCoords = locations
+          .where((l) => l.latitude != null && l.longitude != null)
+          .toList();
 
       if (!await Geolocator.isLocationServiceEnabled()) {
         geoState.value = GeoState.gpsOff;
@@ -109,7 +110,9 @@ class AttendanceController extends GetxController {
       try {
         pos = await Geolocator.getCurrentPosition(
           locationSettings: const LocationSettings(
-              accuracy: LocationAccuracy.high, timeLimit: Duration(seconds: 8)),
+            accuracy: LocationAccuracy.high,
+            timeLimit: Duration(seconds: 8),
+          ),
         );
       } catch (_) {
         final last = await Geolocator.getLastKnownPosition();
@@ -134,7 +137,11 @@ class AttendanceController extends GetxController {
       var closestDistance = double.infinity;
       for (final loc in withCoords) {
         final d = Geolocator.distanceBetween(
-            pos.latitude, pos.longitude, loc.latitude!, loc.longitude!);
+          pos.latitude,
+          pos.longitude,
+          loc.latitude!,
+          loc.longitude!,
+        );
         if (d < closestDistance) {
           closestDistance = d;
           closest = loc;
@@ -143,7 +150,8 @@ class AttendanceController extends GetxController {
 
       nearest.value = closest;
       distanceMeters.value = closestDistance;
-      final within = (closest!.radius <= 0) || closestDistance <= closest.radius;
+      final within =
+          (closest!.radius <= 0) || closestDistance <= closest.radius;
       geoState.value = within ? GeoState.inside : GeoState.outside;
     } catch (_) {
       geoState.value = GeoState.error;
@@ -183,7 +191,8 @@ class AttendanceController extends GetxController {
     if (!canClockByLocation) {
       final office = nearest.value?.name ?? 'kantor';
       AppToast.warning(
-          'Di luar radius $office (${distanceMeters.value.round()} m). Mendekat ke lokasi untuk absen.');
+        'Di luar radius $office (${distanceMeters.value.round()} m). Mendekat ke lokasi untuk absen.',
+      );
 
       return;
     }
@@ -193,19 +202,23 @@ class AttendanceController extends GetxController {
     // run enrollment (active liveness) first, then clock. Capture + embedding
     // both run locally, so this works offline too.
     List<double>? faceEmbedding = providedEmbedding;
+    String? selfiePath;
     if (navigateFaceGate) {
       if (requiresFace.value) {
         final result = await Get.toNamed(Routes.FACE_VERIFY);
-        if (result is! List) {
+        if (result is! Map || result['embedding'] is! List) {
           AppToast.warning('Verifikasi wajah dibatalkan.');
 
           return;
         }
-        faceEmbedding = List<double>.from(result);
+        faceEmbedding = List<double>.from(result['embedding'] as List);
+        selfiePath = result['photo'] as String?;
       } else {
         final enrolledOk = await Get.toNamed(Routes.FACE_ENROLL);
         if (enrolledOk != true) {
-          AppToast.warning('Absen butuh verifikasi wajah. Daftarkan wajah dulu.');
+          AppToast.warning(
+            'Absen butuh verifikasi wajah. Daftarkan wajah dulu.',
+          );
 
           return;
         }
@@ -219,6 +232,7 @@ class AttendanceController extends GetxController {
       final deviceService = Get.find<DeviceService>();
       final device = await deviceService.current();
       final isRooted = await deviceService.isCompromised();
+      final isEmulator = await deviceService.isEmulator();
 
       final entry = <String, dynamic>{
         'type': type,
@@ -227,6 +241,7 @@ class AttendanceController extends GetxController {
         'device_id': device.deviceId,
         'is_mock_location': pos?.isMocked ?? false,
         'is_rooted': isRooted,
+        'is_emulator': isEmulator,
         'clocked_at': DateTime.now().toIso8601String(),
         if (faceEmbedding != null) 'face_embedding': faceEmbedding,
       };
@@ -246,6 +261,8 @@ class AttendanceController extends GetxController {
           deviceId: device.deviceId,
           isMockLocation: pos?.isMocked ?? false,
           isRooted: isRooted,
+          isEmulator: isEmulator,
+          selfiePath: selfiePath,
         );
         final code = res.statusCode ?? 0;
         if (code >= 200 && code < 300) {
@@ -270,7 +287,9 @@ class AttendanceController extends GetxController {
   void _queueOffline(String type, Map<String, dynamic> entry) {
     Get.find<AttendanceQueueService>().enqueue(entry);
     _applyOptimistic(type);
-    AppToast.info('Tidak ada internet. Absen disimpan & dikirim otomatis saat online.');
+    AppToast.info(
+      'Tidak ada internet. Absen disimpan & dikirim otomatis saat online.',
+    );
   }
 
   bool _isNetworkError(DioException e) =>
@@ -282,14 +301,29 @@ class AttendanceController extends GetxController {
   /// Reflect a queued clock action in today's status immediately.
   void _applyOptimistic(String type) {
     final now = DateTime.now();
-    final hm = '${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}';
+    final hm =
+        '${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}';
     final t = today.value;
     final date = t?.date ?? now.toIso8601String().split('T').first;
 
     if (type == 'in') {
-      today.value = AttendanceToday(date: date, nextAction: 'out', clockIn: hm, clockOut: t?.clockOut, status: 'present', workMinutes: t?.workMinutes ?? 0);
+      today.value = AttendanceToday(
+        date: date,
+        nextAction: 'out',
+        clockIn: hm,
+        clockOut: t?.clockOut,
+        status: 'present',
+        workMinutes: t?.workMinutes ?? 0,
+      );
     } else {
-      today.value = AttendanceToday(date: date, nextAction: 'done', clockIn: t?.clockIn, clockOut: hm, status: t?.status, workMinutes: t?.workMinutes ?? 0);
+      today.value = AttendanceToday(
+        date: date,
+        nextAction: 'done',
+        clockIn: t?.clockIn,
+        clockOut: hm,
+        status: t?.status,
+        workMinutes: t?.workMinutes ?? 0,
+      );
     }
   }
 
@@ -301,12 +335,16 @@ class AttendanceController extends GetxController {
       if (permission == LocationPermission.denied) {
         permission = await Geolocator.requestPermission();
       }
-      if (permission == LocationPermission.denied || permission == LocationPermission.deniedForever) {
+      if (permission == LocationPermission.denied ||
+          permission == LocationPermission.deniedForever) {
         return null;
       }
       try {
         return await Geolocator.getCurrentPosition(
-          locationSettings: const LocationSettings(accuracy: LocationAccuracy.high, timeLimit: Duration(seconds: 8)),
+          locationSettings: const LocationSettings(
+            accuracy: LocationAccuracy.high,
+            timeLimit: Duration(seconds: 8),
+          ),
         );
       } catch (_) {
         return await Geolocator.getLastKnownPosition();

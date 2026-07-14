@@ -7,37 +7,55 @@ import 'package:iconsax/iconsax.dart';
 import '../../core/theme/app_colors.dart';
 import 'face_enroll_controller.dart';
 
-class FaceEnrollView extends GetView<FaceEnrollController> {
+const _bg = Color(0xFF0B1020); // deep brand navy for camera immersion
+
+class FaceEnrollView extends StatefulWidget {
   const FaceEnrollView({super.key});
+
+  @override
+  State<FaceEnrollView> createState() => _FaceEnrollViewState();
+}
+
+class _FaceEnrollViewState extends State<FaceEnrollView>
+    with SingleTickerProviderStateMixin {
+  final FaceEnrollController c = Get.find();
+  late final AnimationController _sweep;
+
+  double get _ovalW => 290.w;
+  double get _ovalH => 370.w;
+
+  @override
+  void initState() {
+    super.initState();
+    _sweep = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 2200),
+    )..repeat(reverse: true);
+  }
+
+  @override
+  void dispose() {
+    _sweep.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.navy,
-      extendBodyBehindAppBar: true,
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        foregroundColor: Colors.white,
-        elevation: 0,
-        title: const Text('Daftar Wajah'),
-        leading: IconButton(
-          icon: const Icon(Iconsax.arrow_left_2),
-          tooltip: 'Batal',
-          onPressed: Get.back,
-        ),
-      ),
+      backgroundColor: _bg,
       body: Obx(() {
-        if (!controller.isReady.value) {
-          return const Center(
-            child: CircularProgressIndicator(color: Colors.white),
-          );
-        }
+        if (!c.isReady.value) return _loading();
         return Stack(
           fit: StackFit.expand,
           children: [
             _preview(),
-            const Positioned.fill(child: _SpotlightScrim()),
-            _cornerFrame(),
+            const Positioned.fill(
+              child: IgnorePointer(
+                child: CustomPaint(painter: _ScrimPainter()),
+              ),
+            ),
+            _ovalArea(),
+            _topBar(),
             _bottomPanel(),
           ],
         );
@@ -45,8 +63,27 @@ class FaceEnrollView extends GetView<FaceEnrollController> {
     );
   }
 
+  Widget _loading() {
+    return Center(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const CircularProgressIndicator(color: Colors.white),
+          SizedBox(height: 16.h),
+          Obx(
+            () => Text(
+              c.hint.value,
+              textAlign: TextAlign.center,
+              style: TextStyle(color: Colors.white70, fontSize: 12.5.sp),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _preview() {
-    final cam = controller.camera;
+    final cam = c.camera;
     if (cam == null) return const SizedBox.shrink();
     return FittedBox(
       fit: BoxFit.cover,
@@ -58,20 +95,95 @@ class FaceEnrollView extends GetView<FaceEnrollController> {
     );
   }
 
-  /// Rounded corner brackets framing the oval capture target; they turn green
-  /// while a capture is being processed.
-  Widget _cornerFrame() {
+  Widget _ovalArea() {
     return Align(
-      alignment: const Alignment(0, -0.18),
+      alignment: const Alignment(0, -0.2),
       child: SizedBox(
-        width: 250.w,
-        height: 320.w,
-        child: Obx(() {
-          final color = controller.isBusy.value
-              ? AppColors.success
-              : Colors.white;
-          return CustomPaint(painter: _CornerPainter(color));
-        }),
+        width: _ovalW,
+        height: _ovalH,
+        child: Stack(
+          children: [
+            Obx(() {
+              final searching = !c.faceOk.value && !c.isBusy.value;
+              final reduceMotion =
+                  MediaQuery.maybeOf(context)?.disableAnimations ?? false;
+              if (!searching || reduceMotion) return const SizedBox.shrink();
+              return ClipOval(
+                child: AnimatedBuilder(
+                  animation: _sweep,
+                  builder: (_, _) => Align(
+                    alignment: Alignment(0, (_sweep.value * 2) - 1),
+                    child: Container(
+                      height: 2,
+                      margin: EdgeInsets.symmetric(horizontal: 28.w),
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          colors: [
+                            AppColors.primary.withValues(alpha: 0),
+                            AppColors.primary,
+                            AppColors.primary.withValues(alpha: 0),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              );
+            }),
+            Positioned.fill(
+              child: Obx(
+                () => CustomPaint(
+                  painter: _RingPainter(
+                    c.faceOk.value ? AppColors.success : Colors.white,
+                    glow: c.faceOk.value,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _topBar() {
+    return SafeArea(
+      child: Padding(
+        padding: EdgeInsets.fromLTRB(12.w, 6.h, 12.w, 0),
+        child: Row(
+          children: [
+            _glassButton(Iconsax.close_circle, c.cancel),
+            Expanded(
+              child: Text(
+                'Daftar Wajah',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 15.sp,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ),
+            SizedBox(width: 44.w),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _glassButton(IconData icon, VoidCallback onTap) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(100.r),
+      child: Container(
+        width: 44.w,
+        height: 44.w,
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          color: Colors.white.withValues(alpha: 0.14),
+          shape: BoxShape.circle,
+        ),
+        child: Icon(icon, color: Colors.white, size: 22.sp),
       ),
     );
   }
@@ -79,69 +191,16 @@ class FaceEnrollView extends GetView<FaceEnrollController> {
   Widget _bottomPanel() {
     return Align(
       alignment: Alignment.bottomCenter,
-      child: Container(
-        width: double.infinity,
-        padding: EdgeInsets.fromLTRB(20.w, 20.h, 20.w, 26.h),
-        decoration: const BoxDecoration(color: AppColors.navy),
-        child: SafeArea(
-          top: false,
+      child: SafeArea(
+        top: false,
+        child: Padding(
+          padding: EdgeInsets.fromLTRB(20.w, 0, 20.w, 22.h),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Obx(() => _stepChip()),
-              SizedBox(height: 14.h),
-              Obx(
-                () => Text(
-                  controller.instruction,
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 13.sp,
-                    height: 1.4,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-              ),
-              SizedBox(height: 18.h),
-              Obx(
-                () => SizedBox(
-                  width: double.infinity,
-                  height: 52.h,
-                  child: ElevatedButton.icon(
-                    onPressed: controller.isBusy.value
-                        ? null
-                        : controller.capture,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.success,
-                      disabledBackgroundColor: AppColors.success.withValues(
-                        alpha: 0.5,
-                      ),
-                      foregroundColor: Colors.white,
-                      elevation: 0,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(14.r),
-                      ),
-                    ),
-                    icon: controller.isBusy.value
-                        ? SizedBox(
-                            width: 18.w,
-                            height: 18.w,
-                            child: const CircularProgressIndicator(
-                              color: Colors.white,
-                              strokeWidth: 2,
-                            ),
-                          )
-                        : Icon(Iconsax.camera, size: 20.sp),
-                    label: Text(
-                      controller.isBusy.value ? 'Memproses…' : 'Ambil Wajah',
-                      style: TextStyle(
-                        fontSize: 14.5.sp,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                  ),
-                ),
-              ),
+              Obx(() => _stepPill()),
+              SizedBox(height: 12.h),
+              Obx(() => _statusPill()),
               SizedBox(height: 12.h),
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
@@ -151,7 +210,10 @@ class FaceEnrollView extends GetView<FaceEnrollController> {
                   Flexible(
                     child: Text(
                       'Hanya data wajah (bukan foto) yang dikirim.',
-                      style: TextStyle(color: Colors.white54, fontSize: 10.sp),
+                      style: TextStyle(
+                        color: Colors.white54,
+                        fontSize: 10.5.sp,
+                      ),
                     ),
                   ),
                 ],
@@ -163,39 +225,85 @@ class FaceEnrollView extends GetView<FaceEnrollController> {
     );
   }
 
-  /// A pill showing the current enrollment step + its two progress dots.
-  Widget _stepChip() {
-    final label = controller.step.value == 0
-        ? 'Langkah 1 dari 2 · Wajah netral'
-        : 'Langkah 2 dari 2 · Senyum';
+  Widget _stepPill() {
+    final s = c.step.value;
     return Container(
-      padding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 9.h),
+      padding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 7.h),
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.10),
-        borderRadius: BorderRadius.circular(999),
+        color: AppColors.primary.withValues(alpha: 0.18),
+        borderRadius: BorderRadius.circular(100.r),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          ...List.generate(2, (i) {
-            final active = i <= controller.step.value;
-            return Container(
-              margin: EdgeInsets.only(right: 6.w),
-              width: i == controller.step.value ? 20.w : 7.w,
-              height: 7.h,
-              decoration: BoxDecoration(
-                color: active ? AppColors.success : Colors.white24,
-                borderRadius: BorderRadius.circular(4),
-              ),
-            );
-          }),
-          SizedBox(width: 4.w),
+          _stepDot(s >= 0),
+          SizedBox(width: 5.w),
+          _stepDot(s >= 1),
+          SizedBox(width: 9.w),
           Text(
-            label,
+            s == 0 ? 'Langkah 1/2 · Wajah netral' : 'Langkah 2/2 · Senyum',
             style: TextStyle(
               color: Colors.white,
               fontSize: 11.5.sp,
-              fontWeight: FontWeight.w600,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _stepDot(bool active) {
+    return Container(
+      width: 7.w,
+      height: 7.w,
+      decoration: BoxDecoration(
+        color: active ? AppColors.primary : Colors.white.withValues(alpha: 0.3),
+        shape: BoxShape.circle,
+      ),
+    );
+  }
+
+  Widget _statusPill() {
+    final busy = c.isBusy.value;
+    final ok = c.faceOk.value;
+    final color = ok ? AppColors.success : Colors.white;
+
+    Widget leading;
+    if (busy) {
+      leading = SizedBox(
+        width: 18.w,
+        height: 18.w,
+        child: CircularProgressIndicator(strokeWidth: 2, color: color),
+      );
+    } else if (ok) {
+      leading = Icon(Iconsax.tick_circle, size: 18.sp, color: color);
+    } else {
+      leading = Icon(Iconsax.scan, size: 18.sp, color: Colors.white);
+    }
+
+    return Container(
+      padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.h),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.10),
+        borderRadius: BorderRadius.circular(14.r),
+        border: Border.all(color: color.withValues(alpha: ok ? 0.5 : 0.18)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          leading,
+          SizedBox(width: 10.w),
+          Flexible(
+            child: Text(
+              c.hint.value,
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 12.5.sp,
+                fontWeight: FontWeight.w600,
+                height: 1.3,
+              ),
             ),
           ),
         ],
@@ -204,30 +312,18 @@ class FaceEnrollView extends GetView<FaceEnrollController> {
   }
 }
 
-/// Dark scrim over the whole screen with a soft oval hole so the face area
-/// stays bright and framed.
-class _SpotlightScrim extends StatelessWidget {
-  const _SpotlightScrim();
-
-  @override
-  Widget build(BuildContext context) {
-    return IgnorePointer(child: CustomPaint(painter: _ScrimPainter()));
-  }
-}
-
 class _ScrimPainter extends CustomPainter {
+  const _ScrimPainter();
+
   @override
   void paint(Canvas canvas, Size size) {
-    final center = Offset(size.width / 2, size.height * 0.41);
-    final hole = Rect.fromCenter(center: center, width: 250.w, height: 320.w);
-
+    final center = Offset(size.width / 2, size.height * 0.4);
+    final hole = Rect.fromCenter(center: center, width: 290.w, height: 370.w);
     final scrim = Path()..addRect(Offset.zero & size);
-    final ovalPath = Path()..addOval(hole);
-    final diff = Path.combine(PathOperation.difference, scrim, ovalPath);
-
+    final oval = Path()..addOval(hole);
     canvas.drawPath(
-      diff,
-      Paint()..color = AppColors.navy.withValues(alpha: 0.55),
+      Path.combine(PathOperation.difference, scrim, oval),
+      Paint()..color = _bg.withValues(alpha: 0.86),
     );
   }
 
@@ -235,59 +331,35 @@ class _ScrimPainter extends CustomPainter {
   bool shouldRepaint(covariant _ScrimPainter oldDelegate) => false;
 }
 
-/// Four rounded corner brackets around the capture oval.
-class _CornerPainter extends CustomPainter {
-  _CornerPainter(this.color);
+class _RingPainter extends CustomPainter {
+  _RingPainter(this.color, {this.glow = false});
   final Color color;
+  final bool glow;
 
   @override
   void paint(Canvas canvas, Size size) {
-    final p = Paint()
-      ..color = color
-      ..strokeWidth = 3.5
-      ..strokeCap = StrokeCap.round
-      ..style = PaintingStyle.stroke;
-
-    const len = 26.0;
-    const r = 14.0;
-    final w = size.width;
-    final h = size.height;
-
-    canvas.drawPath(
-      Path()
-        ..moveTo(0, len + r)
-        ..lineTo(0, r)
-        ..arcToPoint(const Offset(r, 0), radius: const Radius.circular(r))
-        ..lineTo(len + r, 0),
-      p,
-    );
-    canvas.drawPath(
-      Path()
-        ..moveTo(w - len - r, 0)
-        ..lineTo(w - r, 0)
-        ..arcToPoint(Offset(w, r), radius: const Radius.circular(r))
-        ..lineTo(w, len + r),
-      p,
-    );
-    canvas.drawPath(
-      Path()
-        ..moveTo(0, h - len - r)
-        ..lineTo(0, h - r)
-        ..arcToPoint(Offset(r, h), radius: const Radius.circular(r))
-        ..lineTo(len + r, h),
-      p,
-    );
-    canvas.drawPath(
-      Path()
-        ..moveTo(w - len - r, h)
-        ..lineTo(w - r, h)
-        ..arcToPoint(Offset(w, h - r), radius: const Radius.circular(r))
-        ..lineTo(w, h - len - r),
-      p,
+    final oval = (Offset.zero & size).deflate(2);
+    if (glow) {
+      canvas.drawOval(
+        oval,
+        Paint()
+          ..color = color.withValues(alpha: 0.35)
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 10
+          ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 6),
+      );
+    }
+    canvas.drawOval(
+      oval,
+      Paint()
+        ..color = color
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 3
+        ..strokeCap = StrokeCap.round,
     );
   }
 
   @override
-  bool shouldRepaint(covariant _CornerPainter oldDelegate) =>
-      oldDelegate.color != color;
+  bool shouldRepaint(covariant _RingPainter oldDelegate) =>
+      oldDelegate.color != color || oldDelegate.glow != glow;
 }

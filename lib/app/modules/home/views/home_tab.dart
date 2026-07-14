@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -232,19 +233,22 @@ class HomeTab extends GetView<HomeController> {
             // Attendance hero card straddles the blue header / white sheet seam.
             Transform.translate(offset: Offset(0, -poke), child: _heroCard()),
             _managerBanner(),
+            // ── Monthly attendance ──
             _monthlyHeader(),
-            SizedBox(height: 12.h),
+            SizedBox(height: 14.h),
             _monthlyStats(),
-            SizedBox(height: 26.h),
+            SizedBox(height: 28.h),
+            // ── Quick menu ──
             _sectionHeader('Menu Cepat'),
             SizedBox(height: 14.h),
             _MenuCarousel(_allActions()),
-            SizedBox(height: 26.h),
+            SizedBox(height: 28.h),
+            // ── Announcements ──
             _sectionHeader(
               'Pengumuman Terbaru',
               onTap: () => Get.find<MainController>().changeTab(3),
             ),
-            SizedBox(height: 12.h),
+            SizedBox(height: 14.h),
             _announcements(),
           ],
         ),
@@ -504,64 +508,88 @@ class HomeTab extends GetView<HomeController> {
   Widget _monthlyStats() {
     return Obx(() {
       final s = controller.summary.value;
-      return Row(
-        children: [
-          Expanded(
-            child: _statCard('Hadir', s?.presentDays, AppColors.success),
-          ),
-          SizedBox(width: 12.w),
-          Expanded(
-            child: _statCard('Absen', s?.absentDays, AppColors.destructive),
-          ),
-          SizedBox(width: 12.w),
-          Expanded(
-            child: _statCard('Terlambat', s?.lateDays, AppColors.warning),
-          ),
-        ],
-      );
-    });
-  }
+      final present = s?.presentDays ?? 0;
+      final absent = s?.absentDays ?? 0;
+      final late = s?.lateDays ?? 0;
+      // Late days still count as present, so split "present" into on-time + late
+      // for a truthful part-to-whole (on-time + late + absent = work days).
+      final onTime = (present - late).clamp(0, present);
+      final total = present + absent;
+      final centerText = total == 0
+          ? '—'
+          : '${((present / total) * 100).round()}%';
 
-  Widget _statCard(String label, int? value, Color color) {
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(14.r),
-      child: Container(
+      return Container(
+        padding: EdgeInsets.fromLTRB(18.w, 18.h, 20.w, 18.h),
         decoration: BoxDecoration(
           color: AppColors.surface,
-          borderRadius: BorderRadius.circular(14.r),
+          borderRadius: BorderRadius.circular(20.r),
         ),
-        child: Column(
+        child: Row(
           children: [
-            Container(height: 4.h, color: color),
-            Padding(
-              padding: EdgeInsets.symmetric(vertical: 12.h, horizontal: 8.w),
+            SizedBox(
+              width: 116.w,
+              height: 116.w,
+              child: _AttendanceDonut(
+                segments: [
+                  (onTime.toDouble(), AppColors.success),
+                  (late.toDouble(), AppColors.warning),
+                  (absent.toDouble(), AppColors.destructive),
+                ],
+                centerText: centerText,
+                centerLabel: 'Hadir',
+              ),
+            ),
+            SizedBox(width: 20.w),
+            Expanded(
               child: Column(
+                mainAxisSize: MainAxisSize.min,
                 children: [
-                  Text(
-                    label,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      color: AppColors.textMuted,
-                      fontSize: 11.sp,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                  SizedBox(height: 6.h),
-                  Text(
-                    value == null ? '—' : value.toString().padLeft(2, '0'),
-                    style: TextStyle(
-                      color: color,
-                      fontSize: 22.sp,
-                      fontWeight: FontWeight.w800,
-                    ),
-                  ),
+                  _legendRow(AppColors.success, 'Tepat Waktu', onTime),
+                  SizedBox(height: 12.h),
+                  _legendRow(AppColors.warning, 'Terlambat', late),
+                  SizedBox(height: 12.h),
+                  _legendRow(AppColors.destructive, 'Absen', absent),
                 ],
               ),
             ),
           ],
         ),
-      ),
+      );
+    });
+  }
+
+  Widget _legendRow(Color color, String label, int count) {
+    return Row(
+      children: [
+        Container(
+          width: 10.w,
+          height: 10.w,
+          decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+        ),
+        SizedBox(width: 10.w),
+        Expanded(
+          child: Text(
+            label,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              color: AppColors.textMuted,
+              fontSize: 12.5.sp,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ),
+        Text(
+          count.toString().padLeft(2, '0'),
+          style: TextStyle(
+            color: AppColors.navy,
+            fontSize: 14.sp,
+            fontWeight: FontWeight.w800,
+            fontFeatures: const [FontFeature.tabularFigures()],
+          ),
+        ),
+      ],
     );
   }
 
@@ -575,7 +603,7 @@ class HomeTab extends GetView<HomeController> {
       final pending = controller.pendingApprovals.value;
       final team = controller.teamCount.value;
       return Container(
-        margin: EdgeInsets.only(bottom: 14.h),
+        margin: EdgeInsets.only(bottom: 28.h),
         padding: EdgeInsets.all(16.w),
         decoration: BoxDecoration(
           color: const Color(0xFF4F46E5),
@@ -1047,6 +1075,100 @@ class _LiveWorkedHoursState extends State<_LiveWorkedHours> {
       );
     });
   }
+}
+
+/// Monthly attendance donut: on-time / late / absent segments with a center
+/// KPI (attendance %). Drawn with a painter — no chart dependency.
+class _AttendanceDonut extends StatelessWidget {
+  final List<(double, Color)> segments;
+  final String centerText;
+  final String centerLabel;
+
+  const _AttendanceDonut({
+    required this.segments,
+    required this.centerText,
+    required this.centerLabel,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return CustomPaint(
+      painter: _DonutPainter(segments),
+      child: Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              centerText,
+              style: TextStyle(
+                fontSize: 22.sp,
+                fontWeight: FontWeight.w800,
+                color: AppColors.navy,
+                fontFeatures: const [FontFeature.tabularFigures()],
+              ),
+            ),
+            Text(
+              centerLabel,
+              style: TextStyle(color: AppColors.textMuted, fontSize: 10.5.sp),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _DonutPainter extends CustomPainter {
+  final List<(double, Color)> segments;
+  _DonutPainter(this.segments);
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final stroke = 13.w;
+    final center = Offset(size.width / 2, size.height / 2);
+    final radius = (size.shortestSide - stroke) / 2;
+    final rect = Rect.fromCircle(center: center, radius: radius);
+
+    // Background track.
+    canvas.drawCircle(
+      center,
+      radius,
+      Paint()
+        ..color = AppColors.muted
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = stroke,
+    );
+
+    final total = segments.fold<double>(0, (a, s) => a + s.$1);
+    if (total <= 0) return;
+
+    const gap = 0.05; // radians between segments
+    var start = -math.pi / 2 + gap / 2;
+    for (final s in segments) {
+      final value = s.$1;
+      if (value <= 0) continue;
+      final full = (value / total) * (2 * math.pi);
+      final sweep = full - gap;
+      if (sweep > 0) {
+        canvas.drawArc(
+          rect,
+          start,
+          sweep,
+          false,
+          Paint()
+            ..color = s.$2
+            ..style = PaintingStyle.stroke
+            ..strokeWidth = stroke
+            ..strokeCap = StrokeCap.round,
+        );
+      }
+      start += full;
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _DonutPainter oldDelegate) =>
+      oldDelegate.segments != segments;
 }
 
 class _Action {

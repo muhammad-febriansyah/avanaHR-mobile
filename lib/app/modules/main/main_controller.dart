@@ -1,6 +1,9 @@
 import 'package:get/get.dart';
 import 'package:persistent_bottom_nav_bar_v2/persistent_bottom_nav_bar_v2.dart';
 
+import '../../core/widgets/connection_dialog.dart';
+import '../../data/services/connectivity_service.dart';
+
 /// Holds the active bottom-navigation tab for the app shell.
 ///
 /// Five tabs: Beranda(0), Riwayat(1), Absensi(2, center), Pengumuman(3),
@@ -20,10 +23,33 @@ class MainController extends GetxController {
   final tab = 0.obs;
   final attendanceOpened = false.obs;
 
+  final ConnectivityService _conn = Get.find();
+  Worker? _connWorker;
+  bool _connDialogOpen = false;
+
   @override
   void onInit() {
     super.onInit();
     pageController.addListener(_sync);
+    // Pop a warning whenever the internet becomes unreachable; auto-dismiss it
+    // once the connection is restored.
+    _connWorker = ever<ConnStatus>(_conn.status, _onConnChange);
+  }
+
+  void _onConnChange(ConnStatus s) {
+    if (s == ConnStatus.online) {
+      if (_connDialogOpen && (Get.isDialogOpen ?? false)) {
+        Get.back();
+      }
+      _connDialogOpen = false;
+      return;
+    }
+    if (_connDialogOpen) return;
+    _connDialogOpen = true;
+    Get.dialog(
+      ConnectionDialog(offline: s == ConnStatus.offline),
+      barrierDismissible: true,
+    ).then((_) => _connDialogOpen = false);
   }
 
   void _sync() {
@@ -38,6 +64,7 @@ class MainController extends GetxController {
 
   @override
   void onClose() {
+    _connWorker?.dispose();
     pageController.removeListener(_sync);
     pageController.dispose();
     super.onClose();
