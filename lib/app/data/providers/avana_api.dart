@@ -373,7 +373,8 @@ class AvanaApi {
   }
 
   Future<Response> submitPermission({
-    required String date,
+    required String startDate,
+    required String endDate,
     required String type,
     String? startTime,
     String? endTime,
@@ -381,7 +382,8 @@ class AvanaApi {
   }) => _dio.post(
     '/me/permissions',
     data: {
-      'date': date,
+      'start_date': startDate,
+      'end_date': endDate,
       'type': type,
       if (startTime != null) 'start_time': startTime,
       if (endTime != null) 'end_time': endTime,
