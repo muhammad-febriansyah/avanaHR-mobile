@@ -67,6 +67,8 @@ class AttendanceQueueService extends GetxService {
         try {
           final res = await _api.clock(
             type: entry['type'] as String,
+            // Older queued entries predate the mode and default to office.
+            workMode: entry['work_mode'] as String?,
             latitude: (entry['latitude'] as num?)?.toDouble(),
             longitude: (entry['longitude'] as num?)?.toDouble(),
             faceEmbedding: (entry['face_embedding'] as List?)

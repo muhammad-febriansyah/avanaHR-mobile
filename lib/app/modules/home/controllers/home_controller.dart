@@ -39,9 +39,6 @@ class HomeController extends GetxController {
   final selectedMood = RxnString();
   final moodSubmitting = false.obs;
 
-  // Home/Office work-mode selector on the attendance hero card.
-  final workMode = 'office'.obs;
-
   // Auto-detected location status.
   final locState = LocState.loading.obs;
   final nearestOffice = ''.obs;

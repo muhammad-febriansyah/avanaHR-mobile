@@ -94,8 +94,13 @@ class AvanaApi {
 
   Future<AttendanceToday> attendanceToday() async {
     final res = await _dio.get('/me/attendance/today');
+    final requirements = res.data['requirements'];
+
     return AttendanceToday.fromJson(
       Map<String, dynamic>.from(res.data['data']),
+      requirements: requirements is Map
+          ? Map<String, dynamic>.from(requirements)
+          : const {},
     );
   }
 
@@ -148,6 +153,7 @@ class AvanaApi {
   // ---- ESS write ----
   Future<Response> clock({
     required String type,
+    String? workMode,
     double? latitude,
     double? longitude,
     List<double>? faceEmbedding,
@@ -160,6 +166,7 @@ class AvanaApi {
   }) async {
     final fields = <String, dynamic>{
       'type': type,
+      if (workMode != null) 'work_mode': workMode,
       if (latitude != null) 'latitude': latitude,
       if (longitude != null) 'longitude': longitude,
       if (faceEmbedding != null) 'face_embedding': faceEmbedding,
