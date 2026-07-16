@@ -545,7 +545,7 @@ class AvanaApi {
     String? notes,
     double? latitude,
     double? longitude,
-    String? photoPath,
+    List<String> photoPaths = const [],
   }) async {
     final form = FormData.fromMap({
       'visit_date': visitDate,
@@ -556,11 +556,11 @@ class AvanaApi {
       if (notes != null && notes.isNotEmpty) 'notes': notes,
       if (latitude != null) 'latitude': latitude,
       if (longitude != null) 'longitude': longitude,
-      if (photoPath != null)
-        'photo': await MultipartFile.fromFile(
-          photoPath,
-          filename: photoPath.split('/').last,
-        ),
+      // Sent as photos[] so Laravel reads them as an array of uploads.
+      'photos': [
+        for (final path in photoPaths)
+          await MultipartFile.fromFile(path, filename: path.split('/').last),
+      ],
     });
     return _dio.post('/me/field-visits', data: form);
   }

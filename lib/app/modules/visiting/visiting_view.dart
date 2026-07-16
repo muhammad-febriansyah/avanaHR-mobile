@@ -117,18 +117,32 @@ class VisitingView extends GetView<VisitingController> {
                               StatusChip(v.status),
                             ],
                           ),
-                          if (v.photoUrl != null)
+                          if (v.photoUrls.isNotEmpty)
                             Padding(
                               padding: EdgeInsets.only(top: 10.h),
-                              child: ClipRRect(
-                                borderRadius: BorderRadius.circular(10.r),
-                                child: Image.network(
-                                  v.photoUrl!,
-                                  height: 120.h,
-                                  width: double.infinity,
-                                  fit: BoxFit.cover,
-                                  errorBuilder: (_, _, _) =>
-                                      const SizedBox.shrink(),
+                              child: SizedBox(
+                                height: 120.h,
+                                child: ListView.separated(
+                                  scrollDirection: Axis.horizontal,
+                                  itemCount: v.photoUrls.length,
+                                  separatorBuilder: (_, _) =>
+                                      SizedBox(width: 8.w),
+                                  itemBuilder: (_, i) => ClipRRect(
+                                    borderRadius: BorderRadius.circular(10.r),
+                                    child: Image.network(
+                                      v.photoUrls[i],
+                                      // A lone photo fills the card as before;
+                                      // several become a scrollable strip.
+                                      width: v.photoUrls.length == 1
+                                          ? MediaQuery.of(context).size.width -
+                                                80.w
+                                          : 150.w,
+                                      height: 120.h,
+                                      fit: BoxFit.cover,
+                                      errorBuilder: (_, _, _) =>
+                                          const SizedBox.shrink(),
+                                    ),
+                                  ),
                                 ),
                               ),
                             ),
@@ -148,7 +162,7 @@ class VisitingView extends GetView<VisitingController> {
     final clientC = TextEditingController();
     final purposeC = TextEditingController();
     final notesC = TextEditingController();
-    final photoPath = RxnString();
+    final photoPaths = <String>[].obs;
     String fmt(DateTime d) =>
         '${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
 
@@ -202,12 +216,12 @@ class VisitingView extends GetView<VisitingController> {
               ),
               SizedBox(height: 14.h),
               Obx(
-                () => AppImageField(
+                () => AppImagesField(
                   label: 'Foto Kunjungan (opsional)',
-                  hint: 'Bukti kunjungan — kamera atau galeri',
-                  path: photoPath.value,
-                  onPick: (p) => photoPath.value = p,
-                  onClear: () => photoPath.value = null,
+                  hint: 'Bukti kunjungan — kamera atau galeri, maks 5 foto',
+                  paths: photoPaths.toList(),
+                  onChanged: photoPaths.assignAll,
+                  max: 5,
                 ),
               ),
               SizedBox(height: 22.h),
@@ -235,7 +249,7 @@ class VisitingView extends GetView<VisitingController> {
                           : notesC.text.trim(),
                       latitude: pos?.latitude,
                       longitude: pos?.longitude,
-                      photoPath: photoPath.value,
+                      photoPaths: photoPaths.toList(),
                     );
                     if (ok) Get.back();
                   },

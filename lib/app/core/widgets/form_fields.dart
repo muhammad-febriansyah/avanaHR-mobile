@@ -611,6 +611,206 @@ class AppImageField extends StatelessWidget {
   }
 }
 
+/// Picks several photos as evidence: a thumbnail strip plus an add tile that
+/// disappears once [max] is reached. Camera adds one shot at a time; gallery
+/// takes a multi-select. Kept separate from [AppImageField], which backs
+/// single-file fields like a reimbursement receipt.
+class AppImagesField extends StatelessWidget {
+  final String label;
+  final List<String> paths;
+  final ValueChanged<List<String>> onChanged;
+  final String? hint;
+  final bool required;
+  final int max;
+
+  const AppImagesField({
+    super.key,
+    required this.label,
+    required this.paths,
+    required this.onChanged,
+    this.hint,
+    this.required = false,
+    this.max = 5,
+  });
+
+  int get _remaining => max - paths.length;
+
+  Future<void> _addFromCamera() async {
+    final img = await ImagePicker().pickImage(
+      source: ImageSource.camera,
+      imageQuality: 70,
+      maxWidth: 1600,
+    );
+    if (img != null) onChanged([...paths, img.path]);
+  }
+
+  Future<void> _addFromGallery() async {
+    final imgs = await ImagePicker().pickMultiImage(
+      imageQuality: 70,
+      maxWidth: 1600,
+    );
+    if (imgs.isEmpty) return;
+
+    // Silently dropping the overflow would look like a failed pick, so only
+    // take what fits and let the caller surface the cap.
+    onChanged([...paths, ...imgs.take(_remaining).map((e) => e.path)]);
+  }
+
+  void _remove(int index) {
+    final next = [...paths]..removeAt(index);
+    onChanged(next);
+  }
+
+  void _chooseSource(BuildContext context) {
+    showAppSheet<void>(
+      context,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 40.w,
+            height: 4.h,
+            margin: EdgeInsets.symmetric(vertical: 12.h),
+            decoration: BoxDecoration(
+              color: AppColors.border,
+              borderRadius: BorderRadius.circular(4.r),
+            ),
+          ),
+          _sourceTile(context, Iconsax.camera, 'Kamera', _addFromCamera),
+          _sourceTile(context, Iconsax.gallery, 'Galeri', _addFromGallery),
+          SizedBox(height: 8.h),
+        ],
+      ),
+    );
+  }
+
+  Widget _sourceTile(
+    BuildContext ctx,
+    IconData icon,
+    String text,
+    Future<void> Function() pick,
+  ) {
+    return ListTile(
+      leading: Container(
+        width: 40.w,
+        height: 40.w,
+        decoration: BoxDecoration(
+          color: AppColors.primary.withValues(alpha: 0.12),
+          borderRadius: BorderRadius.circular(12.r),
+        ),
+        child: Icon(icon, color: AppColors.primary, size: 20.sp),
+      ),
+      title: Text(
+        text,
+        style: TextStyle(
+          fontWeight: FontWeight.w600,
+          color: AppColors.navy,
+          fontSize: 14.sp,
+        ),
+      ),
+      onTap: () {
+        Navigator.pop(ctx);
+        pick();
+      },
+    );
+  }
+
+  Widget _thumb(int index) {
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(12.r),
+      child: Stack(
+        children: [
+          Image.file(
+            File(paths[index]),
+            width: 92.w,
+            height: 92.w,
+            fit: BoxFit.cover,
+          ),
+          Positioned(
+            top: 4.h,
+            right: 4.w,
+            child: InkWell(
+              onTap: () => _remove(index),
+              customBorder: const CircleBorder(),
+              child: Container(
+                padding: EdgeInsets.all(5.w),
+                decoration: BoxDecoration(
+                  color: Colors.black.withValues(alpha: 0.55),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(Iconsax.trash, size: 13.sp, color: Colors.white),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _addTile(BuildContext context) {
+    return InkWell(
+      onTap: () => _chooseSource(context),
+      borderRadius: BorderRadius.circular(12.r),
+      child: Container(
+        width: 92.w,
+        height: 92.w,
+        decoration: BoxDecoration(
+          color: AppColors.primary.withValues(alpha: 0.05),
+          borderRadius: BorderRadius.circular(12.r),
+          border: Border.all(color: AppColors.primary.withValues(alpha: 0.3)),
+        ),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Iconsax.gallery_add, size: 22.sp, color: AppColors.primary),
+            SizedBox(height: 4.h),
+            Text(
+              'Tambah Foto',
+              style: TextStyle(
+                color: AppColors.primary,
+                fontWeight: FontWeight.w700,
+                fontSize: 11.sp,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _label(label, required: required),
+        if (hint != null && paths.isEmpty) ...[
+          Text(
+            hint!,
+            style: TextStyle(color: AppColors.textMuted, fontSize: 11.5.sp),
+          ),
+          SizedBox(height: 8.h),
+        ],
+        Wrap(
+          spacing: 8.w,
+          runSpacing: 8.h,
+          children: [
+            for (var i = 0; i < paths.length; i++) _thumb(i),
+            if (_remaining > 0) _addTile(context),
+          ],
+        ),
+        if (paths.isNotEmpty) ...[
+          SizedBox(height: 6.h),
+          Text(
+            '${paths.length}/$max foto',
+            style: TextStyle(color: AppColors.textMuted, fontSize: 11.sp),
+          ),
+        ],
+      ],
+    );
+  }
+}
+
 /// Formats digits as a Rupiah amount with thousands separators (e.g. 1000000
 /// becomes "1.000.000"). Pair with a `prefixText: 'Rp '` field.
 class RupiahInputFormatter extends TextInputFormatter {
