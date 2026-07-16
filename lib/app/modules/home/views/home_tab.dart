@@ -15,8 +15,8 @@ import '../../main/main_controller.dart';
 import '../controllers/home_controller.dart';
 
 /// Beranda tab — attendance-first home. Blue location/welcome header, a white
-/// attendance hero card (work-mode toggle, live clock, clock-in/out, worked
-/// hours), monthly attendance stats, and quick-request + menu below.
+/// attendance hero card (live clock, clock-in/out, worked hours), monthly
+/// attendance stats, and quick-request + menu below.
 class HomeTab extends GetView<HomeController> {
   const HomeTab({super.key});
 

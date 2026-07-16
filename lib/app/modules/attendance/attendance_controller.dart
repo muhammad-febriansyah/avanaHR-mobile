@@ -25,6 +25,17 @@ class AttendanceController extends GetxController {
   final isClocking = false.obs;
   final today = Rxn<AttendanceToday>();
 
+  /// Where the employee says they are working from: 'office' or 'home'.
+  /// 'home' is only offered — and only accepted by the server — on a day an
+  /// approved WFH request covers.
+  final workMode = 'office'.obs;
+
+  /// Whether picking "home" is legal today.
+  bool get canWorkFromHome => today.value?.wfhApprovedToday ?? false;
+
+  /// Clocking out must stay in the mode the day was clocked in under.
+  String get effectiveWorkMode => today.value?.workMode ?? workMode.value;
+
   /// Whether the employee has enrolled a face and must verify before clocking.
   /// Cached so an offline launch still knows to prompt for the capture.
   final requiresFace = false.obs;
@@ -41,7 +52,11 @@ class AttendanceController extends GetxController {
 
   /// Clock is allowed inside the radius, or when we cannot verify location
   /// (no office configured / GPS unavailable) — so users are never trapped.
+  ///
+  /// Working from home is off-site by definition, so the radius must not gate
+  /// it; the server checks the WFH approval instead.
   bool get canClockByLocation =>
+      effectiveWorkMode == 'home' ||
       geoState.value == GeoState.inside ||
       geoState.value == GeoState.noOffice ||
       geoState.value == GeoState.gpsOff ||
@@ -64,6 +79,13 @@ class AttendanceController extends GetxController {
       today.value = null;
     }
     isLoading.value = false;
+
+    // An approval can be revoked, or the day can roll over, while the selector
+    // still says "home" — never leave a choice the server would now reject.
+    if (!canWorkFromHome) {
+      workMode.value = 'office';
+    }
+
     _refreshFaceRequirement();
   }
 
@@ -258,6 +280,7 @@ class AttendanceController extends GetxController {
 
       final entry = <String, dynamic>{
         'type': type,
+        'work_mode': effectiveWorkMode,
         'latitude': pos?.latitude,
         'longitude': pos?.longitude,
         'device_id': device.deviceId,
@@ -277,6 +300,7 @@ class AttendanceController extends GetxController {
       try {
         final res = await _api.clock(
           type: type,
+          workMode: effectiveWorkMode,
           latitude: pos?.latitude,
           longitude: pos?.longitude,
           faceEmbedding: faceEmbedding,

@@ -91,6 +91,7 @@ class AttendanceView extends GetView<AttendanceController> {
                   _geoStatus(),
                   SizedBox(height: 14.h),
                   _todayCard(),
+                  _workModePicker(),
                   SizedBox(height: 18.h),
                   _clockButton(),
                   SizedBox(height: 8.h),
@@ -112,6 +113,92 @@ class AttendanceView extends GetView<AttendanceController> {
         ),
       );
     });
+  }
+
+  /// Office/home choice, offered only on a day an approved WFH request covers —
+  /// the server rejects "home" otherwise, so there is nothing to show. Hidden
+  /// once clocked in: the mode is fixed for the rest of the day.
+  Widget _workModePicker() {
+    return Obx(() {
+      final clockedIn = !(controller.today.value?.canClockIn ?? true);
+
+      if (!controller.canWorkFromHome || clockedIn) {
+        return const SizedBox.shrink();
+      }
+
+      return Padding(
+        padding: EdgeInsets.only(top: 14.h),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Mode kerja hari ini',
+              style: TextStyle(
+                fontWeight: FontWeight.w700,
+                color: AppColors.navy,
+                fontSize: 12.5.sp,
+              ),
+            ),
+            SizedBox(height: 8.h),
+            Row(
+              children: [
+                Expanded(
+                  child: _workModeOption(
+                    'office',
+                    Iconsax.building_4,
+                    'Kantor',
+                  ),
+                ),
+                SizedBox(width: 10.w),
+                Expanded(
+                  child: _workModeOption('home', Iconsax.home_2, 'Rumah'),
+                ),
+              ],
+            ),
+          ],
+        ),
+      );
+    });
+  }
+
+  Widget _workModeOption(String value, IconData icon, String label) {
+    final selected = controller.workMode.value == value;
+
+    return GestureDetector(
+      onTap: () => controller.workMode.value = value,
+      behavior: HitTestBehavior.opaque,
+      child: Container(
+        padding: EdgeInsets.symmetric(vertical: 12.h),
+        decoration: BoxDecoration(
+          color: selected
+              ? AppColors.primary.withValues(alpha: 0.1)
+              : AppColors.muted,
+          borderRadius: BorderRadius.circular(12.r),
+          border: Border.all(
+            color: selected ? AppColors.primary : Colors.transparent,
+          ),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              icon,
+              size: 16.sp,
+              color: selected ? AppColors.primary : AppColors.textMuted,
+            ),
+            SizedBox(width: 6.w),
+            Text(
+              label,
+              style: TextStyle(
+                color: selected ? AppColors.primary : AppColors.textMuted,
+                fontWeight: selected ? FontWeight.w700 : FontWeight.w600,
+                fontSize: 12.5.sp,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   /// Primary clock action. Runs the geofence + face gate: taps launch the

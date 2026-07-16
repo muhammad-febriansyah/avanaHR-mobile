@@ -10,6 +10,13 @@ class AttendanceToday {
   final String? status;
   final int workMinutes;
 
+  /// Mode the day was clocked in under ('office' or 'home'); null until then.
+  final String? workMode;
+
+  /// Whether an approved WFH request covers today — the licence for picking
+  /// "home". Comes from the response's `requirements`, not its `data`.
+  final bool wfhApprovedToday;
+
   AttendanceToday({
     required this.date,
     required this.nextAction,
@@ -18,11 +25,16 @@ class AttendanceToday {
     this.clockInAt,
     this.status,
     this.workMinutes = 0,
+    this.workMode,
+    this.wfhApprovedToday = false,
   });
 
   bool get canClockIn => nextAction == 'in';
 
-  factory AttendanceToday.fromJson(Map<String, dynamic> json) {
+  factory AttendanceToday.fromJson(
+    Map<String, dynamic> json, {
+    Map<String, dynamic> requirements = const {},
+  }) {
     final summary = json['summary'];
     return AttendanceToday(
       date: json['date'] ?? '',
@@ -32,6 +44,8 @@ class AttendanceToday {
       nextAction: json['next_action'] ?? 'in',
       status: summary is Map ? summary['status'] : null,
       workMinutes: summary is Map ? (summary['work_minutes'] ?? 0) : 0,
+      workMode: json['work_mode'],
+      wfhApprovedToday: requirements['wfh_approved_today'] == true,
     );
   }
 }
