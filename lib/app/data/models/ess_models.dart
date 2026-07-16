@@ -286,7 +286,7 @@ class FieldVisitItem {
   final String? clientName;
   final String? purpose;
   final String? notes;
-  final String? photoUrl;
+  final List<String> photoUrls;
   final String status;
 
   FieldVisitItem({
@@ -297,7 +297,7 @@ class FieldVisitItem {
     this.clientName,
     this.purpose,
     this.notes,
-    this.photoUrl,
+    this.photoUrls = const [],
   });
 
   factory FieldVisitItem.fromJson(Map<String, dynamic> j) => FieldVisitItem(
@@ -307,7 +307,10 @@ class FieldVisitItem {
     clientName: j['client_name'],
     purpose: j['purpose'],
     notes: j['notes'],
-    photoUrl: Env.resolveMedia(j['photo_url'] as String?),
+    photoUrls: ((j['photo_urls'] as List?) ?? [])
+        .map((e) => Env.resolveMedia(e as String?))
+        .whereType<String>()
+        .toList(),
     status: j['status'] ?? '',
   );
 }

@@ -53,7 +53,7 @@ class VisitingController extends GetxController {
     String? notes,
     double? latitude,
     double? longitude,
-    String? photoPath,
+    List<String> photoPaths = const [],
   }) async {
     submitting.value = true;
     try {
@@ -65,7 +65,7 @@ class VisitingController extends GetxController {
         notes: notes,
         latitude: latitude,
         longitude: longitude,
-        photoPath: photoPath,
+        photoPaths: photoPaths,
       );
       submitting.value = false;
       if (res.statusCode == 201) {
