@@ -259,7 +259,10 @@ class HomeController extends GetxController {
     }
   }
 
+  /// Record today's mood. One tap per day and final — re-entry is blocked here
+  /// and on the server, so an already-checked-in employee can't revise it.
   Future<void> submitMood(String mood) async {
+    if (moodCheckedIn.value || moodSubmitting.value) return;
     moodSubmitting.value = true;
     try {
       final res = await _api.submitMood(mood);
@@ -272,6 +275,16 @@ class HomeController extends GetxController {
         _storage.setMoodPromptDate(_todayStr());
         AppToast.success(
           ApiClient.messageFrom(res, 'Terima kasih, perasaanmu tercatat.'),
+        );
+      } else if (code == 409) {
+        // Already recorded today (e.g. from another device) — adopt the mood the
+        // server kept rather than the one just tapped.
+        selectedMood.value =
+            (res.data?['data']?['mood'] as String?) ?? selectedMood.value;
+        moodCheckedIn.value = true;
+        _storage.setMoodPromptDate(_todayStr());
+        AppToast.error(
+          ApiClient.messageFrom(res, 'Perasaanmu hari ini sudah tercatat.'),
         );
       } else {
         AppToast.error(ApiClient.messageFrom(res, 'Gagal menyimpan perasaan.'));

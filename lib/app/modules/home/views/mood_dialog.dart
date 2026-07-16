@@ -60,16 +60,24 @@ class MoodDialog extends StatelessWidget {
               ],
             ),
             SizedBox(height: 4.h),
-            Text(
-              'Sekali ketuk. Hanya untukmu & HR, anonim.',
-              style: TextStyle(color: AppColors.textMuted, fontSize: 12.sp),
+            Obx(
+              () => Text(
+                controller.moodCheckedIn.value
+                    ? 'Sudah tercatat hari ini. Bisa diisi lagi besok.'
+                    : 'Sekali ketuk. Hanya untukmu & HR, anonim.',
+                style: TextStyle(color: AppColors.textMuted, fontSize: 12.sp),
+              ),
             ),
             SizedBox(height: 20.h),
             Obx(() {
               final selected = controller.selectedMood.value;
+              final locked = controller.moodCheckedIn.value;
               return Row(
                 children: _moods
-                    .map((m) => _moodButton(controller, m, selected == m.$1))
+                    .map(
+                      (m) =>
+                          _moodButton(controller, m, selected == m.$1, locked),
+                    )
                     .toList(),
               );
             }),
@@ -81,11 +89,13 @@ class MoodDialog extends StatelessWidget {
                   minimumSize: Size(44.w, 44.h),
                   foregroundColor: AppColors.textMuted,
                 ),
-                child: Text(
-                  'Nanti saja',
-                  style: TextStyle(
-                    fontSize: 12.5.sp,
-                    fontWeight: FontWeight.w600,
+                child: Obx(
+                  () => Text(
+                    controller.moodCheckedIn.value ? 'Tutup' : 'Nanti saja',
+                    style: TextStyle(
+                      fontSize: 12.5.sp,
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
                 ),
               ),
@@ -96,47 +106,55 @@ class MoodDialog extends StatelessWidget {
     );
   }
 
+  /// One mood option. Once the day's mood is in (`locked`), taps are ignored and
+  /// the options not chosen fade back so the recorded one reads as final.
   Widget _moodButton(
     HomeController controller,
     (String, String, String) m,
     bool selected,
+    bool locked,
   ) {
     return Expanded(
       child: GestureDetector(
-        onTap: () {
-          Get.back();
-          controller.submitMood(m.$1);
-        },
+        onTap: locked
+            ? null
+            : () {
+                Get.back();
+                controller.submitMood(m.$1);
+              },
         behavior: HitTestBehavior.opaque,
-        child: Padding(
-          padding: EdgeInsets.symmetric(horizontal: 3.w),
-          child: Column(
-            children: [
-              Container(
-                width: double.infinity,
-                padding: EdgeInsets.symmetric(vertical: 12.h),
-                decoration: BoxDecoration(
-                  color: selected
-                      ? AppColors.primary.withValues(alpha: 0.12)
-                      : AppColors.muted,
-                  borderRadius: BorderRadius.circular(14.r),
+        child: Opacity(
+          opacity: locked && !selected ? 0.4 : 1,
+          child: Padding(
+            padding: EdgeInsets.symmetric(horizontal: 3.w),
+            child: Column(
+              children: [
+                Container(
+                  width: double.infinity,
+                  padding: EdgeInsets.symmetric(vertical: 12.h),
+                  decoration: BoxDecoration(
+                    color: selected
+                        ? AppColors.primary.withValues(alpha: 0.12)
+                        : AppColors.muted,
+                    borderRadius: BorderRadius.circular(14.r),
+                  ),
+                  alignment: Alignment.center,
+                  child: Text(m.$2, style: TextStyle(fontSize: 24.sp)),
                 ),
-                alignment: Alignment.center,
-                child: Text(m.$2, style: TextStyle(fontSize: 24.sp)),
-              ),
-              SizedBox(height: 6.h),
-              Text(
-                m.$3,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  color: selected ? AppColors.primary : AppColors.textMuted,
-                  fontSize: 9.5.sp,
-                  fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+                SizedBox(height: 6.h),
+                Text(
+                  m.$3,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    color: selected ? AppColors.primary : AppColors.textMuted,
+                    fontSize: 9.5.sp,
+                    fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),
