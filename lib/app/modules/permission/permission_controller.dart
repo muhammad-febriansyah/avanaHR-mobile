@@ -39,7 +39,8 @@ class PermissionController extends GetxController {
   }
 
   Future<bool> submit({
-    required String date,
+    required String startDate,
+    required String endDate,
     required String type,
     String? startTime,
     String? endTime,
@@ -48,7 +49,8 @@ class PermissionController extends GetxController {
     submitting.value = true;
     try {
       final res = await _api.submitPermission(
-        date: date,
+        startDate: startDate,
+        endDate: endDate,
         type: type,
         startTime: startTime,
         endTime: endTime,

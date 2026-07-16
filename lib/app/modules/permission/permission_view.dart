@@ -93,7 +93,7 @@ class PermissionView extends GetView<PermissionController> {
                                       ),
                                       SizedBox(height: 2.h),
                                       Text(
-                                        '${p.date}$time',
+                                        '${p.dateLabel}$time',
                                         maxLines: 2,
                                         overflow: TextOverflow.ellipsis,
                                         style: TextStyle(
@@ -120,13 +120,21 @@ class PermissionView extends GetView<PermissionController> {
   }
 
   void _openSheet(BuildContext context) {
-    final date = Rxn<DateTime>();
+    final startDate = Rxn<DateTime>();
+    final endDate = Rxn<DateTime>();
     final typeC = TextEditingController();
     final start = RxnString();
     final end = RxnString();
     final reasonC = TextEditingController();
     String fmtD(DateTime d) =>
         '${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
+
+    /// Times narrow a single day to part of it; across a range the izin covers
+    /// whole days, and the server rejects times there.
+    bool isSingleDay() =>
+        startDate.value != null &&
+        endDate.value != null &&
+        fmtD(startDate.value!) == fmtD(endDate.value!);
 
     showAppSheet(
       context,
@@ -138,13 +146,38 @@ class PermissionView extends GetView<PermissionController> {
           children: [
             const SheetHeader('Ajukan Izin'),
             SizedBox(height: 18.h),
-            Obx(
-              () => AppDateField(
-                label: 'Tanggal',
-                value: date.value,
-                onPick: (d) => date.value = d,
-                required: true,
-              ),
+            Row(
+              children: [
+                Expanded(
+                  child: Obx(
+                    () => AppDateField(
+                      label: 'Tanggal Mulai',
+                      value: startDate.value,
+                      onPick: (d) {
+                        startDate.value = d;
+                        // Keep the range coherent: an end before the new start
+                        // is meaningless, so collapse it onto the start.
+                        final currentEnd = endDate.value;
+                        if (currentEnd == null || currentEnd.isBefore(d)) {
+                          endDate.value = d;
+                        }
+                      },
+                      required: true,
+                    ),
+                  ),
+                ),
+                SizedBox(width: 12.w),
+                Expanded(
+                  child: Obx(
+                    () => AppDateField(
+                      label: 'Tanggal Selesai',
+                      value: endDate.value,
+                      onPick: (d) => endDate.value = d,
+                      required: true,
+                    ),
+                  ),
+                ),
+              ],
             ),
             SizedBox(height: 14.h),
             AppTextField(
@@ -154,32 +187,32 @@ class PermissionView extends GetView<PermissionController> {
               required: true,
             ),
             SizedBox(height: 14.h),
-            Row(
-              children: [
-                Expanded(
-                  child: Obx(
-                    () => AppTimeField(
-                      label: 'Jam Mulai',
-                      value: start.value,
-                      onPick: (t) => start.value = t,
-                      required: true,
+            Obx(
+              () => !isSingleDay()
+                  ? const SizedBox.shrink()
+                  : Padding(
+                      padding: EdgeInsets.only(bottom: 14.h),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: AppTimeField(
+                              label: 'Jam Mulai',
+                              value: start.value,
+                              onPick: (t) => start.value = t,
+                            ),
+                          ),
+                          SizedBox(width: 12.w),
+                          Expanded(
+                            child: AppTimeField(
+                              label: 'Jam Selesai',
+                              value: end.value,
+                              onPick: (t) => end.value = t,
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
-                  ),
-                ),
-                SizedBox(width: 12.w),
-                Expanded(
-                  child: Obx(
-                    () => AppTimeField(
-                      label: 'Jam Selesai',
-                      value: end.value,
-                      onPick: (t) => end.value = t,
-                      required: true,
-                    ),
-                  ),
-                ),
-              ],
             ),
-            SizedBox(height: 14.h),
             AppTextField(
               controller: reasonC,
               label: 'Alasan (opsional)',
@@ -191,15 +224,29 @@ class PermissionView extends GetView<PermissionController> {
               () => AppSubmitButton(
                 loading: controller.submitting.value,
                 onPressed: () async {
-                  if (date.value == null || typeC.text.trim().isEmpty) {
+                  if (startDate.value == null ||
+                      endDate.value == null ||
+                      typeC.text.trim().isEmpty) {
                     AppToast.warning('Lengkapi tanggal & jenis izin.');
                     return;
                   }
+                  if (endDate.value!.isBefore(startDate.value!)) {
+                    AppToast.warning(
+                      'Tanggal selesai tidak boleh sebelum tanggal mulai.',
+                    );
+                    return;
+                  }
+
+                  // Only a single-day izin carries times; anything typed before
+                  // the range grew is dropped rather than sent to be rejected.
+                  final singleDay = isSingleDay();
+
                   final ok = await controller.submit(
-                    date: fmtD(date.value!),
+                    startDate: fmtD(startDate.value!),
+                    endDate: fmtD(endDate.value!),
                     type: typeC.text.trim(),
-                    startTime: start.value,
-                    endTime: end.value,
+                    startTime: singleDay ? start.value : null,
+                    endTime: singleDay ? end.value : null,
                     reason: reasonC.text.trim().isEmpty
                         ? null
                         : reasonC.text.trim(),

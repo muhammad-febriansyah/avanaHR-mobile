@@ -107,7 +107,8 @@ class OvertimeItem {
 
 class PermissionItem {
   final int id;
-  final String date;
+  final String startDate;
+  final String endDate;
   final String type;
   final String? startTime;
   final String? endTime;
@@ -116,7 +117,8 @@ class PermissionItem {
 
   PermissionItem({
     required this.id,
-    required this.date,
+    required this.startDate,
+    required this.endDate,
     required this.type,
     required this.status,
     this.startTime,
@@ -124,9 +126,14 @@ class PermissionItem {
     this.reason,
   });
 
+  /// Izin spanning one day reads as a single date; longer ones as a range.
+  String get dateLabel =>
+      startDate == endDate ? startDate : '$startDate – $endDate';
+
   factory PermissionItem.fromJson(Map<String, dynamic> j) => PermissionItem(
     id: j['id'],
-    date: fmtDate(j['date']),
+    startDate: fmtDate(j['start_date']),
+    endDate: fmtDate(j['end_date']),
     type: j['type'] ?? '',
     startTime: j['start_time'],
     endTime: j['end_time'],
