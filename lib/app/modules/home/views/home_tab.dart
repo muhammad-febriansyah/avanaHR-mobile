@@ -8,15 +8,13 @@ import 'package:get/get.dart';
 import 'package:iconsax/iconsax.dart';
 
 import '../../../core/theme/app_colors.dart';
+import '../../../core/utils/formats.dart';
 import '../../../core/widgets/app_page.dart';
 import '../../../data/models/ess_models.dart';
 import '../../../routes/app_pages.dart';
 import '../../main/main_controller.dart';
 import '../controllers/home_controller.dart';
 
-/// Beranda tab — attendance-first home. Blue location/welcome header, a white
-/// attendance hero card (live clock, clock-in/out, worked hours), monthly
-/// attendance stats, and quick-request + menu below.
 class HomeTab extends GetView<HomeController> {
   const HomeTab({super.key});
 
@@ -38,8 +36,6 @@ class HomeTab extends GetView<HomeController> {
       ),
     );
   }
-
-  // ── Header ────────────────────────────────────────────────────────────────
 
   Widget _header() {
     return Container(
@@ -947,7 +943,7 @@ class HomeTab extends GetView<HomeController> {
           ),
           if (a.publishedAt != null)
             Text(
-              a.publishedAt!.split('T').first,
+              formatTanggal(a.publishedAt),
               style: TextStyle(color: AppColors.textMuted, fontSize: 10.5.sp),
             ),
         ],

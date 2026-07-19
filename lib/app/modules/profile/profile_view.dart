@@ -4,6 +4,7 @@ import 'package:get/get.dart';
 import 'package:iconsax/iconsax.dart';
 
 import '../../core/theme/app_colors.dart';
+import '../../core/utils/formats.dart';
 import '../../core/widgets/app_page.dart';
 import '../../core/widgets/app_sheet.dart';
 import '../../core/widgets/form_fields.dart';
@@ -50,7 +51,7 @@ class ProfileView extends GetView<ProfileController> {
               InfoRow('Cabang', p.employment?.branch),
               InfoRow('Grade', p.employment?.jobGrade),
               InfoRow('Tipe', p.employment?.employmentType),
-              InfoRow('Bergabung', p.joinDate),
+              InfoRow('Bergabung', formatTanggal(p.joinDate, fallback: '')),
             ]),
             SizedBox(height: 14.h),
             _section('Kontak', Iconsax.call, [

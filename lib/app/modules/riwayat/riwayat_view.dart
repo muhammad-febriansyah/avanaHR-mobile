@@ -2,9 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:get/get.dart';
 import 'package:iconsax/iconsax.dart';
-import 'package:intl/intl.dart';
 
 import '../../core/theme/app_colors.dart';
+import '../../core/utils/formats.dart';
 import '../../core/widgets/app_page.dart';
 import '../../core/widgets/filter_chips.dart';
 import '../../data/models/activity.dart';
@@ -146,23 +146,7 @@ class RiwayatView extends GetView<RiwayatController> {
     if (res != null) controller.setDateRange(res.start, res.end);
   }
 
-  String _fmtDate(DateTime d) {
-    const m = [
-      'Jan',
-      'Feb',
-      'Mar',
-      'Apr',
-      'Mei',
-      'Jun',
-      'Jul',
-      'Agu',
-      'Sep',
-      'Okt',
-      'Nov',
-      'Des',
-    ];
-    return '${d.day} ${m[d.month - 1]} ${d.year}';
-  }
+  String _fmtDate(DateTime d) => formatTanggalLokal(d);
 
   Widget _empty() {
     return ListView(
@@ -242,9 +226,7 @@ class RiwayatView extends GetView<RiwayatController> {
                 if (item.occurredAt != null) ...[
                   SizedBox(height: 4.h),
                   Text(
-                    DateFormat(
-                      'd MMM yyyy · HH:mm',
-                    ).format(item.occurredAt!.toLocal()),
+                    formatTanggalJam(item.occurredAt),
                     style: TextStyle(
                       fontSize: 10.5.sp,
                       color: AppColors.textMuted,

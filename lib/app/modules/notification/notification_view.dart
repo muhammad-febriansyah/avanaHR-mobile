@@ -4,6 +4,7 @@ import 'package:get/get.dart';
 import 'package:iconsax/iconsax.dart';
 
 import '../../core/theme/app_colors.dart';
+import '../../core/utils/formats.dart';
 import '../../core/widgets/app_page.dart';
 import '../../core/widgets/ui.dart';
 import 'notification_controller.dart';
@@ -68,7 +69,7 @@ class NotificationView extends GetView<NotificationController> {
                                 if (n.createdAt != null) ...[
                                   SizedBox(height: 2.h),
                                   Text(
-                                    n.createdAt!,
+                                    formatTanggalJam(n.createdAt),
                                     style: TextStyle(
                                       color: AppColors.textMuted,
                                       fontSize: 11.5.sp,
