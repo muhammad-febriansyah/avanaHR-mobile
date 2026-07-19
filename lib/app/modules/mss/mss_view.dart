@@ -19,6 +19,7 @@ class MssView extends GetView<MssController> {
     'wfh': Color(0xFF0EA5E9),
     'koreksi': Color(0xFF4F46E5),
     'reimburse': Color(0xFFDB2777),
+    'settlement': Color(0xFF2563EB),
   };
 
   @override
