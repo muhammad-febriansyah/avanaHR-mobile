@@ -335,6 +335,23 @@ class AvanaApi {
         .toList();
   }
 
+  // ---- Settlement (Perdin) ----
+  Future<List<SettlementItem>> settlements() async {
+    final res = await _dio.get('/me/settlements');
+    final list = (res.data['data'] as List?) ?? [];
+    return list
+        .map((e) => SettlementItem.fromJson(Map<String, dynamic>.from(e)))
+        .toList();
+  }
+
+  Future<SettlementDetail> settlement(int id) async {
+    final res = await _dio.get('/me/settlements/$id');
+
+    return SettlementDetail.fromJson(
+      Map<String, dynamic>.from(res.data['data']),
+    );
+  }
+
   // ---- Leave ----
   Future<List<LeaveType>> leaveTypes() async {
     final res = await _dio.get('/me/leave-types');

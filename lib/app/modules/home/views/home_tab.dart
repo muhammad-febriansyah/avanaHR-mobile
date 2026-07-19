@@ -819,6 +819,12 @@ class HomeTab extends GetView<HomeController> {
         () => Get.toNamed(Routes.REIMBURSEMENT),
       ),
       _Action(
+        'Settlement',
+        Iconsax.receipt_2_1,
+        const Color(0xFF2563EB),
+        () => Get.toNamed(Routes.SETTLEMENT),
+      ),
+      _Action(
         'WFH',
         Iconsax.house,
         const Color(0xFF0EA5E9),

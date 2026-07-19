@@ -34,6 +34,9 @@ import '../modules/permission/permission_view.dart';
 import '../modules/schedule/schedule_binding.dart';
 import '../modules/schedule/schedule_view.dart';
 import '../modules/reimbursement/reimbursement_binding.dart';
+import '../modules/settlement/settlement_binding.dart';
+import '../modules/settlement/settlement_detail_view.dart';
+import '../modules/settlement/settlement_view.dart';
 import '../modules/reimbursement/reimbursement_view.dart';
 import '../modules/wfh/wfh_binding.dart';
 import '../modules/wfh/wfh_view.dart';
@@ -120,6 +123,16 @@ class AppPages {
       name: _Paths.REIMBURSEMENT,
       page: () => const ReimbursementView(),
       binding: ReimbursementBinding(),
+    ),
+    GetPage(
+      name: _Paths.SETTLEMENT,
+      page: () => const SettlementView(),
+      binding: SettlementBinding(),
+    ),
+    GetPage(
+      name: _Paths.SETTLEMENT_DETAIL,
+      page: () => const SettlementDetailView(),
+      binding: SettlementBinding(),
     ),
     GetPage(
       name: _Paths.ANNOUNCEMENT,

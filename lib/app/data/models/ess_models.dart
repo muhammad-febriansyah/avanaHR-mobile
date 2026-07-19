@@ -342,3 +342,228 @@ class Colleague {
     employeeNumber: j['employee_number'],
   );
 }
+
+/// A settlement (Settlement Perdin) as listed on `/me/settlements`.
+class SettlementItem {
+  final int id;
+  final String number;
+  final String title;
+  final String? destination;
+  final int total;
+  final String status;
+  final String submissionDate;
+  final String? paidAt;
+
+  SettlementItem({
+    required this.id,
+    required this.number,
+    required this.title,
+    required this.total,
+    required this.status,
+    required this.submissionDate,
+    this.destination,
+    this.paidAt,
+  });
+
+  factory SettlementItem.fromJson(Map<String, dynamic> j) => SettlementItem(
+    id: j['id'],
+    number: j['number'] ?? '',
+    title: j['title'] ?? '',
+    destination: j['destination'],
+    total: _asInt(j['total']),
+    status: j['status'] ?? '',
+    submissionDate: fmtDate(j['submission_date']),
+    paidAt: j['paid_at'],
+  );
+}
+
+/// Where the trip went and for how long. Every field is optional — a claim for
+/// an operational cost carries no travel leg at all.
+class SettlementTravel {
+  final String? destination;
+  final String? startDate;
+  final String? endDate;
+  final int? days;
+  final double? latitude;
+  final double? longitude;
+
+  SettlementTravel({
+    this.destination,
+    this.startDate,
+    this.endDate,
+    this.days,
+    this.latitude,
+    this.longitude,
+  });
+
+  factory SettlementTravel.fromJson(Map<String, dynamic> j) => SettlementTravel(
+    destination: j['destination'],
+    startDate: j['start_date'],
+    endDate: j['end_date'],
+    days: j['days'],
+    latitude: _asDouble(j['latitude']),
+    longitude: _asDouble(j['longitude']),
+  );
+
+  bool get hasPin => latitude != null && longitude != null;
+
+  /// "18 Jul 2026 — 21 Jul 2026 (4 hari)", or null when the dates are missing.
+  String? get rangeLabel {
+    if (startDate == null || endDate == null) {
+      return null;
+    }
+    final range = '${formatTanggal(startDate)} — ${formatTanggal(endDate)}';
+
+    return days == null ? range : '$range ($days hari)';
+  }
+}
+
+/// One expense line on a settlement.
+class SettlementLine {
+  final int id;
+  final String description;
+  final String? detail;
+  final String categoryLabel;
+  final String icon;
+  final int amount;
+
+  SettlementLine({
+    required this.id,
+    required this.description,
+    required this.categoryLabel,
+    required this.icon,
+    required this.amount,
+    this.detail,
+  });
+
+  factory SettlementLine.fromJson(Map<String, dynamic> j) => SettlementLine(
+    id: j['id'],
+    description: j['description'] ?? '',
+    detail: j['detail'],
+    categoryLabel: j['category_label'] ?? '',
+    icon: j['icon'] ?? 'receipt',
+    amount: _asInt(j['amount']),
+  );
+}
+
+/// One supporting document (receipt scan) attached to a settlement.
+class SettlementDocument {
+  final int id;
+  final String name;
+  final String? url;
+
+  SettlementDocument({required this.id, required this.name, this.url});
+
+  factory SettlementDocument.fromJson(Map<String, dynamic> j) =>
+      SettlementDocument(
+        id: j['id'],
+        name: j['name'] ?? 'Dokumen',
+        url: Env.resolveMedia(j['url']),
+      );
+}
+
+/// One step of the submit → manager → finance → paid trail.
+class SettlementStep {
+  final String key;
+  final String label;
+  final bool done;
+  final String? at;
+
+  SettlementStep({
+    required this.key,
+    required this.label,
+    required this.done,
+    this.at,
+  });
+
+  factory SettlementStep.fromJson(Map<String, dynamic> j) => SettlementStep(
+    key: j['key'] ?? '',
+    label: j['label'] ?? '',
+    done: j['done'] == true,
+    at: j['at'],
+  );
+}
+
+/// A settlement in full, as returned by `/me/settlements/{id}`.
+class SettlementDetail {
+  final SettlementItem header;
+  final int subtotal;
+  final int taxAmount;
+  final String? department;
+  final String? notes;
+  final String? rejectionReason;
+  final SettlementTravel travel;
+  final BankAccountInfo payoutAccount;
+  final List<SettlementLine> items;
+  final List<SettlementDocument> documents;
+  final List<SettlementStep> timeline;
+
+  SettlementDetail({
+    required this.header,
+    required this.subtotal,
+    required this.taxAmount,
+    required this.travel,
+    required this.payoutAccount,
+    required this.items,
+    required this.documents,
+    required this.timeline,
+    this.department,
+    this.notes,
+    this.rejectionReason,
+  });
+
+  factory SettlementDetail.fromJson(Map<String, dynamic> j) => SettlementDetail(
+    header: SettlementItem.fromJson(j),
+    subtotal: _asInt(j['subtotal']),
+    taxAmount: _asInt(j['tax_amount']),
+    department: j['department'],
+    notes: j['notes'],
+    rejectionReason: j['rejection_reason'],
+    travel: SettlementTravel.fromJson(
+      Map<String, dynamic>.from(j['travel'] ?? {}),
+    ),
+    payoutAccount: BankAccountInfo.fromJson(
+      Map<String, dynamic>.from(j['payout_account'] ?? {}),
+    ),
+    items: ((j['items'] as List?) ?? [])
+        .map((e) => SettlementLine.fromJson(Map<String, dynamic>.from(e)))
+        .toList(),
+    documents: ((j['documents'] as List?) ?? [])
+        .map((e) => SettlementDocument.fromJson(Map<String, dynamic>.from(e)))
+        .toList(),
+    timeline: ((j['timeline'] as List?) ?? [])
+        .map((e) => SettlementStep.fromJson(Map<String, dynamic>.from(e)))
+        .toList(),
+  );
+}
+
+/// The bank account a settlement pays out to.
+class BankAccountInfo {
+  final String? bankName;
+  final String? accountNumber;
+  final String? accountHolder;
+  final String? swift;
+
+  BankAccountInfo({
+    this.bankName,
+    this.accountNumber,
+    this.accountHolder,
+    this.swift,
+  });
+
+  factory BankAccountInfo.fromJson(Map<String, dynamic> j) => BankAccountInfo(
+    bankName: j['bank_name'],
+    accountNumber: j['account_number'],
+    accountHolder: j['account_holder'],
+    swift: j['swift'],
+  );
+
+  bool get isEmpty => bankName == null && accountNumber == null;
+}
+
+/// The API sends money as a JSON number; be forgiving if it arrives as a string.
+int _asInt(dynamic v) =>
+    v is int ? v : (v is num ? v.round() : int.tryParse('${v ?? ''}') ?? 0);
+
+double? _asDouble(dynamic v) =>
+    v == null ? null : (v is num ? v.toDouble() : double.tryParse('$v'));
