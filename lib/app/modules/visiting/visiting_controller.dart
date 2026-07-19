@@ -8,6 +8,16 @@ import '../../data/models/ess_models.dart';
 import '../../data/providers/api_client.dart';
 import '../../data/providers/avana_api.dart';
 
+/// One row of the checklist being drafted, with the evidence attached to it.
+class VisitTaskDraft {
+  String title;
+  String? beforePath;
+  String? afterPath;
+  String note;
+
+  VisitTaskDraft(this.title, {this.beforePath, this.afterPath, this.note = ''});
+}
+
 class VisitingController extends GetxController {
   final AvanaApi _api = AvanaApi();
 
@@ -23,7 +33,7 @@ class VisitingController extends GetxController {
 
   /// Draft checklist for the report being written. Each entry is a task title;
   /// `done` is not sent — a task is ticked off later, from the visit list.
-  final tasks = <String>[].obs;
+  final tasks = <VisitTaskDraft>[].obs;
 
   @override
   void onInit() {
@@ -50,14 +60,32 @@ class VisitingController extends GetxController {
   void addTask(String title) {
     final trimmed = title.trim();
 
-    if (trimmed.isEmpty || tasks.contains(trimmed)) {
+    if (trimmed.isEmpty || tasks.any((t) => t.title == trimmed)) {
       return;
     }
 
-    tasks.add(trimmed);
+    tasks.add(VisitTaskDraft(trimmed));
   }
 
   void removeTask(int index) => tasks.removeAt(index);
+
+  /// Attach or clear a task's evidence. Rx lists do not notice a mutated
+  /// element, so the refresh is what redraws the row.
+  void setTaskPhoto(int index, {String? before, String? after}) {
+    if (before != null) tasks[index].beforePath = before;
+    if (after != null) tasks[index].afterPath = after;
+    tasks.refresh();
+  }
+
+  void clearTaskPhoto(int index, {bool before = false, bool after = false}) {
+    if (before) tasks[index].beforePath = null;
+    if (after) tasks[index].afterPath = null;
+    tasks.refresh();
+  }
+
+  void setTaskNote(int index, String note) {
+    tasks[index].note = note;
+  }
 
   /// Take a GPS fix and turn it into a full street address for the report.
   /// Both halves are best-effort: a fix without an address is still useful.
@@ -128,7 +156,7 @@ class VisitingController extends GetxController {
     double? latitude,
     double? longitude,
     List<String> photoPaths = const [],
-    List<String> taskTitles = const [],
+    List<VisitTaskDraft> taskDrafts = const [],
   }) async {
     submitting.value = true;
     try {
@@ -141,7 +169,10 @@ class VisitingController extends GetxController {
         latitude: latitude,
         longitude: longitude,
         photoPaths: photoPaths,
-        tasks: taskTitles,
+        tasks: taskDrafts.map((t) => t.title).toList(),
+        taskNotes: taskDrafts.map((t) => t.note).toList(),
+        taskBeforePaths: taskDrafts.map((t) => t.beforePath).toList(),
+        taskAfterPaths: taskDrafts.map((t) => t.afterPath).toList(),
       );
       submitting.value = false;
 
