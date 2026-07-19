@@ -335,6 +335,38 @@ class AvanaApi {
         .toList();
   }
 
+  // ---- Cash Advance (Uang Muka) ----
+  Future<List<CashAdvanceItem>> cashAdvances() async {
+    final res = await _dio.get('/me/cash-advances');
+    final list = (res.data['data'] as List?) ?? [];
+    return list
+        .map((e) => CashAdvanceItem.fromJson(Map<String, dynamic>.from(e)))
+        .toList();
+  }
+
+  Future<CashAdvanceDetail> cashAdvance(int id) async {
+    final res = await _dio.get('/me/cash-advances/$id');
+
+    return CashAdvanceDetail.fromJson(
+      Map<String, dynamic>.from(res.data['data']),
+    );
+  }
+
+  Future<Response> submitCashAdvance({
+    required int amount,
+    required String purpose,
+    required String neededDate,
+    String? reason,
+  }) => _dio.post(
+    '/me/cash-advances',
+    data: {
+      'amount': amount,
+      'purpose': purpose,
+      'needed_date': neededDate,
+      if (reason != null && reason.isNotEmpty) 'reason': reason,
+    },
+  );
+
   // ---- Settlement (Perdin) ----
   Future<List<SettlementItem>> settlements() async {
     final res = await _dio.get('/me/settlements');

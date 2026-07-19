@@ -567,3 +567,65 @@ int _asInt(dynamic v) =>
 
 double? _asDouble(dynamic v) =>
     v == null ? null : (v is num ? v.toDouble() : double.tryParse('$v'));
+
+/// A cash advance (uang muka) as listed on `/me/cash-advances`.
+class CashAdvanceItem {
+  final int id;
+  final int amount;
+  final String purpose;
+  final String status;
+  final String statusLabel;
+  final String requestDate;
+  final String neededDate;
+  final String? disbursedAt;
+
+  CashAdvanceItem({
+    required this.id,
+    required this.amount,
+    required this.purpose,
+    required this.status,
+    required this.statusLabel,
+    required this.requestDate,
+    required this.neededDate,
+    this.disbursedAt,
+  });
+
+  factory CashAdvanceItem.fromJson(Map<String, dynamic> j) => CashAdvanceItem(
+    id: j['id'],
+    amount: _asInt(j['amount']),
+    purpose: j['purpose'] ?? '',
+    status: j['status'] ?? '',
+    statusLabel: j['status_label'] ?? '',
+    requestDate: fmtDate(j['request_date']),
+    neededDate: fmtDate(j['needed_date']),
+    disbursedAt: j['disbursed_at'],
+  );
+}
+
+/// A cash advance in full, as returned by `/me/cash-advances/{id}`.
+class CashAdvanceDetail {
+  final CashAdvanceItem header;
+  final String? reason;
+  final String? disbursementMethod;
+  final String? disbursementReference;
+  final List<SettlementStep> timeline;
+
+  CashAdvanceDetail({
+    required this.header,
+    required this.timeline,
+    this.reason,
+    this.disbursementMethod,
+    this.disbursementReference,
+  });
+
+  factory CashAdvanceDetail.fromJson(Map<String, dynamic> j) =>
+      CashAdvanceDetail(
+        header: CashAdvanceItem.fromJson(j),
+        reason: j['reason'],
+        disbursementMethod: j['disbursement_method'],
+        disbursementReference: j['disbursement_reference'],
+        timeline: ((j['timeline'] as List?) ?? [])
+            .map((e) => SettlementStep.fromJson(Map<String, dynamic>.from(e)))
+            .toList(),
+      );
+}
