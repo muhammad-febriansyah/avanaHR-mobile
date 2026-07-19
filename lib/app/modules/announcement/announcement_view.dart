@@ -4,6 +4,7 @@ import 'package:get/get.dart';
 import 'package:iconsax/iconsax.dart';
 
 import '../../core/theme/app_colors.dart';
+import '../../core/utils/formats.dart';
 import '../../core/widgets/app_page.dart';
 import '../../core/widgets/ui.dart';
 import 'announcement_controller.dart';
@@ -90,7 +91,7 @@ class AnnouncementView extends GetView<AnnouncementController> {
                           if (a.publishedAt != null) ...[
                             SizedBox(width: 8.w),
                             Text(
-                              a.publishedAt!.split('T').first,
+                              formatTanggal(a.publishedAt),
                               style: TextStyle(
                                 color: AppColors.textMuted,
                                 fontSize: 10.5.sp,

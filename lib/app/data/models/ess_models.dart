@@ -1,27 +1,11 @@
 // Employee self-service models for the AvanaHR mobile API (all {data}-enveloped).
 
-import 'package:intl/intl.dart';
-
 import '../../core/config/env.dart';
+import '../../core/utils/formats.dart';
 
-/// Normalize an API date/datetime string to a clean "d MMM yyyy" label,
-/// dropping any time component. Handles bare dates and full ISO timestamps.
-/// Returns '' for null/empty.
-String fmtDate(dynamic value) {
-  if (value == null) {
-    return '';
-  }
-  final s = value.toString();
-  if (s.isEmpty) {
-    return '';
-  }
-  final d = DateTime.tryParse(s);
-  if (d == null) {
-    return s.split('T').first.split(' ').first;
-  }
-
-  return DateFormat('d MMM yyyy').format(d.toLocal());
-}
+/// Normalize an API date/datetime string to a clean Indonesian "15 Jul 2026"
+/// label, dropping any time component. Returns '' for null/empty.
+String fmtDate(dynamic value) => formatTanggal(value, fallback: '');
 
 class LeaveType {
   final int id;
