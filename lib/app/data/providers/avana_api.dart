@@ -603,6 +603,9 @@ class AvanaApi {
     double? longitude,
     List<String> photoPaths = const [],
     List<String> tasks = const [],
+    List<String?> taskNotes = const [],
+    List<String?> taskBeforePaths = const [],
+    List<String?> taskAfterPaths = const [],
   }) async {
     final form = FormData.fromMap({
       'visit_date': visitDate,
@@ -613,8 +616,24 @@ class AvanaApi {
       if (notes != null && notes.isNotEmpty) 'notes': notes,
       if (latitude != null) 'latitude': latitude,
       if (longitude != null) 'longitude': longitude,
-      // Sent as tasks[] so Laravel reads the checklist as an array.
+      // Sent as tasks[] so Laravel reads the checklist as an array. The
+      // evidence arrays are index-aligned with it — entry N belongs to task N.
       'tasks': tasks,
+      for (var i = 0; i < taskNotes.length; i++)
+        if (taskNotes[i] != null && taskNotes[i]!.isNotEmpty)
+          'task_notes[$i]': taskNotes[i],
+      for (var i = 0; i < taskBeforePaths.length; i++)
+        if (taskBeforePaths[i] != null)
+          'task_before[$i]': await MultipartFile.fromFile(
+            taskBeforePaths[i]!,
+            filename: taskBeforePaths[i]!.split('/').last,
+          ),
+      for (var i = 0; i < taskAfterPaths.length; i++)
+        if (taskAfterPaths[i] != null)
+          'task_after[$i]': await MultipartFile.fromFile(
+            taskAfterPaths[i]!,
+            filename: taskAfterPaths[i]!.split('/').last,
+          ),
       // Sent as photos[] so Laravel reads them as an array of uploads.
       'photos': [
         for (final path in photoPaths)

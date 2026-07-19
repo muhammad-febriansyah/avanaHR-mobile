@@ -190,7 +190,7 @@ class _ReportFormState extends State<_ReportForm> {
       latitude: pos?.latitude,
       longitude: pos?.longitude,
       photoPaths: _photos.toList(),
-      taskTitles: _controller.tasks.toList(),
+      taskDrafts: _controller.tasks.toList(),
     );
 
     if (!ok || !mounted) {
@@ -534,35 +534,10 @@ class _TasklistCard extends StatelessWidget {
                     ),
                   ),
                 for (var i = 0; i < tasks.length; i++)
-                  Padding(
-                    padding: EdgeInsets.only(top: 10.h),
-                    child: Row(
-                      children: [
-                        Icon(
-                          Iconsax.tick_square,
-                          size: 17.sp,
-                          color: AppColors.border,
-                        ),
-                        SizedBox(width: 10.w),
-                        Expanded(
-                          child: Text(
-                            tasks[i],
-                            style: TextStyle(
-                              fontSize: 12.5.sp,
-                              color: AppColors.textPrimary,
-                            ),
-                          ),
-                        ),
-                        GestureDetector(
-                          onTap: () => controller.removeTask(i),
-                          child: Icon(
-                            Iconsax.close_circle,
-                            size: 17.sp,
-                            color: AppColors.destructive,
-                          ),
-                        ),
-                      ],
-                    ),
+                  _TaskRow(
+                    index: i,
+                    draft: tasks[i],
+                    controller: controller,
                   ),
               ],
             ),
@@ -570,5 +545,119 @@ class _TasklistCard extends StatelessWidget {
         ],
       );
     });
+  }
+}
+
+/// One checklist row: the task, its before/after evidence, and a caption.
+class _TaskRow extends StatelessWidget {
+  final int index;
+  final VisitTaskDraft draft;
+  final VisitingController controller;
+
+  const _TaskRow({
+    required this.index,
+    required this.draft,
+    required this.controller,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: EdgeInsets.only(top: 12.h),
+      padding: EdgeInsets.all(12.w),
+      decoration: BoxDecoration(
+        color: AppColors.muted,
+        borderRadius: BorderRadius.circular(12.r),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(
+                Iconsax.tick_square,
+                size: 17.sp,
+                color: AppColors.border,
+              ),
+              SizedBox(width: 10.w),
+              Expanded(
+                child: Text(
+                  draft.title,
+                  style: TextStyle(
+                    fontSize: 12.5.sp,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.textPrimary,
+                  ),
+                ),
+              ),
+              GestureDetector(
+                onTap: () => controller.removeTask(index),
+                child: Icon(
+                  Iconsax.close_circle,
+                  size: 17.sp,
+                  color: AppColors.destructive,
+                ),
+              ),
+            ],
+          ),
+          SizedBox(height: 10.h),
+          Row(
+            children: [
+              Expanded(
+                child: AppImageField(
+                  label: 'BEFORE',
+                  path: draft.beforePath,
+                  onPick: (p) => controller.setTaskPhoto(index, before: p),
+                  onClear: () =>
+                      controller.clearTaskPhoto(index, before: true),
+                ),
+              ),
+              SizedBox(width: 10.w),
+              Expanded(
+                child: AppImageField(
+                  label: 'AFTER',
+                  path: draft.afterPath,
+                  onPick: (p) => controller.setTaskPhoto(index, after: p),
+                  onClear: () => controller.clearTaskPhoto(index, after: true),
+                ),
+              ),
+            ],
+          ),
+          SizedBox(height: 10.h),
+          TextFormField(
+            initialValue: draft.note,
+            onChanged: (v) => controller.setTaskNote(index, v),
+            style: TextStyle(fontSize: 12.sp),
+            decoration: InputDecoration(
+              isDense: true,
+              labelText: 'Catatan Foto',
+              labelStyle: TextStyle(
+                fontSize: 11.sp,
+                color: AppColors.textMuted,
+              ),
+              hintText: 'Tambahkan deskripsi foto…',
+              hintStyle: TextStyle(
+                fontSize: 11.5.sp,
+                color: AppColors.textMuted,
+              ),
+              filled: true,
+              fillColor: AppColors.surface,
+              contentPadding: EdgeInsets.symmetric(
+                horizontal: 12.w,
+                vertical: 10.h,
+              ),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(10.r),
+                borderSide: BorderSide(color: AppColors.border),
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(10.r),
+                borderSide: BorderSide(color: AppColors.border),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }
