@@ -293,6 +293,12 @@ class HomeView extends GetView<HomeController> {
         const Color(0xFFDB2777),
       ),
       _Action(
+        'Settlement',
+        Iconsax.receipt_2_1,
+        Routes.SETTLEMENT,
+        const Color(0xFF2563EB),
+      ),
+      _Action(
         'Slip Gaji',
         Iconsax.receipt_2,
         Routes.PAYSLIP,
