@@ -1,4 +1,5 @@
 import 'package:dio/dio.dart';
+import 'package:geocoding/geocoding.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:get/get.dart' hide Response;
 
@@ -14,6 +15,16 @@ class VisitingController extends GetxController {
   final submitting = false.obs;
   final items = <FieldVisitItem>[].obs;
 
+  // ---- Precise location, held while the report form is open ----
+
+  final position = Rxn<Position>();
+  final address = ''.obs;
+  final locating = false.obs;
+
+  /// Draft checklist for the report being written. Each entry is a task title;
+  /// `done` is not sent — a task is ticked off later, from the visit list.
+  final tasks = <String>[].obs;
+
   @override
   void onInit() {
     super.onInit();
@@ -28,6 +39,68 @@ class VisitingController extends GetxController {
     isLoading.value = false;
   }
 
+  /// Clear the draft so a second report does not inherit the first one's
+  /// checklist or a stale GPS fix.
+  void resetDraft() {
+    tasks.clear();
+    position.value = null;
+    address.value = '';
+  }
+
+  void addTask(String title) {
+    final trimmed = title.trim();
+
+    if (trimmed.isEmpty || tasks.contains(trimmed)) {
+      return;
+    }
+
+    tasks.add(trimmed);
+  }
+
+  void removeTask(int index) => tasks.removeAt(index);
+
+  /// Take a GPS fix and turn it into a full street address for the report.
+  /// Both halves are best-effort: a fix without an address is still useful.
+  Future<void> refreshLocation() async {
+    locating.value = true;
+
+    final pos = await currentPosition();
+    position.value = pos;
+
+    if (pos == null) {
+      locating.value = false;
+      AppToast.warning('Lokasi tidak tersedia. Aktifkan GPS & izinkan akses.');
+
+      return;
+    }
+
+    address.value = await _describe(pos) ?? '';
+    locating.value = false;
+  }
+
+  /// Full street address for a fix, or null when geocoding gives nothing.
+  Future<String?> _describe(Position pos) async {
+    try {
+      final marks = await placemarkFromCoordinates(pos.latitude, pos.longitude);
+
+      if (marks.isEmpty) {
+        return null;
+      }
+
+      final p = marks.first;
+      final parts = <String?>[
+        p.street,
+        p.subLocality,
+        p.locality,
+        p.subAdministrativeArea,
+      ].where((e) => e != null && e.trim().isNotEmpty).cast<String>().toList();
+
+      return parts.isEmpty ? null : parts.join(', ');
+    } catch (_) {
+      return null;
+    }
+  }
+
   /// Best-effort current GPS; null if permission denied or service off.
   Future<Position?> currentPosition() async {
     try {
@@ -36,7 +109,8 @@ class VisitingController extends GetxController {
       if (permission == LocationPermission.denied) {
         permission = await Geolocator.requestPermission();
       }
-      if (permission == LocationPermission.denied || permission == LocationPermission.deniedForever) {
+      if (permission == LocationPermission.denied ||
+          permission == LocationPermission.deniedForever) {
         return null;
       }
       return await Geolocator.getCurrentPosition();
@@ -54,6 +128,7 @@ class VisitingController extends GetxController {
     double? latitude,
     double? longitude,
     List<String> photoPaths = const [],
+    List<String> taskTitles = const [],
   }) async {
     submitting.value = true;
     try {
@@ -66,13 +141,15 @@ class VisitingController extends GetxController {
         latitude: latitude,
         longitude: longitude,
         photoPaths: photoPaths,
+        tasks: taskTitles,
       );
       submitting.value = false;
+
       if (res.statusCode == 201) {
-        AppToast.success('Kunjungan tercatat');
         await load();
         return true;
       }
+
       AppToast.error(ApiClient.messageFrom(res, 'Gagal menyimpan kunjungan.'));
       return false;
     } on DioException catch (e) {

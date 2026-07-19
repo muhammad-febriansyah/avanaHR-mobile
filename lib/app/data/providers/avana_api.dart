@@ -602,6 +602,7 @@ class AvanaApi {
     double? latitude,
     double? longitude,
     List<String> photoPaths = const [],
+    List<String> tasks = const [],
   }) async {
     final form = FormData.fromMap({
       'visit_date': visitDate,
@@ -612,6 +613,8 @@ class AvanaApi {
       if (notes != null && notes.isNotEmpty) 'notes': notes,
       if (latitude != null) 'latitude': latitude,
       if (longitude != null) 'longitude': longitude,
+      // Sent as tasks[] so Laravel reads the checklist as an array.
+      'tasks': tasks,
       // Sent as photos[] so Laravel reads them as an array of uploads.
       'photos': [
         for (final path in photoPaths)
