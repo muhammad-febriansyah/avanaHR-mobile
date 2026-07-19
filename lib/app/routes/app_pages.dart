@@ -34,6 +34,9 @@ import '../modules/permission/permission_view.dart';
 import '../modules/schedule/schedule_binding.dart';
 import '../modules/schedule/schedule_view.dart';
 import '../modules/reimbursement/reimbursement_binding.dart';
+import '../modules/kasbon/kasbon_binding.dart';
+import '../modules/kasbon/kasbon_detail_view.dart';
+import '../modules/kasbon/kasbon_view.dart';
 import '../modules/settlement/settlement_binding.dart';
 import '../modules/settlement/settlement_detail_view.dart';
 import '../modules/settlement/settlement_view.dart';
@@ -123,6 +126,16 @@ class AppPages {
       name: _Paths.REIMBURSEMENT,
       page: () => const ReimbursementView(),
       binding: ReimbursementBinding(),
+    ),
+    GetPage(
+      name: _Paths.KASBON,
+      page: () => const KasbonView(),
+      binding: KasbonBinding(),
+    ),
+    GetPage(
+      name: _Paths.KASBON_DETAIL,
+      page: () => const KasbonDetailView(),
+      binding: KasbonBinding(),
     ),
     GetPage(
       name: _Paths.SETTLEMENT,

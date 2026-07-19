@@ -16,6 +16,8 @@ abstract class Routes {
   static const PERMISSION = _Paths.PERMISSION;
   static const WFH = _Paths.WFH;
   static const REIMBURSEMENT = _Paths.REIMBURSEMENT;
+  static const KASBON = _Paths.KASBON;
+  static const KASBON_DETAIL = _Paths.KASBON_DETAIL;
   static const SETTLEMENT = _Paths.SETTLEMENT;
   static const SETTLEMENT_DETAIL = _Paths.SETTLEMENT_DETAIL;
   static const ANNOUNCEMENT = _Paths.ANNOUNCEMENT;
@@ -48,6 +50,8 @@ abstract class _Paths {
   static const PERMISSION = '/permission';
   static const WFH = '/wfh';
   static const REIMBURSEMENT = '/reimbursement';
+  static const KASBON = '/kasbon';
+  static const KASBON_DETAIL = '/kasbon/detail';
   static const SETTLEMENT = '/settlement';
   static const SETTLEMENT_DETAIL = '/settlement/detail';
   static const ANNOUNCEMENT = '/announcement';
