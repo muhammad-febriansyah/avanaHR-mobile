@@ -30,9 +30,23 @@ class SettlementController extends GetxController {
   }
 
   /// Total of everything already disbursed — the list header figure.
-  int get paidTotal => items
-      .where((e) => e.status == 'paid')
+  int get paidTotal =>
+      items.where((e) => e.status == 'paid').fold(0, (sum, e) => sum + e.total);
+
+  /// Total still sitting on a review desk — money the employee is owed but has
+  /// not seen yet, which is the other half of the header story.
+  int get pendingTotal => items
+      .where((e) => filterGroups['pending']!.contains(e.status))
       .fold(0, (sum, e) => sum + e.total);
+
+  /// How many claims a filter group holds, for the chip counters.
+  int countFor(String filter) {
+    final group = filterGroups[filter];
+
+    return group == null
+        ? items.length
+        : items.where((e) => group.contains(e.status)).length;
+  }
 
   @override
   void onInit() {
