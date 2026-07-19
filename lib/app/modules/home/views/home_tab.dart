@@ -150,10 +150,10 @@ class HomeTab extends GetView<HomeController> {
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(
-                        fontSize: 22.sp,
-                        fontWeight: FontWeight.w800,
+                        fontSize: 18.sp,
+                        fontWeight: FontWeight.w700,
                         color: Colors.white,
-                        letterSpacing: -0.4,
+                        letterSpacing: -0.3,
                       ),
                     ),
                   ),

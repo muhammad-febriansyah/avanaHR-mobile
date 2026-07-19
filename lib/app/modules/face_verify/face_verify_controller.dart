@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:camera/camera.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 
@@ -76,6 +77,7 @@ class FaceVerifyController extends GetxController {
     try {
       final shot = await cam.takePicture();
       final faces = await _detector.detectFile(shot.path);
+      debugPrint('[FaceVerify] faces=${faces.length} path=${shot.path}');
 
       if (faces.isEmpty) {
         faceOk.value = false;
@@ -89,6 +91,11 @@ class FaceVerifyController extends GetxController {
       }
       final face = faces.first;
       if (!_detector.isFrontalOpenEyes(face)) {
+        debugPrint(
+          '[FaceVerify] not frontal/open — yaw=${face.headEulerAngleY} '
+          'roll=${face.headEulerAngleZ} leftEye=${face.leftEyeOpenProbability} '
+          'rightEye=${face.rightEyeOpenProbability}',
+        );
         faceOk.value = false;
         hint.value = 'Hadapkan wajah lurus & buka mata';
         return;
@@ -105,19 +112,22 @@ class FaceVerifyController extends GetxController {
         face.boundingBox,
       );
       if (embedding == null) {
+        debugPrint('[FaceVerify] embedding null (see [FaceEmbedder] logs)');
         isBusy.value = false;
         faceOk.value = false;
         hint.value = 'Model wajah tidak tersedia. Hubungi admin.';
         return;
       }
 
+      debugPrint('[FaceVerify] OK — embedding len=${embedding.length}');
       _done = true;
       _scanTimer?.cancel();
       // Return the embedding (for server-side verification) AND the captured
       // frame path so the clock action can upload it as the attendance selfie.
       Get.back(result: {'embedding': embedding, 'photo': shot.path});
-    } catch (_) {
+    } catch (e, st) {
       // Transient capture/detect error — keep scanning.
+      debugPrint('[FaceVerify] scan error: $e\n$st');
       faceOk.value = false;
       hint.value = 'Menyesuaikan kamera…';
     } finally {

@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'dart:ui' show Rect;
 
+import 'package:flutter/foundation.dart';
 import 'package:get/get.dart';
 import 'package:image/image.dart' as img;
 import 'package:tflite_flutter/tflite_flutter.dart';
@@ -38,18 +39,24 @@ class FaceEmbedderService extends GetxService {
   Future<List<double>?> embed(img.Image full, Rect box) async {
     try {
       await _ensureLoaded();
-    } catch (_) {
+    } catch (e, st) {
+      debugPrint('[FaceEmbedder] model load failed ($_modelAsset): $e\n$st');
       return null;
     }
 
-    final crop = _cropFace(full, box);
-    final resized = img.copyResize(crop, width: inputSize, height: inputSize);
-    final input = _toInput(resized);
-    final output = [List<double>.filled(embeddingSize, 0.0)];
+    try {
+      final crop = _cropFace(full, box);
+      final resized = img.copyResize(crop, width: inputSize, height: inputSize);
+      final input = _toInput(resized);
+      final output = [List<double>.filled(embeddingSize, 0.0)];
 
-    _interpreter!.run(input, output);
+      _interpreter!.run(input, output);
 
-    return VectorMath.l2normalize(output[0]);
+      return VectorMath.l2normalize(output[0]);
+    } catch (e, st) {
+      debugPrint('[FaceEmbedder] embed run failed (box=$box): $e\n$st');
+      return null;
+    }
   }
 
   /// Decode the photo at [path], normalize EXIF orientation, and embed the face
@@ -59,6 +66,9 @@ class FaceEmbedderService extends GetxService {
     final bytes = await File(path).readAsBytes();
     final decoded = img.decodeImage(bytes);
     if (decoded == null) {
+      debugPrint(
+        '[FaceEmbedder] decodeImage null for $path (${bytes.length}B)',
+      );
       return null;
     }
 
