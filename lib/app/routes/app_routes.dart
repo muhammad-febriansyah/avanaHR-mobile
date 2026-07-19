@@ -23,6 +23,7 @@ abstract class Routes {
   static const ANNOUNCEMENT = _Paths.ANNOUNCEMENT;
   static const DOKUMEN = _Paths.DOKUMEN;
   static const VISITING = _Paths.VISITING;
+  static const VISITING_REPORT = _Paths.VISITING_REPORT;
   static const SHIFT_SWAP = _Paths.SHIFT_SWAP;
   static const FACE_ENROLL = _Paths.FACE_ENROLL;
   static const FACE_VERIFY = _Paths.FACE_VERIFY;
@@ -57,6 +58,7 @@ abstract class _Paths {
   static const ANNOUNCEMENT = '/announcement';
   static const DOKUMEN = '/dokumen';
   static const VISITING = '/visiting';
+  static const VISITING_REPORT = '/visiting/report';
   static const SHIFT_SWAP = '/shift-swap';
   static const FACE_ENROLL = '/face-enroll';
   static const FACE_VERIFY = '/face-verify';

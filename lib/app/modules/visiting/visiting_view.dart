@@ -5,11 +5,9 @@ import 'package:iconsax/iconsax.dart';
 
 import '../../core/theme/app_colors.dart';
 import '../../core/widgets/app_page.dart';
-import '../../core/widgets/app_sheet.dart';
-import '../../core/widgets/app_toast.dart';
-import '../../core/widgets/form_fields.dart';
 import '../../core/widgets/status_chip.dart';
 import '../../core/widgets/ui.dart';
+import '../../routes/app_pages.dart';
 import 'visiting_controller.dart';
 
 class VisitingView extends GetView<VisitingController> {
@@ -21,7 +19,7 @@ class VisitingView extends GetView<VisitingController> {
       title: 'Visiting Pekerjaan',
       subtitle: 'Catat kunjungan kerja',
       floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => _openSheet(context),
+        onPressed: () => Get.toNamed(Routes.VISITING_REPORT),
         backgroundColor: AppColors.primary,
         icon: const Icon(Iconsax.location_add, color: Colors.white),
         label: const Text('Lapor', style: TextStyle(color: Colors.white)),
@@ -153,112 +151,6 @@ class VisitingView extends GetView<VisitingController> {
                 ),
         );
       }),
-    );
-  }
-
-  void _openSheet(BuildContext context) {
-    final date = Rxn<DateTime>(DateTime.now());
-    final locC = TextEditingController();
-    final clientC = TextEditingController();
-    final purposeC = TextEditingController();
-    final notesC = TextEditingController();
-    final photoPaths = <String>[].obs;
-    String fmt(DateTime d) =>
-        '${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
-
-    showAppSheet(
-      context,
-      scrollable: true,
-      child: Padding(
-        padding: EdgeInsets.fromLTRB(20.w, 20.h, 20.w, 20.h),
-        child: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const SheetHeader('Lapor Kunjungan'),
-              SizedBox(height: 18.h),
-              Obx(
-                () => AppDateField(
-                  label: 'Tanggal Kunjungan',
-                  value: date.value,
-                  onPick: (d) => date.value = d,
-                  firstDate: DateTime.now().subtract(const Duration(days: 30)),
-                  lastDate: DateTime.now(),
-                ),
-              ),
-              SizedBox(height: 14.h),
-              AppTextField(
-                controller: locC,
-                label: 'Lokasi',
-                hint: 'Nama tempat/alamat',
-                icon: Iconsax.location,
-                required: true,
-              ),
-              SizedBox(height: 14.h),
-              AppTextField(
-                controller: clientC,
-                label: 'Klien (opsional)',
-                hint: 'Nama klien atau perusahaan',
-              ),
-              SizedBox(height: 14.h),
-              AppTextField(
-                controller: purposeC,
-                label: 'Tujuan (opsional)',
-                hint: 'Tujuan kunjungan',
-              ),
-              SizedBox(height: 14.h),
-              AppTextField(
-                controller: notesC,
-                label: 'Catatan (opsional)',
-                hint: 'Catatan tambahan…',
-                maxLines: 2,
-              ),
-              SizedBox(height: 14.h),
-              Obx(
-                () => AppImagesField(
-                  label: 'Foto Kunjungan (opsional)',
-                  hint: 'Bukti kunjungan — kamera atau galeri, maks 5 foto',
-                  paths: photoPaths.toList(),
-                  onChanged: photoPaths.assignAll,
-                  max: 5,
-                ),
-              ),
-              SizedBox(height: 22.h),
-              Obx(
-                () => AppSubmitButton(
-                  label: 'Simpan',
-                  loading: controller.submitting.value,
-                  onPressed: () async {
-                    if (date.value == null || locC.text.trim().isEmpty) {
-                      AppToast.warning('Isi tanggal & lokasi.');
-                      return;
-                    }
-                    final pos = await controller.currentPosition();
-                    final ok = await controller.submit(
-                      visitDate: fmt(date.value!),
-                      location: locC.text.trim(),
-                      clientName: clientC.text.trim().isEmpty
-                          ? null
-                          : clientC.text.trim(),
-                      purpose: purposeC.text.trim().isEmpty
-                          ? null
-                          : purposeC.text.trim(),
-                      notes: notesC.text.trim().isEmpty
-                          ? null
-                          : notesC.text.trim(),
-                      latitude: pos?.latitude,
-                      longitude: pos?.longitude,
-                      photoPaths: photoPaths.toList(),
-                    );
-                    if (ok) Get.back();
-                  },
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
     );
   }
 }

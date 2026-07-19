@@ -11,6 +11,7 @@ import '../modules/face_verify/face_verify_view.dart';
 import '../modules/shift_swap/shift_swap_binding.dart';
 import '../modules/shift_swap/shift_swap_view.dart';
 import '../modules/visiting/visiting_binding.dart';
+import '../modules/visiting/visiting_report_view.dart';
 import '../modules/visiting/visiting_view.dart';
 import '../modules/attendance/attendance_binding.dart';
 import '../modules/attendance/attendance_view.dart';
@@ -160,6 +161,11 @@ class AppPages {
     GetPage(
       name: _Paths.VISITING,
       page: () => const VisitingView(),
+      binding: VisitingBinding(),
+    ),
+    GetPage(
+      name: _Paths.VISITING_REPORT,
+      page: () => const VisitingReportView(),
       binding: VisitingBinding(),
     ),
     GetPage(
