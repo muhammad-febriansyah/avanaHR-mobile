@@ -3,9 +3,13 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 import '../../../core/theme/app_colors.dart';
 
-/// Status pill for a settlement. The shared [StatusChip] only knows the
+/// Status marker for a settlement. The shared [StatusChip] only knows the
 /// approve/reject vocabulary; a settlement also passes through a draft and two
 /// distinct review desks, so it gets its own labels.
+///
+/// Rendered as a colored dot plus a label rather than a filled pill: a
+/// settlement list is already carrying a column of large rupiah figures, and a
+/// row of tinted pills next to them fights for the same attention.
 class SettlementStatusChip extends StatelessWidget {
   final String status;
 
@@ -19,31 +23,42 @@ class SettlementStatusChip extends StatelessWidget {
     'rejected': 'Ditolak',
   };
 
+  /// The human label for a raw status, for callers that render their own pill
+  /// (the detail hero puts one on a blue field, where this chip's tint fails).
+  static String labelFor(String status) =>
+      _labels[status.toLowerCase()] ?? status;
+
+  /// The accent color that goes with a status.
+  static Color colorFor(String status) => switch (status.toLowerCase()) {
+    'paid' => AppColors.success,
+    'rejected' => AppColors.destructive,
+    'draft' => AppColors.textMuted,
+    _ => AppColors.warning,
+  };
+
   @override
   Widget build(BuildContext context) {
     final key = status.toLowerCase();
+    final color = colorFor(key);
 
-    final color = switch (key) {
-      'paid' => AppColors.success,
-      'rejected' => AppColors.destructive,
-      'draft' => AppColors.textMuted,
-      _ => AppColors.warning,
-    };
-
-    return Container(
-      padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 4.h),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.12),
-        borderRadius: BorderRadius.circular(100.r),
-      ),
-      child: Text(
-        _labels[key] ?? status,
-        style: TextStyle(
-          color: color,
-          fontSize: 10.5.sp,
-          fontWeight: FontWeight.w600,
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          width: 6.w,
+          height: 6.w,
+          decoration: BoxDecoration(color: color, shape: BoxShape.circle),
         ),
-      ),
+        SizedBox(width: 6.w),
+        Text(
+          _labels[key] ?? status,
+          style: TextStyle(
+            color: color,
+            fontSize: 11.sp,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+      ],
     );
   }
 }
