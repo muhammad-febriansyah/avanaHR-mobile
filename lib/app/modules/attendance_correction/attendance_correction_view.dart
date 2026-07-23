@@ -170,6 +170,7 @@ class AttendanceCorrectionView extends GetView<AttendanceCorrectionController> {
               controller: reasonC,
               label: 'Alasan',
               hint: 'Mis. lupa clock in',
+              icon: Iconsax.note_1,
               maxLines: 2,
               required: true,
             ),

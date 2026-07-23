@@ -122,7 +122,12 @@ class FaceEnrollController extends GetxController {
           'rightEye=${face.rightEyeOpenProbability}',
         );
         faceOk.value = false;
-        hint.value = 'Hadapkan wajah lurus & buka mata';
+        hint.value = 'Dekatkan & hadapkan wajah lurus, buka mata';
+        return;
+      }
+      if (!await _detector.isCentered(face, shot.path)) {
+        faceOk.value = false;
+        hint.value = 'Posisikan wajah di tengah bingkai';
         return;
       }
 
@@ -150,6 +155,8 @@ class FaceEnrollController extends GetxController {
       final embedding = await _embedder.embedFromFile(
         shot.path,
         face.boundingBox,
+        leftEye: _detector.leftEyeOf(face),
+        rightEye: _detector.rightEyeOf(face),
       );
       if (embedding == null) {
         debugPrint('[FaceEnroll] embedding null (see [FaceEmbedder] logs)');

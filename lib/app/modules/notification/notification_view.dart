@@ -44,6 +44,7 @@ class NotificationView extends GetView<NotificationController> {
                   itemBuilder: (_, i) {
                     final n = controller.items[i];
                     return ContentCard(
+                      onTap: () => controller.markRead(n),
                       child: Row(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [

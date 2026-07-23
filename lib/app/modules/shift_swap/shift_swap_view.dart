@@ -168,6 +168,7 @@ class ShiftSwapView extends GetView<ShiftSwapController> {
               controller: reasonC,
               label: 'Alasan (opsional)',
               hint: 'Tulis alasan…',
+              icon: Iconsax.note_1,
               maxLines: 2,
             ),
             SizedBox(height: 22.h),

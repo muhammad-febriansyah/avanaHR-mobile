@@ -147,6 +147,44 @@ class AppTextField extends StatelessWidget {
   }
 }
 
+/// Rupiah amount input: number keypad, a `Rp ` prefix, a leading wallet icon,
+/// and live thousands grouping (1000000 → "1.000.000"). Read the value back
+/// with `parseRupiah(controller.text)`. Standardizes every money field so they
+/// look and behave identically across the app.
+class AppMoneyField extends StatelessWidget {
+  final TextEditingController controller;
+  final String label;
+  final String? hint;
+  final IconData icon;
+  final bool required;
+  final String? helper;
+
+  const AppMoneyField({
+    super.key,
+    required this.controller,
+    required this.label,
+    this.hint,
+    this.icon = Iconsax.wallet_money,
+    this.required = false,
+    this.helper,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return AppTextField(
+      controller: controller,
+      label: label,
+      hint: hint ?? '0',
+      icon: icon,
+      prefixText: 'Rp ',
+      keyboardType: TextInputType.number,
+      formatters: [RupiahInputFormatter()],
+      required: required,
+      helper: helper,
+    );
+  }
+}
+
 /// Tappable date field that opens a date picker.
 class AppDateField extends StatelessWidget {
   final String label;

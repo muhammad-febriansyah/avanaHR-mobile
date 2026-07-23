@@ -140,13 +140,9 @@ class ReimbursementView extends GetView<ReimbursementController> {
                 required: true,
               ),
               SizedBox(height: 14.h),
-              AppTextField(
+              AppMoneyField(
                 controller: amountC,
                 label: 'Nominal',
-                hint: '0',
-                prefixText: 'Rp ',
-                keyboardType: TextInputType.number,
-                formatters: [RupiahInputFormatter()],
                 required: true,
               ),
               SizedBox(height: 14.h),

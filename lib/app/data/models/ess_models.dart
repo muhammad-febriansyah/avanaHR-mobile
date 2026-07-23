@@ -288,11 +288,52 @@ class DocumentItem {
     id: j['id'],
     name: j['name'] ?? '',
     type: j['type'],
-    url: j['url'],
+    url: Env.resolveMedia(j['url'] as String?),
     size: (j['size'] ?? 0) is int
         ? j['size']
         : int.tryParse('${j['size']}') ?? 0,
     uploadedAt: j['uploaded_at'],
+  );
+
+  /// True when the stored file is a previewable image (by url/name extension).
+  bool get isImage {
+    final s = (url ?? name).toLowerCase();
+    return s.endsWith('.jpg') ||
+        s.endsWith('.jpeg') ||
+        s.endsWith('.png') ||
+        s.endsWith('.webp');
+  }
+}
+
+/// One checklist task on a field visit, with its before/after evidence. The
+/// before photo is captured when the report is filed; the after is added later
+/// from the visit list once the work is done.
+class VisitTask {
+  final int id;
+  final String title;
+  final bool isDone;
+  final String? photoNote;
+  final String? beforeUrl;
+  final String? afterUrl;
+
+  VisitTask({
+    required this.id,
+    required this.title,
+    required this.isDone,
+    this.photoNote,
+    this.beforeUrl,
+    this.afterUrl,
+  });
+
+  bool get hasAfter => afterUrl != null && afterUrl!.isNotEmpty;
+
+  factory VisitTask.fromJson(Map<String, dynamic> j) => VisitTask(
+    id: j['id'],
+    title: j['title'] ?? '',
+    isDone: j['is_done'] ?? false,
+    photoNote: j['photo_note'],
+    beforeUrl: Env.resolveMedia(j['before_photo_url'] as String?),
+    afterUrl: Env.resolveMedia(j['after_photo_url'] as String?),
   );
 }
 
@@ -305,6 +346,7 @@ class FieldVisitItem {
   final String? notes;
   final List<String> photoUrls;
   final String status;
+  final List<VisitTask> tasks;
 
   FieldVisitItem({
     required this.id,
@@ -315,6 +357,7 @@ class FieldVisitItem {
     this.purpose,
     this.notes,
     this.photoUrls = const [],
+    this.tasks = const [],
   });
 
   factory FieldVisitItem.fromJson(Map<String, dynamic> j) => FieldVisitItem(
@@ -329,6 +372,9 @@ class FieldVisitItem {
         .whereType<String>()
         .toList(),
     status: j['status'] ?? '',
+    tasks: ((j['tasks'] as List?) ?? [])
+        .map((e) => VisitTask.fromJson(Map<String, dynamic>.from(e as Map)))
+        .toList(),
   );
 }
 

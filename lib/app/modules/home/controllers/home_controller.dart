@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:dio/dio.dart';
+import 'package:flutter/widgets.dart';
 import 'package:geocoding/geocoding.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:get/get.dart' hide Response;
@@ -19,7 +20,7 @@ import '../views/mood_dialog.dart';
 /// Result of the home-screen geofence auto-detect.
 enum LocState { loading, inside, outside, denied, gpsOff, noOffice, error }
 
-class HomeController extends GetxController {
+class HomeController extends GetxController with WidgetsBindingObserver {
   final AvanaApi _api = AvanaApi();
   final AuthService auth = Get.find();
   final StorageService _storage = Get.find();
@@ -123,6 +124,7 @@ class HomeController extends GetxController {
   @override
   void onInit() {
     super.onInit();
+    WidgetsBinding.instance.addObserver(this);
     refreshAll();
     detectLocation();
     startLocationStream();
@@ -130,8 +132,28 @@ class HomeController extends GetxController {
 
   @override
   void onClose() {
+    WidgetsBinding.instance.removeObserver(this);
     _posSub?.cancel();
     super.onClose();
+  }
+
+  /// The home tab lives for the whole session, so a forgotten clock-out
+  /// yesterday would leave the status stuck on "Sedang bekerja". When the app
+  /// returns to the foreground on a new calendar day, re-pull today's
+  /// attendance so it resets to "Belum absen masuk".
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed &&
+        (_isStaleAttendanceDay || today.value == null)) {
+      _loadToday();
+    }
+  }
+
+  /// True when the loaded `today` belongs to an earlier calendar day.
+  bool get _isStaleAttendanceDay {
+    final date = today.value?.date;
+
+    return date != null && date != _todayStr();
   }
 
   /// Streams the user's realtime GPS position and reverse-geocodes it into a

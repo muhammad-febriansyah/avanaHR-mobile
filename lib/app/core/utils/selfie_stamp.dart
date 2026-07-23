@@ -28,6 +28,7 @@ class SelfieStamp {
     required String path,
     String? company,
     String? subtitle,
+    String? address,
     double? latitude,
     double? longitude,
     DateTime? at,
@@ -48,6 +49,7 @@ class SelfieStamp {
         if (company != null && company.trim().isNotEmpty) company.trim(),
         if (subtitle != null && subtitle.trim().isNotEmpty) subtitle.trim(),
         _formatTime(at ?? DateTime.now()),
+        if (address != null && address.trim().isNotEmpty) address.trim(),
         if (latitude != null && longitude != null)
           '${latitude.toStringAsFixed(5)}, ${longitude.toStringAsFixed(5)}',
       ];

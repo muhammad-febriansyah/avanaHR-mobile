@@ -69,7 +69,9 @@ class AppPage extends StatelessWidget {
             Expanded(
               child: Container(
                 width: double.infinity,
-                color: Colors.white,
+                // Light canvas (not white) so white ContentCards in every list
+                // read as distinct containers without a shadow or border.
+                color: AppColors.background,
                 child: content,
               ),
             ),

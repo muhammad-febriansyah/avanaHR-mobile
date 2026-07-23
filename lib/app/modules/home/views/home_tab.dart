@@ -380,12 +380,13 @@ class HomeTab extends GetView<HomeController> {
                   _clockValueText(t?.clockOut ?? '--:--'),
                   AppColors.destructive,
                 ),
-                _clockCol(
-                  Iconsax.clock,
-                  'Jam Kerja',
-                  const _LiveWorkedHours(),
-                  AppColors.primary,
-                ),
+                // Jam Kerja disembunyikan sementara — restore bila sudah siap.
+                // _clockCol(
+                //   Iconsax.clock,
+                //   'Jam Kerja',
+                //   const _LiveWorkedHours(),
+                //   AppColors.primary,
+                // ),
               ],
             );
           }),
@@ -468,18 +469,18 @@ class HomeTab extends GetView<HomeController> {
 
   Widget _monthlyHeader() {
     const months = [
-      'JAN',
-      'FEB',
-      'MAR',
-      'APR',
-      'MEI',
-      'JUN',
-      'JUL',
-      'AGU',
-      'SEP',
-      'OKT',
-      'NOV',
-      'DES',
+      'Januari',
+      'Februari',
+      'Maret',
+      'April',
+      'Mei',
+      'Juni',
+      'Juli',
+      'Agustus',
+      'September',
+      'Oktober',
+      'November',
+      'Desember',
     ];
     final month = months[DateTime.now().month - 1];
     return Row(
@@ -917,7 +918,7 @@ class HomeTab extends GetView<HomeController> {
               borderRadius: BorderRadius.circular(11.r),
             ),
             child: Icon(
-              a.pinned ? Iconsax.paperclip2 : Iconsax.volume_high,
+              a.pinned ? Iconsax.paperclip_2 : Iconsax.volume_high,
               color: AppColors.primary,
               size: 19.sp,
             ),
@@ -1016,6 +1017,7 @@ class _LiveClockState extends State<_LiveClock> {
 
 /// Live worked-hours ticker: counts up from today's clock-in each second until
 /// clock-out, then shows the final total (work_minutes) from the server.
+// ignore: unused_element
 class _LiveWorkedHours extends StatefulWidget {
   const _LiveWorkedHours();
 

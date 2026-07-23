@@ -112,12 +112,10 @@ class KasbonView extends GetView<KasbonController> {
             children: [
               const SheetHeader('Ajukan Uang Muka'),
               SizedBox(height: 18.h),
-              AppTextField(
+              AppMoneyField(
                 controller: amountC,
                 label: 'Jumlah',
                 hint: '2000000',
-                prefixText: 'Rp ',
-                keyboardType: TextInputType.number,
                 required: true,
               ),
               SizedBox(height: 14.h),
@@ -144,6 +142,7 @@ class KasbonView extends GetView<KasbonController> {
                 controller: reasonC,
                 label: 'Alasan (opsional)',
                 hint: 'Kenapa perlu dibayar di muka…',
+                icon: Iconsax.note_1,
                 maxLines: 2,
               ),
               SizedBox(height: 22.h),
