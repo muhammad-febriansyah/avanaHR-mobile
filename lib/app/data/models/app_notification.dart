@@ -13,6 +13,14 @@ class AppNotification {
     this.createdAt,
   });
 
+  AppNotification copyWith({bool? isRead}) => AppNotification(
+        id: id,
+        type: type,
+        payload: payload,
+        isRead: isRead ?? this.isRead,
+        createdAt: createdAt,
+      );
+
   /// Best-effort human title from the notification payload.
   String get title {
     if (payload['title'] is String) return payload['title'];

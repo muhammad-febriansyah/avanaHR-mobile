@@ -21,9 +21,30 @@ class VisitTaskDraft {
 class VisitingController extends GetxController {
   final AvanaApi _api = AvanaApi();
 
-  final isLoading = true.obs;
+  final isLoading = true.obs; // first load only — shows the full-screen loader
+  final reloading = false.obs; // search / date / pull reloads — keeps list mounted
   final submitting = false.obs;
   final items = <FieldVisitItem>[].obs;
+
+  /// Day filter — defaults to today so the list stays light. Null = all dates.
+  final selectedDate = Rxn<DateTime>(DateTime.now());
+
+  String? _dateParam() {
+    final d = selectedDate.value;
+    if (d == null) {
+      return null;
+    }
+    final m = d.month.toString().padLeft(2, '0');
+    final day = d.day.toString().padLeft(2, '0');
+
+    return '${d.year}-$m-$day';
+  }
+
+  /// Change the day filter (null = all dates) and reload.
+  void setDate(DateTime? date) {
+    selectedDate.value = date;
+    load();
+  }
 
   /// Server-side search over location / client / purpose. Debounced in
   /// [onInit] so typing does not fire a request per keystroke.
@@ -50,7 +71,7 @@ class VisitingController extends GetxController {
   @override
   void onInit() {
     super.onInit();
-    load();
+    load(initial: true);
     // Re-run the (server-side) search a beat after the user stops typing.
     debounce(
       query,
@@ -59,14 +80,20 @@ class VisitingController extends GetxController {
     );
   }
 
-  /// (Re)load the first page for the current [query]. Used by initial load,
-  /// pull-to-refresh, and the search debounce.
-  Future<void> load() async {
-    isLoading.value = true;
+  /// (Re)load the first page for the current [query] + date filter. Only the
+  /// very first call shows the full-screen loader; search / date / pull reloads
+  /// set [reloading] instead so the search field stays mounted (and focused).
+  Future<void> load({bool initial = false}) async {
+    if (initial) {
+      isLoading.value = true;
+    } else {
+      reloading.value = true;
+    }
     try {
       final res = await _api.fieldVisits(
         page: 1,
         search: query.value,
+        date: _dateParam(),
         perPage: _perPage,
       );
       items.assignAll(res.items);
@@ -74,6 +101,7 @@ class VisitingController extends GetxController {
       _lastPage.value = res.lastPage;
     } catch (_) {}
     isLoading.value = false;
+    reloading.value = false;
   }
 
   /// Fetch the next page and append it. No-op while a page is already in
@@ -88,6 +116,7 @@ class VisitingController extends GetxController {
       final res = await _api.fieldVisits(
         page: _page.value + 1,
         search: query.value,
+        date: _dateParam(),
         perPage: _perPage,
       );
       items.addAll(res.items);
@@ -192,6 +221,35 @@ class VisitingController extends GetxController {
       return await Geolocator.getCurrentPosition();
     } catch (_) {
       return null;
+    }
+  }
+
+  /// Task ids whose "after" photo is currently uploading (drives the per-row
+  /// spinner). RxList so an Obx reading `.length` rebuilds on add/remove.
+  final uploadingAfter = <int>[].obs;
+
+  bool isUploadingAfter(int taskId) => uploadingAfter.contains(taskId);
+
+  /// Upload the "after" evidence for a task from the visit list. Refreshes on
+  /// success so the row swaps its "Tambah After" button for the thumbnail.
+  Future<void> uploadTaskAfter(int visitId, int taskId, String imagePath) async {
+    uploadingAfter.add(taskId);
+    try {
+      final res = await _api.uploadVisitTaskAfter(
+        visitId: visitId,
+        taskId: taskId,
+        imagePath: imagePath,
+      );
+      if (res.statusCode == 200) {
+        AppToast.success('Foto after tersimpan.');
+        await load();
+      } else {
+        AppToast.error(ApiClient.messageFrom(res, 'Gagal menyimpan foto.'));
+      }
+    } on DioException catch (e) {
+      AppToast.error(ApiClient.errorMessage(e));
+    } finally {
+      uploadingAfter.remove(taskId);
     }
   }
 

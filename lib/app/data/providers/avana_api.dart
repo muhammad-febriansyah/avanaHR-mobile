@@ -150,6 +150,9 @@ class AvanaApi {
   Future<void> readAllNotifications() =>
       _dio.post('/me/notifications/read-all');
 
+  Future<void> readNotification(int id) =>
+      _dio.post('/me/notifications/$id/read');
+
   // ---- ESS write ----
   Future<Response> clock({
     required String type,
@@ -588,6 +591,7 @@ class AvanaApi {
   Future<Paged<FieldVisitItem>> fieldVisits({
     int page = 1,
     String? search,
+    String? date,
     int perPage = 20,
   }) async {
     final res = await _dio.get(
@@ -596,6 +600,7 @@ class AvanaApi {
         'page': page,
         'per_page': perPage,
         if (search != null && search.trim().isNotEmpty) 'search': search.trim(),
+        if (date != null && date.isNotEmpty) 'date': date,
       },
     );
 
@@ -653,6 +658,24 @@ class AvanaApi {
       ],
     });
     return _dio.post('/me/field-visits', data: form);
+  }
+
+  Future<Response> uploadVisitTaskAfter({
+    required int visitId,
+    required int taskId,
+    required String imagePath,
+  }) async {
+    final form = FormData.fromMap({
+      'after': await MultipartFile.fromFile(
+        imagePath,
+        filename: imagePath.split('/').last,
+      ),
+    });
+
+    return _dio.post(
+      '/me/field-visits/$visitId/tasks/$taskId/after',
+      data: form,
+    );
   }
 
   // ---- Shift swaps ----

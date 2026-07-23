@@ -6,7 +6,9 @@ import 'package:iconsax/iconsax.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/utils/formats.dart';
 import '../../core/widgets/app_page.dart';
+import '../../core/widgets/app_sheet.dart';
 import '../../core/widgets/filter_chips.dart';
+import '../../core/widgets/form_fields.dart';
 import '../../data/models/activity.dart';
 import 'riwayat_controller.dart';
 
@@ -180,21 +182,23 @@ class RiwayatView extends GetView<RiwayatController> {
       ),
       itemCount: controller.visibleItems.length,
       separatorBuilder: (_, __) => SizedBox(height: 10.h),
-      itemBuilder: (_, i) => _tile(controller.visibleItems[i]),
+      itemBuilder: (_, i) => _tile(context, controller.visibleItems[i]),
     );
   }
 
-  Widget _tile(ActivityItem item) {
+  Widget _tile(BuildContext context, ActivityItem item) {
     final (icon, color) = _iconFor(item.type);
 
-    return Container(
-      padding: EdgeInsets.all(14.w),
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(14.r),
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
+    return GestureDetector(
+      onTap: item.hasDetail ? () => _openDetail(context, item) : null,
+      child: Container(
+        padding: EdgeInsets.all(14.w),
+        decoration: BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: BorderRadius.circular(14.r),
+        ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Container(
             width: 42.w,
@@ -236,11 +240,20 @@ class RiwayatView extends GetView<RiwayatController> {
               ],
             ),
           ),
-          if (item.status != null && item.status!.isNotEmpty) ...[
-            SizedBox(width: 8.w),
-            _statusChip(item.status!),
+            if (item.status != null && item.status!.isNotEmpty) ...[
+              SizedBox(width: 8.w),
+              _statusChip(item.status!),
+            ],
+            if (item.hasDetail) ...[
+              SizedBox(width: 6.w),
+              Icon(
+                Iconsax.arrow_right_3,
+                size: 16.sp,
+                color: AppColors.textMuted,
+              ),
+            ],
           ],
-        ],
+        ),
       ),
     );
   }
@@ -263,6 +276,106 @@ class RiwayatView extends GetView<RiwayatController> {
         ),
       ),
     );
+  }
+
+  /// Attendance detail bottom sheet — the feed row only shows in/out times.
+  void _openDetail(BuildContext context, ActivityItem item) {
+    final d = item.detail!;
+    String s(dynamic v) => (v == null || '$v'.isEmpty) ? '-' : '$v';
+
+    final mode = switch (d['work_mode']) {
+      'home' => 'Rumah (WFH)',
+      'office' => 'Kantor',
+      _ => s(d['work_mode']),
+    };
+    final late = (d['late_minutes'] as num?)?.toInt() ?? 0;
+    final work = (d['work_minutes'] as num?)?.toInt() ?? 0;
+    final conf = d['face_confidence'];
+    final lat = d['latitude'];
+    final lng = d['longitude'];
+
+    showAppSheet(
+      context,
+      child: Padding(
+        padding: EdgeInsets.fromLTRB(20.w, 14.h, 20.w, 24.h),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const SheetHeader('Detail Absensi'),
+            SizedBox(height: 16.h),
+            _detailRow('Tanggal', formatTanggal(d['date'])),
+            _detailRow('Masuk', s(d['clock_in'])),
+            _detailRow('Pulang', s(d['clock_out'])),
+            _detailRow('Mode Kerja', mode),
+            _detailRow('Jam Kerja', _dur(work)),
+            _detailRow('Terlambat', late > 0 ? '$late menit' : '-'),
+            if (item.status != null && item.status!.isNotEmpty)
+              _detailRow('Status', _statusLabel(item.status!)),
+            _detailRow('Lokasi', _locLabel(d['location_status'])),
+            if (lat is num && lng is num)
+              _detailRow(
+                'Koordinat',
+                '${lat.toStringAsFixed(5)}, ${lng.toStringAsFixed(5)}',
+              ),
+            _detailRow(
+              'Akurasi Wajah',
+              conf is num ? '${(conf * 100).toStringAsFixed(0)}%' : '-',
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _detailRow(String label, String value) {
+    return Padding(
+      padding: EdgeInsets.only(bottom: 12.h),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 110.w,
+            child: Text(
+              label,
+              style: TextStyle(fontSize: 12.5.sp, color: AppColors.textMuted),
+            ),
+          ),
+          Expanded(
+            child: Text(
+              value,
+              style: TextStyle(
+                fontSize: 12.5.sp,
+                fontWeight: FontWeight.w600,
+                color: AppColors.navy,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  String _dur(int minutes) {
+    if (minutes <= 0) {
+      return '-';
+    }
+    final h = minutes ~/ 60;
+    final m = minutes % 60;
+    if (h > 0 && m > 0) {
+      return '${h}j ${m}m';
+    }
+
+    return h > 0 ? '${h}j' : '${m}m';
+  }
+
+  String _locLabel(dynamic status) {
+    return switch (status) {
+      'inside' => 'Dalam radius kantor',
+      'outside' => 'Luar radius',
+      'unknown' => 'Tidak diketahui',
+      _ => (status == null || '$status'.isEmpty) ? '-' : '$status',
+    };
   }
 
   (IconData, Color) _iconFor(String type) {

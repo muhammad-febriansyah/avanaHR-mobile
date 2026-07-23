@@ -38,7 +38,6 @@ class _ReportFormState extends State<_ReportForm> {
   final _notesC = TextEditingController();
   final _taskC = TextEditingController();
 
-  final _photos = <String>[].obs;
   final _date = Rxn<DateTime>(DateTime.now());
 
   @override
@@ -71,15 +70,20 @@ class _ReportFormState extends State<_ReportForm> {
       subtitle: 'Kunjungan lapangan',
       child: ListView(
         physics: const BouncingScrollPhysics(),
-        padding: EdgeInsets.fromLTRB(20.w, 16.h, 20.w, 32.h),
+        padding: EdgeInsets.fromLTRB(16.w, 16.h, 16.w, 32.h),
         children: [
-          const _IntroCard(),
-          SizedBox(height: 18.h),
-          const _SectionLabel(Iconsax.user, 'DATA KUNJUNGAN'),
-          SizedBox(height: 8.h),
+          // Whole form lives inside one flat white surface (no shadow/border);
+          // sections are separated by labels + spacing, not by separate cards.
           ContentCard(
+            padding: EdgeInsets.all(18.w),
             child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                const _FormHeader(),
+
+                SizedBox(height: 20.h),
+                const _SectionLabel(Iconsax.user, 'DATA KUNJUNGAN'),
+                SizedBox(height: 12.h),
                 Obx(
                   () => AppDateField(
                     label: 'Tanggal Kunjungan',
@@ -105,54 +109,40 @@ class _ReportFormState extends State<_ReportForm> {
                   controller: _clientC,
                   label: 'Klien / Nama Toko',
                   hint: 'Masukkan nama klien',
+                  icon: Iconsax.shop,
                 ),
                 SizedBox(height: 14.h),
                 AppTextField(
                   controller: _purposeC,
                   label: 'Tujuan Kunjungan',
                   hint: 'Contoh: Audit stok bulanan dan penawaran SKU baru',
+                  icon: Iconsax.direct_right,
+                  maxLines: 3,
+                ),
+
+                SizedBox(height: 22.h),
+                const _SectionLabel(Iconsax.location, 'LOKASI PRESISI'),
+                SizedBox(height: 12.h),
+                _PreciseLocationBlock(controller: _controller),
+
+                SizedBox(height: 22.h),
+                _TasklistBlock(controller: _controller, input: _taskC),
+
+                SizedBox(height: 22.h),
+                const _SectionLabel(Iconsax.note_1, 'CATATAN'),
+                SizedBox(height: 12.h),
+                AppTextField(
+                  controller: _notesC,
+                  label: 'Catatan',
+                  hint: 'Tulis catatan penting di sini…',
+                  icon: Iconsax.note_1,
                   maxLines: 3,
                 ),
               ],
             ),
           ),
 
-          SizedBox(height: 18.h),
-          const _SectionLabel(Iconsax.location, 'LOKASI PRESISI'),
-          SizedBox(height: 8.h),
-          _PreciseLocationCard(controller: _controller),
-
-          SizedBox(height: 18.h),
-          _TasklistCard(controller: _controller, input: _taskC),
-
-          SizedBox(height: 18.h),
-          const _SectionLabel(Iconsax.camera, 'FOTO KUNJUNGAN'),
-          SizedBox(height: 8.h),
-          ContentCard(
-            child: Obx(
-              () => AppImagesField(
-                label: 'Foto Kunjungan',
-                hint: 'Maksimal 4 foto, format JPG/PNG',
-                paths: _photos.toList(),
-                onChanged: _photos.assignAll,
-                max: 4,
-              ),
-            ),
-          ),
-
-          SizedBox(height: 18.h),
-          const _SectionLabel(Iconsax.note_1, 'CATATAN'),
-          SizedBox(height: 8.h),
-          ContentCard(
-            child: AppTextField(
-              controller: _notesC,
-              label: 'Catatan',
-              hint: 'Tulis catatan penting di sini…',
-              maxLines: 3,
-            ),
-          ),
-
-          SizedBox(height: 24.h),
+          SizedBox(height: 20.h),
           Obx(
             () => AppSubmitButton(
               label: 'Simpan Laporan',
@@ -160,7 +150,7 @@ class _ReportFormState extends State<_ReportForm> {
               onPressed: _save,
             ),
           ),
-          SizedBox(height: 10.h),
+          SizedBox(height: 6.h),
           TextButton(
             onPressed: () => Get.back(),
             style: TextButton.styleFrom(
@@ -191,7 +181,6 @@ class _ReportFormState extends State<_ReportForm> {
       notes: _notesC.text.trim().isEmpty ? null : _notesC.text.trim(),
       latitude: pos?.latitude,
       longitude: pos?.longitude,
-      photoPaths: _photos.toList(),
       taskDrafts: _controller.tasks.toList(),
     );
 
@@ -204,53 +193,51 @@ class _ReportFormState extends State<_ReportForm> {
   }
 }
 
-/// Header card that frames the form — a short primer so the report page reads
-/// like the app's other detail pages rather than a bare list of fields.
-class _IntroCard extends StatelessWidget {
-  const _IntroCard();
+/// Inline header at the top of the form surface — a short primer so the report
+/// page reads like the app's other detail pages rather than a bare field list.
+class _FormHeader extends StatelessWidget {
+  const _FormHeader();
 
   @override
   Widget build(BuildContext context) {
-    return ContentCard(
-      child: Row(
-        children: [
-          Container(
-            width: 44.w,
-            height: 44.w,
-            alignment: Alignment.center,
-            decoration: BoxDecoration(
-              color: AppColors.primaryLight,
-              borderRadius: BorderRadius.circular(12.r),
-            ),
-            child: Icon(Iconsax.location, color: AppColors.primary, size: 22.sp),
+    return Row(
+      children: [
+        Container(
+          width: 44.w,
+          height: 44.w,
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            color: AppColors.primaryLight,
+            borderRadius: BorderRadius.circular(12.r),
           ),
-          SizedBox(width: 12.w),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Laporan Kunjungan Lapangan',
-                  style: TextStyle(
-                    fontWeight: FontWeight.w700,
-                    fontSize: 13.5.sp,
-                    color: AppColors.navy,
-                  ),
+          child: Icon(Iconsax.location, color: AppColors.primary, size: 22.sp),
+        ),
+        SizedBox(width: 12.w),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Laporan Kunjungan Lapangan',
+                style: TextStyle(
+                  fontWeight: FontWeight.w700,
+                  fontSize: 13.5.sp,
+                  color: AppColors.navy,
                 ),
-                SizedBox(height: 3.h),
-                Text(
-                  'Lengkapi detail kunjungan, lokasi presisi, tasklist, dan foto sebagai bukti.',
-                  style: TextStyle(
-                    fontSize: 11.5.sp,
-                    height: 1.4,
-                    color: AppColors.textMuted,
-                  ),
+              ),
+              SizedBox(height: 3.h),
+              Text(
+                'Lengkapi detail kunjungan, lokasi presisi, tasklist, dan foto sebagai bukti.',
+                style: TextStyle(
+                  fontSize: 11.5.sp,
+                  height: 1.4,
+                  color: AppColors.textMuted,
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 }
@@ -283,47 +270,50 @@ class _SectionLabel extends StatelessWidget {
 }
 
 /// Map preview of where the employee is standing, the coordinates it resolved
-/// to, and the street address behind them.
-class _PreciseLocationCard extends StatelessWidget {
+/// to, and the street address behind them. Rendered flat (no card) so it sits
+/// inside the form surface; the map + address share one rounded muted block.
+class _PreciseLocationBlock extends StatelessWidget {
   final VisitingController controller;
 
-  const _PreciseLocationCard({required this.controller});
+  const _PreciseLocationBlock({required this.controller});
 
   @override
   Widget build(BuildContext context) {
-    return ContentCard(
-      padding: EdgeInsets.zero,
-      child: Obx(() {
-        final pos = controller.position.value;
-        final busy = controller.locating.value;
+    return Obx(() {
+      final pos = controller.position.value;
+      final busy = controller.locating.value;
 
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Stack(
-              children: [
-                ClipRRect(
-                  borderRadius: BorderRadius.vertical(
-                    top: Radius.circular(14.r),
-                  ),
-                  child: SizedBox(
-                    height: 150.h,
-                    width: double.infinity,
-                    child: pos == null
-                        ? Container(
-                            color: AppColors.muted,
-                            alignment: Alignment.center,
-                            child: Text(
-                              busy
-                                  ? 'Mendeteksi lokasi…'
-                                  : 'Lokasi belum tersedia',
-                              style: TextStyle(
-                                fontSize: 12.sp,
-                                color: AppColors.textMuted,
+      return ClipRRect(
+        borderRadius: BorderRadius.circular(14.r),
+        child: Container(
+          color: AppColors.muted,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Stack(
+                children: [
+                  ClipRRect(
+                    borderRadius: BorderRadius.vertical(
+                      top: Radius.circular(14.r),
+                    ),
+                    child: SizedBox(
+                      height: 150.h,
+                      width: double.infinity,
+                      child: pos == null
+                          ? Container(
+                              color: AppColors.muted,
+                              alignment: Alignment.center,
+                              child: Text(
+                                busy
+                                    ? 'Mendeteksi lokasi…'
+                                    : 'Lokasi belum tersedia',
+                                style: TextStyle(
+                                  fontSize: 12.sp,
+                                  color: AppColors.textMuted,
+                                ),
                               ),
-                            ),
-                          )
-                        : FlutterMap(
+                            )
+                          : FlutterMap(
                             options: MapOptions(
                               initialCenter: LatLng(
                                 pos.latitude,
@@ -427,10 +417,11 @@ class _PreciseLocationCard extends StatelessWidget {
                 ],
               ),
             ),
-          ],
+              ],
+            ),
+          ),
         );
-      }),
-    );
+      });
   }
 }
 
@@ -491,11 +482,11 @@ class _RefreshChip extends StatelessWidget {
 
 /// The job checklist for this visit: add rows here, tick them off later from
 /// the visit list once the work is actually done.
-class _TasklistCard extends StatelessWidget {
+class _TasklistBlock extends StatelessWidget {
   final VisitingController controller;
   final TextEditingController input;
 
-  const _TasklistCard({required this.controller, required this.input});
+  const _TasklistBlock({required this.controller, required this.input});
 
   @override
   Widget build(BuildContext context) {
@@ -540,61 +531,56 @@ class _TasklistCard extends StatelessWidget {
               ),
             ],
           ),
-          SizedBox(height: 8.h),
-          ContentCard(
-            child: Column(
-              children: [
-                Row(
-                  children: [
-                    Expanded(
-                      child: AppTextField(
-                        controller: input,
-                        label: '',
-                        hint: 'Tambah tugas baru…',
-                      ),
-                    ),
-                    SizedBox(width: 10.w),
-                    GestureDetector(
-                      onTap: () {
-                        controller.addTask(input.text);
-                        input.clear();
-                      },
-                      child: Container(
-                        width: 44.w,
-                        height: 44.w,
-                        decoration: BoxDecoration(
-                          color: AppColors.primary,
-                          borderRadius: BorderRadius.circular(12.r),
-                        ),
-                        child: Icon(
-                          Iconsax.add,
-                          color: Colors.white,
-                          size: 20.sp,
-                        ),
-                      ),
-                    ),
-                  ],
+          SizedBox(height: 12.h),
+          Row(
+            children: [
+              Expanded(
+                child: AppTextField(
+                  controller: input,
+                  label: '',
+                  hint: 'Tambah tugas baru…',
+                  icon: Iconsax.task_square,
                 ),
-                if (tasks.isEmpty)
-                  Padding(
-                    padding: EdgeInsets.only(top: 14.h),
-                    child: Text(
-                      'Belum ada tugas. Tugas bersifat opsional.',
-                      style: TextStyle(
-                        fontSize: 11.5.sp,
-                        color: AppColors.textMuted,
-                      ),
-                    ),
+              ),
+              SizedBox(width: 10.w),
+              GestureDetector(
+                onTap: () {
+                  controller.addTask(input.text);
+                  input.clear();
+                },
+                child: Container(
+                  width: 44.w,
+                  height: 44.w,
+                  decoration: BoxDecoration(
+                    color: AppColors.primary,
+                    borderRadius: BorderRadius.circular(12.r),
                   ),
-                for (var i = 0; i < tasks.length; i++)
-                  _TaskRow(
-                    index: i,
-                    draft: tasks[i],
-                    controller: controller,
+                  child: Icon(
+                    Iconsax.add,
+                    color: Colors.white,
+                    size: 20.sp,
                   ),
-              ],
-            ),
+                ),
+              ),
+            ],
           ),
+          if (tasks.isEmpty)
+            Padding(
+              padding: EdgeInsets.only(top: 14.h),
+              child: Text(
+                'Belum ada tugas. Tugas bersifat opsional.',
+                style: TextStyle(
+                  fontSize: 11.5.sp,
+                  color: AppColors.textMuted,
+                ),
+              ),
+            ),
+          for (var i = 0; i < tasks.length; i++)
+            _TaskRow(
+              index: i,
+              draft: tasks[i],
+              controller: controller,
+            ),
         ],
       );
     });
@@ -654,27 +640,13 @@ class _TaskRow extends StatelessWidget {
             ],
           ),
           SizedBox(height: 10.h),
-          Row(
-            children: [
-              Expanded(
-                child: AppImageField(
-                  label: 'BEFORE',
-                  path: draft.beforePath,
-                  onPick: (p) => controller.setTaskPhoto(index, before: p),
-                  onClear: () =>
-                      controller.clearTaskPhoto(index, before: true),
-                ),
-              ),
-              SizedBox(width: 10.w),
-              Expanded(
-                child: AppImageField(
-                  label: 'AFTER',
-                  path: draft.afterPath,
-                  onPick: (p) => controller.setTaskPhoto(index, after: p),
-                  onClear: () => controller.clearTaskPhoto(index, after: true),
-                ),
-              ),
-            ],
+          // Only the "before" evidence is captured here; the "after" photo is
+          // added later from the visit list once the work is done.
+          AppImageField(
+            label: 'Foto Before',
+            path: draft.beforePath,
+            onPick: (p) => controller.setTaskPhoto(index, before: p),
+            onClear: () => controller.clearTaskPhoto(index, before: true),
           ),
           SizedBox(height: 10.h),
           TextFormField(

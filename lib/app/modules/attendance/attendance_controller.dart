@@ -1,4 +1,6 @@
 import 'package:dio/dio.dart';
+import 'package:flutter/widgets.dart';
+import 'package:geocoding/geocoding.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:get/get.dart' hide Response;
 import 'package:get_storage/get_storage.dart';
@@ -14,11 +16,12 @@ import '../../data/services/auth_service.dart';
 import '../../data/services/connectivity_service.dart';
 import '../../data/services/device_service.dart';
 import '../../routes/app_pages.dart';
+import 'widgets/clock_dialogs.dart';
 
 /// Geofence state for the attendance screen's map + clock gate.
 enum GeoState { loading, inside, outside, gpsOff, denied, noOffice, error }
 
-class AttendanceController extends GetxController {
+class AttendanceController extends GetxController with WidgetsBindingObserver {
   final AvanaApi _api = AvanaApi();
 
   final isLoading = true.obs;
@@ -66,9 +69,44 @@ class AttendanceController extends GetxController {
   @override
   void onInit() {
     super.onInit();
+    WidgetsBinding.instance.addObserver(this);
     requiresFace.value = _box.read<bool>(_faceKey) ?? false;
     load();
     detectLocation();
+  }
+
+  @override
+  void onClose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.onClose();
+  }
+
+  /// This controller lives for the whole session (bottom-nav tab), so a
+  /// forgotten clock-out yesterday would otherwise leave `today` stuck on
+  /// yesterday's open record. When the app returns to the foreground on a new
+  /// calendar day, re-pull today's attendance so the button resets to a fresh
+  /// clock-in instead of continuing the old session.
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed && (_isStaleDay || today.value == null)) {
+      load();
+    }
+  }
+
+  /// Local calendar date as `YYYY-MM-DD`.
+  String _localToday() {
+    final n = DateTime.now();
+    final m = n.month.toString().padLeft(2, '0');
+    final d = n.day.toString().padLeft(2, '0');
+
+    return '${n.year}-$m-$d';
+  }
+
+  /// True when the loaded `today` belongs to an earlier calendar day.
+  bool get _isStaleDay {
+    final date = today.value?.date;
+
+    return date != null && date != _localToday();
   }
 
   Future<void> load() async {
@@ -208,6 +246,12 @@ class AttendanceController extends GetxController {
     required bool navigateFaceGate,
     List<double>? providedEmbedding,
   }) async {
+    // A day may have rolled over while the app sat in memory; refresh first so
+    // we never clock out on a new day against yesterday's open record.
+    if (_isStaleDay) {
+      await load();
+    }
+
     final type = today.value?.canClockIn ?? true ? 'in' : 'out';
 
     // Geofence gate: block only when we positively know the user is outside a
@@ -238,14 +282,16 @@ class AttendanceController extends GetxController {
         faceEmbedding = List<double>.from(result['embedding'] as List);
         selfiePath = result['photo'] as String?;
       } else {
-        // Not enrolled yet → register the face now, then reuse the just-captured
-        // template + frame for this same punch (backend blocks a clock with no
-        // embedding, so a fall-through without one would 422).
+        // Not enrolled yet → explain first so the flow is clear, then register.
+        // The just-captured template + frame are reused for this same punch (the
+        // backend blocks a clock with no embedding, so a fall-through would 422).
+        final wantEnroll = await confirmFaceEnroll();
+        if (!wantEnroll) {
+          return;
+        }
         final result = await Get.toNamed(Routes.FACE_ENROLL);
         if (result is! Map || result['embedding'] is! List) {
-          AppToast.warning(
-            'Absen butuh verifikasi wajah. Daftarkan wajah dulu.',
-          );
+          AppToast.warning('Pendaftaran wajah dibatalkan.');
 
           return;
         }
@@ -256,6 +302,7 @@ class AttendanceController extends GetxController {
     }
 
     isClocking.value = true;
+    showClockLoader();
     try {
       final pos = await _currentPosition();
       final deviceService = Get.find<DeviceService>();
@@ -268,10 +315,14 @@ class AttendanceController extends GetxController {
       // raw shot, so this only affects the stored photo.
       if (selfiePath != null) {
         final me = Get.find<AuthService>().user.value;
+        final address = pos != null
+            ? await _describeAddress(pos.latitude, pos.longitude)
+            : null;
         selfiePath = await SelfieStamp.apply(
           path: selfiePath,
           company: me?.employee?.employment?.company,
           subtitle: me?.employee?.fullName ?? me?.name,
+          address: address,
           latitude: pos?.latitude,
           longitude: pos?.longitude,
           at: DateTime.now(),
@@ -293,6 +344,7 @@ class AttendanceController extends GetxController {
 
       // No internet → queue it and reflect the action locally.
       if (!Get.find<ConnectivityService>().online.value) {
+        hideClockLoader();
         _queueOffline(type, entry);
         return;
       }
@@ -310,21 +362,37 @@ class AttendanceController extends GetxController {
           isEmulator: isEmulator,
           selfiePath: selfiePath,
         );
+        hideClockLoader();
         final code = res.statusCode ?? 0;
         if (code >= 200 && code < 300) {
-          AppToast.success(ApiClient.messageFrom(res, 'Absensi tercatat.'));
           await load();
+          showClockResult(
+            success: true,
+            message: ApiClient.messageFrom(res, 'Absensi berhasil dicatat.'),
+          );
         } else {
-          AppToast.error(ApiClient.messageFrom(res, 'Gagal mencatat absensi.'));
+          showClockResult(
+            success: false,
+            message: ApiClient.messageFrom(res, 'Gagal mencatat absensi.'),
+          );
         }
       } on DioException catch (e) {
+        hideClockLoader();
         // Lost connection mid-request → fall back to the offline queue.
         if (_isNetworkError(e)) {
           _queueOffline(type, entry);
         } else {
-          AppToast.error(ApiClient.errorMessage(e));
+          showClockResult(success: false, message: ApiClient.errorMessage(e));
         }
       }
+    } catch (_) {
+      // Anything unexpected while preparing the punch — never leave the loader
+      // spinning.
+      hideClockLoader();
+      showClockResult(
+        success: false,
+        message: 'Terjadi kesalahan. Coba lagi.',
+      );
     } finally {
       isClocking.value = false;
     }
@@ -343,6 +411,28 @@ class AttendanceController extends GetxController {
       e.type == DioExceptionType.connectionTimeout ||
       e.type == DioExceptionType.sendTimeout ||
       e.type == DioExceptionType.receiveTimeout;
+
+  /// Reverse-geocode a fix into a short human address for the selfie watermark.
+  /// Best-effort — returns null when geocoding gives nothing.
+  Future<String?> _describeAddress(double lat, double lng) async {
+    try {
+      final marks = await placemarkFromCoordinates(lat, lng);
+      if (marks.isEmpty) {
+        return null;
+      }
+      final p = marks.first;
+      final parts = <String?>[
+        p.street,
+        p.subLocality,
+        p.locality,
+        p.subAdministrativeArea,
+      ].where((e) => e != null && e.trim().isNotEmpty).cast<String>().toList();
+
+      return parts.isEmpty ? null : parts.join(', ');
+    } catch (_) {
+      return null;
+    }
+  }
 
   /// Reflect a queued clock action in today's status immediately.
   void _applyOptimistic(String type) {

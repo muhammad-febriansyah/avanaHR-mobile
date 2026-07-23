@@ -161,6 +161,7 @@ class OvertimeView extends GetView<OvertimeController> {
               controller: hoursC,
               label: 'Jumlah Jam',
               hint: '0',
+              icon: Iconsax.clock,
               keyboardType: const TextInputType.numberWithOptions(
                 decimal: true,
               ),
@@ -171,6 +172,7 @@ class OvertimeView extends GetView<OvertimeController> {
               controller: reasonC,
               label: 'Alasan (opsional)',
               hint: 'Tulis alasan…',
+              icon: Iconsax.note_1,
               maxLines: 2,
             ),
             SizedBox(height: 22.h),
