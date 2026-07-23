@@ -7,6 +7,39 @@ import '../../core/utils/formats.dart';
 /// label, dropping any time component. Returns '' for null/empty.
 String fmtDate(dynamic value) => formatTanggal(value, fallback: '');
 
+/// A single page of a `{data, meta}` paginated list response. Carries the rows
+/// plus enough paging state for infinite scroll to know when to stop.
+class Paged<T> {
+  final List<T> items;
+  final int currentPage;
+  final int lastPage;
+
+  const Paged({
+    required this.items,
+    required this.currentPage,
+    required this.lastPage,
+  });
+
+  bool get hasMore => currentPage < lastPage;
+
+  /// Build from a raw `{data:[...], meta:{current_page,last_page}}` map.
+  factory Paged.fromJson(
+    Map<String, dynamic> json,
+    T Function(Map<String, dynamic>) parse,
+  ) {
+    final list = (json['data'] as List?) ?? const [];
+    final meta = (json['meta'] as Map?) ?? const {};
+
+    return Paged<T>(
+      items: list
+          .map((e) => parse(Map<String, dynamic>.from(e as Map)))
+          .toList(),
+      currentPage: (meta['current_page'] as num?)?.toInt() ?? 1,
+      lastPage: (meta['last_page'] as num?)?.toInt() ?? 1,
+    );
+  }
+}
+
 class LeaveType {
   final int id;
   final String code;

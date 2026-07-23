@@ -73,6 +73,8 @@ class _ReportFormState extends State<_ReportForm> {
         physics: const BouncingScrollPhysics(),
         padding: EdgeInsets.fromLTRB(20.w, 16.h, 20.w, 32.h),
         children: [
+          const _IntroCard(),
+          SizedBox(height: 18.h),
           const _SectionLabel(Iconsax.user, 'DATA KUNJUNGAN'),
           SizedBox(height: 8.h),
           ContentCard(
@@ -199,6 +201,57 @@ class _ReportFormState extends State<_ReportForm> {
 
     await showVisitSavedSheet(context);
     Get.back();
+  }
+}
+
+/// Header card that frames the form — a short primer so the report page reads
+/// like the app's other detail pages rather than a bare list of fields.
+class _IntroCard extends StatelessWidget {
+  const _IntroCard();
+
+  @override
+  Widget build(BuildContext context) {
+    return ContentCard(
+      child: Row(
+        children: [
+          Container(
+            width: 44.w,
+            height: 44.w,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              color: AppColors.primaryLight,
+              borderRadius: BorderRadius.circular(12.r),
+            ),
+            child: Icon(Iconsax.location, color: AppColors.primary, size: 22.sp),
+          ),
+          SizedBox(width: 12.w),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Laporan Kunjungan Lapangan',
+                  style: TextStyle(
+                    fontWeight: FontWeight.w700,
+                    fontSize: 13.5.sp,
+                    color: AppColors.navy,
+                  ),
+                ),
+                SizedBox(height: 3.h),
+                Text(
+                  'Lengkapi detail kunjungan, lokasi presisi, tasklist, dan foto sebagai bukti.',
+                  style: TextStyle(
+                    fontSize: 11.5.sp,
+                    height: 1.4,
+                    color: AppColors.textMuted,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }
 

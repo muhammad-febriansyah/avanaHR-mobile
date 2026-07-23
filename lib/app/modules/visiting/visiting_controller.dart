@@ -25,6 +25,18 @@ class VisitingController extends GetxController {
   final submitting = false.obs;
   final items = <FieldVisitItem>[].obs;
 
+  /// Server-side search over location / client / purpose. Debounced in
+  /// [onInit] so typing does not fire a request per keystroke.
+  final query = ''.obs;
+
+  // ---- Pagination (infinite scroll) ----
+  static const _perPage = 20;
+  final _page = 1.obs;
+  final _lastPage = 1.obs;
+  final loadingMore = false.obs;
+
+  bool get hasMore => _page.value < _lastPage.value;
+
   // ---- Precise location, held while the report form is open ----
 
   final position = Rxn<Position>();
@@ -39,14 +51,50 @@ class VisitingController extends GetxController {
   void onInit() {
     super.onInit();
     load();
+    // Re-run the (server-side) search a beat after the user stops typing.
+    debounce(
+      query,
+      (_) => load(),
+      time: const Duration(milliseconds: 350),
+    );
   }
 
+  /// (Re)load the first page for the current [query]. Used by initial load,
+  /// pull-to-refresh, and the search debounce.
   Future<void> load() async {
     isLoading.value = true;
     try {
-      items.assignAll(await _api.fieldVisits());
+      final res = await _api.fieldVisits(
+        page: 1,
+        search: query.value,
+        perPage: _perPage,
+      );
+      items.assignAll(res.items);
+      _page.value = res.currentPage;
+      _lastPage.value = res.lastPage;
     } catch (_) {}
     isLoading.value = false;
+  }
+
+  /// Fetch the next page and append it. No-op while a page is already in
+  /// flight or once the last page has been reached.
+  Future<void> loadMore() async {
+    if (loadingMore.value || !hasMore) {
+      return;
+    }
+
+    loadingMore.value = true;
+    try {
+      final res = await _api.fieldVisits(
+        page: _page.value + 1,
+        search: query.value,
+        perPage: _perPage,
+      );
+      items.addAll(res.items);
+      _page.value = res.currentPage;
+      _lastPage.value = res.lastPage;
+    } catch (_) {}
+    loadingMore.value = false;
   }
 
   /// Clear the draft so a second report does not inherit the first one's
