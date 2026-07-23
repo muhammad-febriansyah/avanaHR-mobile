@@ -265,13 +265,17 @@ class AttendanceController extends GetxController with WidgetsBindingObserver {
       return;
     }
 
-    // Face gate: attendance always goes through on-device face recognition.
+    // Face gate — driven by the tenant policy (requirements.face_mode):
+    //   'off'         → skip face entirely.
+    //   'detection'   → capture a live face; the server accepts it without a match.
+    //   'recognition' → capture + the server matches it against the template.
     // Already enrolled → verify against the stored template; not yet enrolled →
     // run enrollment (active liveness) first, then clock. Capture + embedding
     // both run locally, so this works offline too.
+    final requiresFaceCapture = today.value?.requiresFaceCapture ?? true;
     List<double>? faceEmbedding = providedEmbedding;
     String? selfiePath;
-    if (navigateFaceGate) {
+    if (navigateFaceGate && requiresFaceCapture) {
       if (requiresFace.value) {
         final result = await Get.toNamed(Routes.FACE_VERIFY);
         if (result is! Map || result['embedding'] is! List) {

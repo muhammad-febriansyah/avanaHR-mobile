@@ -17,6 +17,13 @@ class AttendanceToday {
   /// "home". Comes from the response's `requirements`, not its `data`.
   final bool wfhApprovedToday;
 
+  /// Tenant face policy: 'recognition' (1:1 match), 'detection' (live face
+  /// only, no match), or 'off' (no face check). From `requirements.face_mode`.
+  final String faceMode;
+
+  /// Whether "1 device 1 account" binding is enforced by the tenant.
+  final bool deviceBindingEnabled;
+
   AttendanceToday({
     required this.date,
     required this.nextAction,
@@ -27,7 +34,15 @@ class AttendanceToday {
     this.workMinutes = 0,
     this.workMode,
     this.wfhApprovedToday = false,
+    this.faceMode = 'recognition',
+    this.deviceBindingEnabled = true,
   });
+
+  /// A live face must be captured at clock-in (recognition or detection).
+  bool get requiresFaceCapture => faceMode != 'off';
+
+  /// The captured face is identity-matched against the enrolled template.
+  bool get usesFaceRecognition => faceMode == 'recognition';
 
   bool get canClockIn => nextAction == 'in';
 
@@ -46,6 +61,8 @@ class AttendanceToday {
       workMinutes: summary is Map ? (summary['work_minutes'] ?? 0) : 0,
       workMode: json['work_mode'],
       wfhApprovedToday: requirements['wfh_approved_today'] == true,
+      faceMode: (requirements['face_mode'] as String?) ?? 'recognition',
+      deviceBindingEnabled: requirements['device_binding_enabled'] != false,
     );
   }
 }
