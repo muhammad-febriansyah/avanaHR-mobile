@@ -633,9 +633,11 @@ class AvanaApi {
       if (notes != null && notes.isNotEmpty) 'notes': notes,
       if (latitude != null) 'latitude': latitude,
       if (longitude != null) 'longitude': longitude,
-      // Sent as tasks[] so Laravel reads the checklist as an array. The
-      // evidence arrays are index-aligned with it — entry N belongs to task N.
-      'tasks': tasks,
+      // Indexed keys (tasks[0], tasks[1], …) so Laravel reads the checklist as
+      // an array — a bare List value is serialized as a repeated `tasks` field,
+      // which PHP collapses to a single string. The evidence arrays are
+      // index-aligned with it: entry N belongs to task N.
+      for (var i = 0; i < tasks.length; i++) 'tasks[$i]': tasks[i],
       for (var i = 0; i < taskNotes.length; i++)
         if (taskNotes[i] != null && taskNotes[i]!.isNotEmpty)
           'task_notes[$i]': taskNotes[i],
@@ -651,11 +653,12 @@ class AvanaApi {
             taskAfterPaths[i]!,
             filename: taskAfterPaths[i]!.split('/').last,
           ),
-      // Sent as photos[] so Laravel reads them as an array of uploads.
-      'photos': [
-        for (final path in photoPaths)
-          await MultipartFile.fromFile(path, filename: path.split('/').last),
-      ],
+      // Indexed keys (photos[0], …) so Laravel reads them as an array of uploads.
+      for (var i = 0; i < photoPaths.length; i++)
+        'photos[$i]': await MultipartFile.fromFile(
+          photoPaths[i],
+          filename: photoPaths[i].split('/').last,
+        ),
     });
     return _dio.post('/me/field-visits', data: form);
   }
