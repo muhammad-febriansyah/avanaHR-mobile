@@ -585,12 +585,24 @@ class AvanaApi {
   }
 
   // ---- Field visits ----
-  Future<List<FieldVisitItem>> fieldVisits() async {
-    final res = await _dio.get('/me/field-visits');
-    final list = (res.data['data'] as List?) ?? [];
-    return list
-        .map((e) => FieldVisitItem.fromJson(Map<String, dynamic>.from(e)))
-        .toList();
+  Future<Paged<FieldVisitItem>> fieldVisits({
+    int page = 1,
+    String? search,
+    int perPage = 20,
+  }) async {
+    final res = await _dio.get(
+      '/me/field-visits',
+      queryParameters: {
+        'page': page,
+        'per_page': perPage,
+        if (search != null && search.trim().isNotEmpty) 'search': search.trim(),
+      },
+    );
+
+    return Paged<FieldVisitItem>.fromJson(
+      Map<String, dynamic>.from(res.data as Map),
+      FieldVisitItem.fromJson,
+    );
   }
 
   Future<Response> submitFieldVisit({
