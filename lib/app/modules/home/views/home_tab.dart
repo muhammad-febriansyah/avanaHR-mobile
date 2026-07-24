@@ -867,12 +867,6 @@ class HomeTab extends GetView<HomeController> {
         const Color(0xFF0D9488),
         () => Get.toNamed(Routes.SHIFT_SWAP),
       ),
-      _Action(
-        'Pengumuman',
-        Iconsax.volume_high,
-        const Color(0xFFEA580C),
-        () => Get.find<MainController>().changeTab(3),
-      ),
     ];
   }
 
