@@ -33,6 +33,7 @@ abstract class Routes {
   static const MSS_MEMBER = _Paths.MSS_MEMBER;
   static const MSS_RECAP = _Paths.MSS_RECAP;
   static const DASHBOARD = _Paths.DASHBOARD;
+  static const AI_ASSISTANT = _Paths.AI_ASSISTANT;
 }
 
 abstract class _Paths {
@@ -68,4 +69,5 @@ abstract class _Paths {
   static const MSS_MEMBER = '/mss-member';
   static const MSS_RECAP = '/mss-recap';
   static const DASHBOARD = '/dashboard';
+  static const AI_ASSISTANT = '/ai-assistant';
 }
