@@ -8,6 +8,7 @@ import '../models/user.dart';
 import '../providers/api_client.dart';
 import '../providers/avana_api.dart';
 import 'device_service.dart';
+import 'push_service.dart';
 import 'storage_service.dart';
 
 /// GetStorage keys for the cached tenant brand (applied at cold start so the
@@ -96,5 +97,10 @@ class AuthService extends GetxService {
     if (logo != null && logo.isNotEmpty) box.write(kBrandLogoKey, logo);
     AppColors.applyBrand(hex);
     Get.changeTheme(AppTheme.light);
+
+    // Now that a session exists, push the device's FCM token to the backend.
+    if (Get.isRegistered<PushService>()) {
+      Get.find<PushService>().registerToken();
+    }
   }
 }

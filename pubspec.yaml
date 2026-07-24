@@ -66,6 +66,9 @@ dependencies:
   open_filex: ^4.7.0
   share_plus: ^13.2.0
   persistent_bottom_nav_bar_v2: ^6.3.2
+  firebase_core: ^4.12.1
+  firebase_messaging: ^16.4.3
+  flutter_local_notifications: ^22.1.0
 
 # file_picker (Windows impl) pins win32 ^5, but geolocator/device_info_plus
 # need win32 ^6. win32 is Windows-only; on Android/iOS it never compiles, so we

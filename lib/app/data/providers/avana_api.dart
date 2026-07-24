@@ -60,6 +60,15 @@ class AvanaApi {
 
   Future<void> logout() => _dio.post('/auth/logout');
 
+  /// Register the device's Firebase (FCM) push token with the backend.
+  Future<void> registerFcmToken({
+    required String deviceId,
+    required String token,
+  }) => _dio.post(
+    '/me/security/fcm-token',
+    data: {'device_id': deviceId, 'fcm_token': token},
+  );
+
   // ---- ESS read ----
   Future<Profile> profile() async {
     final res = await _dio.get('/me/profile');
