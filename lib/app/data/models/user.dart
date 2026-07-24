@@ -13,6 +13,10 @@ class AppUser {
   final String? tenantName;
   final String? tenantLogoUrl;
 
+  /// The tenant's accent colour (hex) from the web "Tampilan & Tema" theme,
+  /// used as the app's brand/primary colour.
+  final String? tenantAccentHex;
+
   AppUser({
     required this.id,
     required this.name,
@@ -22,6 +26,7 @@ class AppUser {
     this.employee,
     this.tenantName,
     this.tenantLogoUrl,
+    this.tenantAccentHex,
   });
 
   /// Manager Self-Service access is driven by the employee record's
@@ -46,6 +51,9 @@ class AppUser {
           : null,
       tenantLogoUrl: tenant is Map
           ? Env.resolveMedia(tenant['logo_url']?.toString())
+          : null,
+      tenantAccentHex: tenant is Map && tenant['theme'] is Map
+          ? tenant['theme']['sidebar_accent']?.toString()
           : null,
     );
   }

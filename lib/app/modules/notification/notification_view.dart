@@ -27,7 +27,9 @@ class NotificationView extends GetView<NotificationController> {
           color: AppColors.primary,
           child: controller.items.isEmpty
               ? ListView(
-                  physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
+                  physics: const AlwaysScrollableScrollPhysics(
+                    parent: BouncingScrollPhysics(),
+                  ),
                   children: [
                     SizedBox(height: 80.h),
                     const EmptyState(
@@ -37,7 +39,9 @@ class NotificationView extends GetView<NotificationController> {
                   ],
                 )
               : ListView.separated(
-                  physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
+                  physics: const AlwaysScrollableScrollPhysics(
+                    parent: BouncingScrollPhysics(),
+                  ),
                   padding: EdgeInsets.fromLTRB(20.w, 20.h, 20.w, 20.h),
                   itemCount: controller.items.length,
                   separatorBuilder: (_, i) => SizedBox(height: 10.h),
@@ -48,10 +52,7 @@ class NotificationView extends GetView<NotificationController> {
                       child: Row(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const IconBubble(
-                            Iconsax.notification,
-                            AppColors.primary,
-                          ),
+                          IconBubble(Iconsax.notification, AppColors.primary),
                           SizedBox(width: 12.w),
                           Expanded(
                             child: Column(
@@ -86,7 +87,7 @@ class NotificationView extends GetView<NotificationController> {
                               width: 8.w,
                               height: 8.w,
                               margin: EdgeInsets.only(top: 4.h),
-                              decoration: const BoxDecoration(
+                              decoration: BoxDecoration(
                                 color: AppColors.primary,
                                 shape: BoxShape.circle,
                               ),

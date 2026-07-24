@@ -31,7 +31,7 @@ class LoginView extends GetView<LoginController> {
   /// Solid-primary panel: welcome copy only (logo sits on the white sheet).
   Widget _header(ConfigService cfg) {
     return Container(
-      decoration: const BoxDecoration(
+      decoration: BoxDecoration(
         gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,

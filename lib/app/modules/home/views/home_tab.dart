@@ -39,7 +39,7 @@ class HomeTab extends GetView<HomeController> {
 
   Widget _header() {
     return Container(
-      decoration: const BoxDecoration(
+      decoration: BoxDecoration(
         gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,

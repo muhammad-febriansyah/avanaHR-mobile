@@ -83,7 +83,7 @@ class AppPage extends StatelessWidget {
 
   Widget _header(BuildContext context) {
     return Container(
-      decoration: const BoxDecoration(
+      decoration: BoxDecoration(
         gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
