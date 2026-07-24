@@ -174,7 +174,7 @@ class _HeroCard extends StatelessWidget {
     return Container(
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(18.r),
-        gradient: const LinearGradient(
+        gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
           colors: [AppColors.primary, AppColors.primaryHover],
@@ -791,7 +791,7 @@ class _PayoutCard extends StatelessWidget {
         children: [
           Row(
             children: [
-              const IconBubble(Iconsax.bank, AppColors.primary, size: 36),
+              IconBubble(Iconsax.bank, AppColors.primary, size: 36),
               SizedBox(width: 12.w),
               Expanded(
                 child: Column(
@@ -1050,7 +1050,7 @@ class _TimelineStep extends StatelessWidget {
                           ? Container(
                               width: 7.w,
                               height: 7.w,
-                              decoration: const BoxDecoration(
+                              decoration: BoxDecoration(
                                 color: AppColors.primary,
                                 shape: BoxShape.circle,
                               ),

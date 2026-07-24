@@ -6,6 +6,7 @@ import 'package:get/get.dart';
 import 'package:get_storage/get_storage.dart';
 import 'package:toastification/toastification.dart';
 
+import 'app/core/theme/app_colors.dart';
 import 'app/core/theme/app_theme.dart';
 import 'app/data/providers/api_client.dart';
 import 'app/data/services/attendance_queue_service.dart';
@@ -23,6 +24,10 @@ Future<void> main() async {
   await SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
   await dotenv.load(fileName: '.env');
   await GetStorage.init();
+
+  // Apply the last tenant's brand accent before the first frame so the app
+  // opens already white-labelled (refreshed on login via AuthService).
+  AppColors.applyBrand(GetStorage().read(kBrandAccentKey));
 
   // Permanent services, ordered by dependency.
   await Get.putAsync(() async => StorageService());
@@ -53,8 +58,7 @@ class AppScrollBehavior extends MaterialScrollBehavior {
     BuildContext context,
     Widget child,
     ScrollableDetails details,
-  ) =>
-      child;
+  ) => child;
 }
 
 class AvanaApp extends StatelessWidget {

@@ -138,7 +138,7 @@ class _SummaryCard extends StatelessWidget {
       margin: EdgeInsets.fromLTRB(16.w, 16.h, 16.w, 0),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(18.r),
-        gradient: const LinearGradient(
+        gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
           colors: [AppColors.primary, AppColors.primaryHover],

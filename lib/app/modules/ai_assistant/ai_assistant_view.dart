@@ -152,7 +152,7 @@ class _EmptyState extends StatelessWidget {
             width: 64.w,
             height: 64.w,
             decoration: BoxDecoration(
-              gradient: const LinearGradient(
+              gradient: LinearGradient(
                 colors: [AppColors.primary, Color(0xFF7C3AED)],
               ),
               borderRadius: BorderRadius.circular(18.r),
@@ -254,9 +254,7 @@ class _MessageBubble extends StatelessWidget {
       decoration: BoxDecoration(
         gradient: isUser
             ? null
-            : const LinearGradient(
-                colors: [AppColors.primary, Color(0xFF7C3AED)],
-              ),
+            : LinearGradient(colors: [AppColors.primary, Color(0xFF7C3AED)]),
         color: isUser ? AppColors.primaryLight : null,
         borderRadius: BorderRadius.circular(9.r),
       ),
@@ -311,7 +309,7 @@ class _TypingBubble extends StatelessWidget {
             height: 30.w,
             alignment: Alignment.center,
             decoration: BoxDecoration(
-              gradient: const LinearGradient(
+              gradient: LinearGradient(
                 colors: [AppColors.primary, Color(0xFF7C3AED)],
               ),
               borderRadius: BorderRadius.circular(9.r),
@@ -331,7 +329,7 @@ class _TypingBubble extends StatelessWidget {
                 SizedBox(
                   width: 14.w,
                   height: 14.w,
-                  child: const CircularProgressIndicator(
+                  child: CircularProgressIndicator(
                     strokeWidth: 2,
                     color: AppColors.primary,
                   ),

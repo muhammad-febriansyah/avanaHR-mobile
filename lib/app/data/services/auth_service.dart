@@ -1,11 +1,17 @@
 import 'package:dio/dio.dart';
 import 'package:get/get.dart' hide Response;
+import 'package:get_storage/get_storage.dart';
 
+import '../../core/theme/app_colors.dart';
+import '../../core/theme/app_theme.dart';
 import '../models/user.dart';
 import '../providers/api_client.dart';
 import '../providers/avana_api.dart';
 import 'device_service.dart';
 import 'storage_service.dart';
+
+/// GetStorage key for the cached tenant accent colour (applied at cold start).
+const String kBrandAccentKey = 'brand_accent';
 
 /// Holds the authenticated session: the JWT (via StorageService) and the
 /// current [AppUser]. Exposed app-wide as a permanent GetxService.
@@ -25,7 +31,10 @@ class AuthService extends GetxService {
       final res = await _api.login(email, password, device: device.toJson());
       if (res.statusCode == 200 && res.data['access_token'] != null) {
         await _storage.saveToken(res.data['access_token']);
-        user.value = AppUser.fromJson(Map<String, dynamic>.from(res.data['user']));
+        user.value = AppUser.fromJson(
+          Map<String, dynamic>.from(res.data['user']),
+        );
+        _applyTenantBrand();
         return null;
       }
       return ApiClient.messageFrom(res, 'Email atau kata sandi salah.');
@@ -38,6 +47,7 @@ class AuthService extends GetxService {
   Future<bool> loadMe() async {
     try {
       user.value = await _api.me();
+      _applyTenantBrand();
       return true;
     } catch (_) {
       // Dead/absent token, network error, or an unexpected response shape:
@@ -57,5 +67,19 @@ class AuthService extends GetxService {
     // Reset onboarding so a logged-out user sees the intro again on next launch.
     await _storage.clearOnboarded();
     user.value = null;
+
+    // Drop the tenant brand back to the AvanaHR default.
+    GetStorage().remove(kBrandAccentKey);
+    AppColors.applyBrand(null);
+    Get.changeTheme(AppTheme.light);
+  }
+
+  /// Re-brand the whole app to the signed-in tenant's accent colour and cache
+  /// it so the next cold start applies it before the first frame.
+  void _applyTenantBrand() {
+    final hex = user.value?.tenantAccentHex;
+    GetStorage().write(kBrandAccentKey, hex);
+    AppColors.applyBrand(hex);
+    Get.changeTheme(AppTheme.light);
   }
 }
