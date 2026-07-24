@@ -1,3 +1,5 @@
+import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
@@ -15,8 +17,14 @@ import 'app/data/services/config_service.dart';
 import 'app/data/services/connectivity_service.dart';
 import 'app/data/services/device_service.dart';
 import 'app/data/services/face_embedder_service.dart';
+import 'app/data/services/push_service.dart';
 import 'app/data/services/storage_service.dart';
 import 'app/routes/app_pages.dart';
+
+/// Background FCM handler (top-level, required by firebase_messaging). The OS
+/// renders the notification; nothing to do here yet.
+@pragma('vm:entry-point')
+Future<void> _fcmBackgroundHandler(RemoteMessage message) async {}
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -40,6 +48,22 @@ Future<void> main() async {
   Get.put(ConfigService(), permanent: true);
   // Warm branding in the background so any entry point (deep link too) has it.
   Get.find<ConfigService>().load();
+
+  // Firebase Cloud Messaging. Wrapped so the app still runs on a platform whose
+  // Firebase config is absent (e.g. iOS without a plist) — just without push.
+  var firebaseReady = false;
+  try {
+    await Firebase.initializeApp();
+    FirebaseMessaging.onBackgroundMessage(_fcmBackgroundHandler);
+    firebaseReady = true;
+    debugPrint('[FCM] Firebase initialized');
+  } catch (e) {
+    debugPrint('[FCM] Firebase init FAILED: $e');
+  }
+  Get.put(PushService(), permanent: true);
+  if (firebaseReady) {
+    Get.find<PushService>().init();
+  }
 
   runApp(const AvanaApp());
 }

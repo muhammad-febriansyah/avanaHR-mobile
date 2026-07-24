@@ -1,8 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:get/get.dart';
 import 'package:iconsax/iconsax.dart';
+import 'package:latlong2/latlong.dart';
+import 'package:url_launcher/url_launcher.dart';
 
+import '../../core/config/env.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/utils/formats.dart';
 import '../../core/widgets/app_page.dart';
@@ -296,7 +300,8 @@ class RiwayatView extends GetView<RiwayatController> {
 
     showAppSheet(
       context,
-      child: Padding(
+      scrollable: true,
+      child: SingleChildScrollView(
         padding: EdgeInsets.fromLTRB(20.w, 14.h, 20.w, 24.h),
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -304,6 +309,11 @@ class RiwayatView extends GetView<RiwayatController> {
           children: [
             const SheetHeader('Detail Absensi'),
             SizedBox(height: 16.h),
+            if (d['selfie_url'] is String &&
+                (d['selfie_url'] as String).isNotEmpty) ...[
+              _selfiePhoto(d['selfie_url'] as String),
+              SizedBox(height: 16.h),
+            ],
             _detailRow('Tanggal', formatTanggal(d['date'])),
             _detailRow('Masuk', s(d['clock_in'])),
             _detailRow('Pulang', s(d['clock_out'])),
@@ -313,19 +323,137 @@ class RiwayatView extends GetView<RiwayatController> {
             if (item.status != null && item.status!.isNotEmpty)
               _detailRow('Status', _statusLabel(item.status!)),
             _detailRow('Lokasi', _locLabel(d['location_status'])),
-            if (lat is num && lng is num)
+            // Face accuracy only applies to 1:1 recognition. When the tenant uses
+            // face detection (or off) there is no confidence score to show.
+            if (d['face_mode'] == 'recognition')
               _detailRow(
-                'Koordinat',
-                '${lat.toStringAsFixed(5)}, ${lng.toStringAsFixed(5)}',
+                'Akurasi Wajah',
+                conf is num ? '${(conf * 100).toStringAsFixed(0)}%' : '-',
               ),
-            _detailRow(
-              'Akurasi Wajah',
-              conf is num ? '${(conf * 100).toStringAsFixed(0)}%' : '-',
-            ),
+            if (lat is num && lng is num) ...[
+              SizedBox(height: 14.h),
+              _miniMap(lat.toDouble(), lng.toDouble()),
+            ],
           ],
         ),
       ),
     );
+  }
+
+  /// The selfie captured at clock-in.
+  Widget _selfiePhoto(String url) {
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(14.r),
+      child: AspectRatio(
+        aspectRatio: 4 / 3,
+        child: Image.network(
+          Env.resolveMedia(url) ?? url,
+          fit: BoxFit.cover,
+          loadingBuilder: (context, child, progress) => progress == null
+              ? child
+              : Container(
+                  color: AppColors.surface,
+                  child: Center(
+                    child: SizedBox(
+                      width: 22.w,
+                      height: 22.w,
+                      child: const CircularProgressIndicator(strokeWidth: 2),
+                    ),
+                  ),
+                ),
+          errorBuilder: (_, _, _) => Container(
+            color: AppColors.surface,
+            alignment: Alignment.center,
+            child: Icon(
+              Iconsax.gallery_slash,
+              color: AppColors.textMuted,
+              size: 30,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// A non-interactive map preview of the clock-in location + a Maps link.
+  Widget _miniMap(double lat, double lng) {
+    final point = LatLng(lat, lng);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Lokasi Absen',
+          style: TextStyle(fontSize: 12.5.sp, color: AppColors.textMuted),
+        ),
+        SizedBox(height: 8.h),
+        ClipRRect(
+          borderRadius: BorderRadius.circular(14.r),
+          child: SizedBox(
+            height: 170.h,
+            child: FlutterMap(
+              options: MapOptions(
+                initialCenter: point,
+                initialZoom: 16,
+                interactionOptions: const InteractionOptions(
+                  flags: InteractiveFlag.none,
+                ),
+              ),
+              children: [
+                TileLayer(
+                  urlTemplate:
+                      'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                  userAgentPackageName: 'com.avanahr.avanahr',
+                ),
+                MarkerLayer(
+                  markers: [
+                    Marker(
+                      point: point,
+                      width: 40,
+                      height: 40,
+                      alignment: Alignment.topCenter,
+                      child: Icon(
+                        Icons.location_on,
+                        color: AppColors.danger,
+                        size: 36,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
+        SizedBox(height: 8.h),
+        GestureDetector(
+          onTap: () => _openMaps(lat, lng),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Iconsax.map_1, size: 15, color: AppColors.primary),
+              SizedBox(width: 6.w),
+              Text(
+                'Buka di Google Maps',
+                style: TextStyle(
+                  fontSize: 12.5.sp,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.primary,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Future<void> _openMaps(double lat, double lng) async {
+    final uri = Uri.parse(
+      'https://www.google.com/maps/search/?api=1&query=$lat,$lng',
+    );
+    if (await canLaunchUrl(uri)) {
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    }
   }
 
   Widget _detailRow(String label, String value) {
