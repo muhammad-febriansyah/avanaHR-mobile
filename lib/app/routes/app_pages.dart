@@ -56,6 +56,7 @@ import '../modules/notification/notification_view.dart';
 import '../modules/onboarding/onboarding_view.dart';
 import '../modules/payslip/payslip_binding.dart';
 import '../modules/payslip/payslip_view.dart';
+import '../modules/brand_splash/brand_splash_view.dart';
 import '../modules/profile/profile_binding.dart';
 import '../modules/profile/profile_view.dart';
 import '../modules/splash/splash_view.dart';
@@ -69,6 +70,7 @@ class AppPages {
 
   static final routes = [
     GetPage(name: _Paths.SPLASH, page: () => const SplashView()),
+    GetPage(name: _Paths.BRAND_SPLASH, page: () => const BrandSplashView()),
     GetPage(name: _Paths.ONBOARDING, page: () => const OnboardingView()),
     GetPage(
       name: _Paths.LOGIN,

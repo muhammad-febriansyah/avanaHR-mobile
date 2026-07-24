@@ -43,7 +43,8 @@ class LoginController extends GetxController {
       } else {
         await _storage.clearRememberedEmail();
       }
-      Get.offAllNamed(Routes.MAIN);
+      // Show the tenant-branded welcome splash, which forwards to MAIN.
+      Get.offAllNamed(Routes.BRAND_SPLASH);
     } else {
       AppToast.error(error);
     }

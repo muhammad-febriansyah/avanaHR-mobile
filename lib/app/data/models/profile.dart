@@ -34,6 +34,12 @@ class Profile {
   final String? email;
   final String? phone;
   final String? address;
+  final String? nik;
+  final String? gender;
+  final String? birthPlace;
+  final String? birthDate;
+  final String? religion;
+  final String? maritalStatus;
   final String status;
   final String? joinDate;
   final String? photoUrl;
@@ -51,6 +57,12 @@ class Profile {
     this.email,
     this.phone,
     this.address,
+    this.nik,
+    this.gender,
+    this.birthPlace,
+    this.birthDate,
+    this.religion,
+    this.maritalStatus,
     this.joinDate,
     this.photoUrl,
     this.employment,
@@ -64,6 +76,12 @@ class Profile {
     email: json['email'],
     phone: json['phone'],
     address: json['address'],
+    nik: json['nik'],
+    gender: json['gender'],
+    birthPlace: json['birth_place'],
+    birthDate: json['birth_date'],
+    religion: json['religion'],
+    maritalStatus: json['marital_status'],
     status: json['status'] ?? '',
     joinDate: json['join_date'],
     photoUrl: Env.resolveMedia(json['photo_url'] as String?),

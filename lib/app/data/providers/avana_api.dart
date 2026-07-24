@@ -66,12 +66,45 @@ class AvanaApi {
     return Profile.fromJson(Map<String, dynamic>.from(res.data['data']));
   }
 
-  /// Update the caller's self-editable fields (phone, address).
-  Future<Profile> updateProfile({String? phone, String? address}) async {
+  /// Update the caller's self-editable personal fields. Empty strings are sent
+  /// as-is; Laravel converts them to null (all fields are nullable server-side).
+  Future<Profile> updateProfile({
+    String? phone,
+    String? address,
+    String? email,
+    String? nik,
+    String? gender,
+    String? birthPlace,
+    String? birthDate,
+    String? religion,
+    String? maritalStatus,
+  }) async {
     final res = await _dio.put(
       '/me/profile',
-      data: {'phone': phone, 'address': address},
+      data: {
+        'phone': phone,
+        'address': address,
+        'email': email,
+        'nik': nik,
+        'gender': gender,
+        'birth_place': birthPlace,
+        'birth_date': birthDate,
+        'religion': religion,
+        'marital_status': maritalStatus,
+      },
     );
+    return Profile.fromJson(Map<String, dynamic>.from(res.data['data']));
+  }
+
+  /// Upload / replace the caller's profile photo (avatar). Multipart POST.
+  Future<Profile> updateProfilePhoto(String imagePath) async {
+    final form = FormData.fromMap({
+      'photo': await MultipartFile.fromFile(
+        imagePath,
+        filename: imagePath.split('/').last,
+      ),
+    });
+    final res = await _dio.post('/me/profile/photo', data: form);
     return Profile.fromJson(Map<String, dynamic>.from(res.data['data']));
   }
 

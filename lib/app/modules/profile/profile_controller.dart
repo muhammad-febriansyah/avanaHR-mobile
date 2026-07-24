@@ -13,6 +13,7 @@ class ProfileController extends GetxController {
 
   final isLoading = true.obs;
   final isSaving = false.obs;
+  final isUploadingPhoto = false.obs;
   final profile = Rxn<Profile>();
 
   @override
@@ -31,14 +32,31 @@ class ProfileController extends GetxController {
     isLoading.value = false;
   }
 
-  /// Save the self-editable contact fields. Returns true on success.
+  /// Save the self-editable personal fields. Returns true on success.
   Future<bool> updateProfile({
     required String phone,
     required String address,
+    required String email,
+    required String nik,
+    required String gender,
+    required String birthPlace,
+    required String birthDate,
+    required String religion,
+    required String maritalStatus,
   }) async {
     isSaving.value = true;
     try {
-      profile.value = await _api.updateProfile(phone: phone, address: address);
+      profile.value = await _api.updateProfile(
+        phone: phone,
+        address: address,
+        email: email,
+        nik: nik,
+        gender: gender,
+        birthPlace: birthPlace,
+        birthDate: birthDate,
+        religion: religion,
+        maritalStatus: maritalStatus,
+      );
       AppToast.success('Profil berhasil diperbarui');
       return true;
     } on DioException catch (e) {
@@ -46,6 +64,21 @@ class ProfileController extends GetxController {
       return false;
     } finally {
       isSaving.value = false;
+    }
+  }
+
+  /// Upload a new avatar and refresh the profile. Returns true on success.
+  Future<bool> updatePhoto(String imagePath) async {
+    isUploadingPhoto.value = true;
+    try {
+      profile.value = await _api.updateProfilePhoto(imagePath);
+      AppToast.success('Foto profil diperbarui');
+      return true;
+    } on DioException catch (e) {
+      AppToast.error(_errorOf(e, 'Gagal mengunggah foto'));
+      return false;
+    } finally {
+      isUploadingPhoto.value = false;
     }
   }
 
