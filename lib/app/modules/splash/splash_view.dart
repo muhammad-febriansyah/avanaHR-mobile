@@ -2,8 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:get/get.dart';
+import 'package:get_storage/get_storage.dart';
 
 import '../../core/theme/app_colors.dart';
+import '../../core/widgets/brand_mark.dart';
 import '../../data/services/auth_service.dart';
 import '../../data/services/config_service.dart';
 import '../../data/services/storage_service.dart';
@@ -45,6 +47,13 @@ class _SplashViewState extends State<SplashView> {
 
   @override
   Widget build(BuildContext context) {
+    // After the first login the tenant brand is cached, so cold starts show the
+    // tenant's own splash. AvanaHR is only shown before that first login.
+    final box = GetStorage();
+    final company = box.read<String>(kBrandNameKey);
+    final logo = box.read<String>(kBrandLogoKey);
+    final branded = company != null && company.isNotEmpty;
+
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: SystemUiOverlayStyle.dark.copyWith(
         statusBarColor: Colors.transparent,
@@ -58,12 +67,25 @@ class _SplashViewState extends State<SplashView> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Image.asset(
-                'assets/AvanaHR.png',
-                width: 200.w,
-                fit: BoxFit.contain,
-                semanticLabel: 'AvanaHR',
-              ),
+              if (branded) ...[
+                BrandMark(logoUrl: logo, company: company),
+                SizedBox(height: 18.h),
+                Text(
+                  company,
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 18.sp,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.navy,
+                  ),
+                ),
+              ] else
+                Image.asset(
+                  'assets/AvanaHR.png',
+                  width: 200.w,
+                  fit: BoxFit.contain,
+                  semanticLabel: 'AvanaHR',
+                ),
               SizedBox(height: 44.h),
               SizedBox(
                 width: 26.w,
