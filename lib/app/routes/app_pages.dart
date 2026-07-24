@@ -1,5 +1,7 @@
 import 'package:get/get.dart';
 
+import '../modules/ai_assistant/ai_assistant_binding.dart';
+import '../modules/ai_assistant/ai_assistant_view.dart';
 import '../modules/announcement/announcement_binding.dart';
 import '../modules/announcement/announcement_view.dart';
 import '../modules/dokumen/dokumen_binding.dart';
@@ -212,6 +214,11 @@ class AppPages {
       name: _Paths.DASHBOARD,
       page: () => const DashboardView(),
       binding: DashboardBinding(),
+    ),
+    GetPage(
+      name: _Paths.AI_ASSISTANT,
+      page: () => const AiAssistantView(),
+      binding: AiAssistantBinding(),
     ),
   ];
 }

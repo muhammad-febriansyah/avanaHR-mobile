@@ -783,6 +783,12 @@ class HomeTab extends GetView<HomeController> {
         () => Get.toNamed(Routes.PAYSLIP),
       ),
       _Action(
+        'AI Assistant',
+        Iconsax.magicpen,
+        const Color(0xFF7C3AED),
+        () => Get.toNamed(Routes.AI_ASSISTANT),
+      ),
+      _Action(
         'Cuti',
         Iconsax.sun_1,
         const Color(0xFF22C55E),

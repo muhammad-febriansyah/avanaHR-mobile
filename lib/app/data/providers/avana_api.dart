@@ -2,6 +2,7 @@ import 'package:dio/dio.dart';
 import 'package:get/get.dart' hide Response, FormData, MultipartFile;
 
 import '../models/activity.dart';
+import '../models/ai_models.dart';
 import '../models/app_config.dart';
 import '../models/app_notification.dart';
 import '../models/dashboard.dart';
@@ -710,4 +711,32 @@ class AvanaApi {
       if (reason != null && reason.isNotEmpty) 'reason': reason,
     },
   );
+
+  // ---- AI Assistant ----
+  Future<AiSession> aiSession() async {
+    final res = await _dio.get('/me/ai');
+    return AiSession.fromJson(Map<String, dynamic>.from(res.data));
+  }
+
+  Future<List<AiChatMessage>> aiMessages(int conversationId) async {
+    final res = await _dio.get('/me/ai/conversations/$conversationId');
+    final list = (res.data['messages'] as List?) ?? [];
+    return list
+        .map((e) => AiChatMessage.fromJson(Map<String, dynamic>.from(e)))
+        .toList();
+  }
+
+  /// Sends a message and returns the assistant reply. The model may loop over
+  /// data tools, so this call needs a longer receive window than the default.
+  Future<Response> aiChat(String message, {int? conversationId}) => _dio.post(
+    '/me/ai/chat',
+    data: {
+      'message': message,
+      if (conversationId != null) 'conversation_id': conversationId,
+    },
+    options: Options(receiveTimeout: const Duration(seconds: 90)),
+  );
+
+  Future<void> aiDeleteConversation(int conversationId) =>
+      _dio.delete('/me/ai/conversations/$conversationId');
 }
