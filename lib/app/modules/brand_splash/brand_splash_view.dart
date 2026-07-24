@@ -4,6 +4,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:get/get.dart';
 
 import '../../core/theme/app_colors.dart';
+import '../../core/widgets/brand_mark.dart';
 import '../../data/services/auth_service.dart';
 import '../../routes/app_pages.dart';
 
@@ -35,11 +36,6 @@ class _BrandSplashViewState extends State<BrandSplashView> {
     final logo = user?.tenantLogoUrl;
     final company = user?.tenantName ?? 'AvanaHR';
 
-    // flutter_svg does not render text-based SVGs reliably, so only raster
-    // logos are shown as images; everything else falls back to an initials mark.
-    final showImage =
-        logo != null && logo.isNotEmpty && !logo.toLowerCase().contains('.svg');
-
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: SystemUiOverlayStyle.dark.copyWith(
         statusBarColor: Colors.transparent,
@@ -54,7 +50,7 @@ class _BrandSplashViewState extends State<BrandSplashView> {
             child: Column(
               children: [
                 const Spacer(flex: 5),
-                showImage ? _logoCard(logo) : _initialsMark(company),
+                BrandMark(logoUrl: logo, company: company),
                 SizedBox(height: 22.h),
                 Text(
                   company,
@@ -87,66 +83,6 @@ class _BrandSplashViewState extends State<BrandSplashView> {
               ],
             ),
           ),
-        ),
-      ),
-    );
-  }
-
-  /// A white rounded card holding the tenant's raster logo.
-  Widget _logoCard(String url) {
-    return Container(
-      constraints: BoxConstraints(maxWidth: 220.w, maxHeight: 120.h),
-      padding: EdgeInsets.all(18.w),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20.r),
-        border: Border.all(color: AppColors.border),
-      ),
-      child: Image.network(
-        url,
-        fit: BoxFit.contain,
-        errorBuilder: (_, _, _) => _initialsMark(
-          Get.find<AuthService>().user.value?.tenantName ?? 'AvanaHR',
-        ),
-      ),
-    );
-  }
-
-  /// A brand-coloured rounded badge with the company initials.
-  Widget _initialsMark(String company) {
-    final initials = company
-        .trim()
-        .split(RegExp(r'\s+'))
-        .where((w) => w.isNotEmpty)
-        .take(2)
-        .map((w) => w[0].toUpperCase())
-        .join();
-
-    return Container(
-      width: 84.w,
-      height: 84.w,
-      alignment: Alignment.center,
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [AppColors.primary, AppColors.primaryHover],
-        ),
-        borderRadius: BorderRadius.circular(22.r),
-        boxShadow: [
-          BoxShadow(
-            color: AppColors.primary.withValues(alpha: 0.25),
-            blurRadius: 20,
-            offset: const Offset(0, 8),
-          ),
-        ],
-      ),
-      child: Text(
-        initials.isEmpty ? 'A' : initials,
-        style: TextStyle(
-          color: Colors.white,
-          fontSize: 30.sp,
-          fontWeight: FontWeight.w700,
         ),
       ),
     );

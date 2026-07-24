@@ -10,8 +10,11 @@ import '../providers/avana_api.dart';
 import 'device_service.dart';
 import 'storage_service.dart';
 
-/// GetStorage key for the cached tenant accent colour (applied at cold start).
+/// GetStorage keys for the cached tenant brand (applied at cold start so the
+/// splash is tenant-branded on every launch after the first login).
 const String kBrandAccentKey = 'brand_accent';
+const String kBrandNameKey = 'brand_name';
+const String kBrandLogoKey = 'brand_logo';
 
 /// Holds the authenticated session: the JWT (via StorageService) and the
 /// current [AppUser]. Exposed app-wide as a permanent GetxService.
@@ -69,16 +72,23 @@ class AuthService extends GetxService {
     user.value = null;
 
     // Drop the tenant brand back to the AvanaHR default.
-    GetStorage().remove(kBrandAccentKey);
+    final box = GetStorage();
+    box.remove(kBrandAccentKey);
+    box.remove(kBrandNameKey);
+    box.remove(kBrandLogoKey);
     AppColors.applyBrand(null);
     Get.changeTheme(AppTheme.light);
   }
 
   /// Re-brand the whole app to the signed-in tenant's accent colour and cache
-  /// it so the next cold start applies it before the first frame.
+  /// the brand (accent + name + logo) so the next cold start applies it before
+  /// the first frame and the splash shows the tenant, not AvanaHR.
   void _applyTenantBrand() {
     final hex = user.value?.tenantAccentHex;
-    GetStorage().write(kBrandAccentKey, hex);
+    final box = GetStorage();
+    box.write(kBrandAccentKey, hex);
+    box.write(kBrandNameKey, user.value?.tenantName);
+    box.write(kBrandLogoKey, user.value?.tenantLogoUrl);
     AppColors.applyBrand(hex);
     Get.changeTheme(AppTheme.light);
   }
