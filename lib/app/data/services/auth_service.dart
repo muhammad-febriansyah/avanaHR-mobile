@@ -85,10 +85,15 @@ class AuthService extends GetxService {
   /// the first frame and the splash shows the tenant, not AvanaHR.
   void _applyTenantBrand() {
     final hex = user.value?.tenantAccentHex;
+    final name = user.value?.tenantName;
+    final logo = user.value?.tenantLogoUrl;
     final box = GetStorage();
-    box.write(kBrandAccentKey, hex);
-    box.write(kBrandNameKey, user.value?.tenantName);
-    box.write(kBrandLogoKey, user.value?.tenantLogoUrl);
+    // Only overwrite a cached brand with a real value — never wipe it back to
+    // null if a response is briefly missing the tenant, so the launch splash
+    // stays tenant-branded across cold starts / hot restarts.
+    if (hex != null && hex.isNotEmpty) box.write(kBrandAccentKey, hex);
+    if (name != null && name.isNotEmpty) box.write(kBrandNameKey, name);
+    if (logo != null && logo.isNotEmpty) box.write(kBrandLogoKey, logo);
     AppColors.applyBrand(hex);
     Get.changeTheme(AppTheme.light);
   }

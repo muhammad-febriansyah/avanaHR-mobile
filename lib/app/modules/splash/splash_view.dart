@@ -47,12 +47,20 @@ class _SplashViewState extends State<SplashView> {
 
   @override
   Widget build(BuildContext context) {
-    // After the first login the tenant brand is cached, so cold starts show the
-    // tenant's own splash. AvanaHR is only shown before that first login.
+    // AvanaHR is only the pre-login / onboarding splash. Once there is a session
+    // the launch splash shows the tenant brand — matching the post-login
+    // BrandSplash — so a cold start or hot restart never flips back to AvanaHR.
+    final auth = Get.find<AuthService>();
     final box = GetStorage();
-    final company = box.read<String>(kBrandNameKey);
-    final logo = box.read<String>(kBrandLogoKey);
-    final branded = company != null && company.isNotEmpty;
+    final loggedIn = auth.isLoggedIn;
+    final cachedName = box.read<String>(kBrandNameKey);
+    // Prefer the cached brand (persisted at login); fall back to the live user
+    // if this frame runs before the cache is warm.
+    final company = (cachedName != null && cachedName.isNotEmpty)
+        ? cachedName
+        : (auth.user.value?.tenantName ?? '');
+    final logo =
+        box.read<String>(kBrandLogoKey) ?? auth.user.value?.tenantLogoUrl;
 
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: SystemUiOverlayStyle.dark.copyWith(
@@ -67,18 +75,20 @@ class _SplashViewState extends State<SplashView> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              if (branded) ...[
+              if (loggedIn) ...[
                 BrandMark(logoUrl: logo, company: company),
-                SizedBox(height: 18.h),
-                Text(
-                  company,
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    fontSize: 18.sp,
-                    fontWeight: FontWeight.w700,
-                    color: AppColors.navy,
+                if (company.isNotEmpty) ...[
+                  SizedBox(height: 18.h),
+                  Text(
+                    company,
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontSize: 18.sp,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.navy,
+                    ),
                   ),
-                ),
+                ],
               ] else
                 Image.asset(
                   'assets/AvanaHR.png',
