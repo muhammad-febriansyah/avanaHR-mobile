@@ -10,7 +10,10 @@ class AppUser {
   final Profile? employee;
 
   /// The signed-in user's tenant branding, for white-labelling the app.
+  /// [tenantName] is the legal name ("PT Avanah Digital Teknologi") and
+  /// [tenantBrandName] the short brand ("avanahR") shown above it.
   final String? tenantName;
+  final String? tenantBrandName;
   final String? tenantLogoUrl;
 
   /// The tenant's accent colour (hex) from the web "Tampilan & Tema" theme,
@@ -25,6 +28,7 @@ class AppUser {
     this.avatarUrl,
     this.employee,
     this.tenantName,
+    this.tenantBrandName,
     this.tenantLogoUrl,
     this.tenantAccentHex,
   });
@@ -49,6 +53,7 @@ class AppUser {
       tenantName: tenant is Map
           ? (tenant['company_name'] ?? tenant['name'])?.toString()
           : null,
+      tenantBrandName: tenant is Map ? tenant['name']?.toString() : null,
       tenantLogoUrl: tenant is Map
           ? Env.resolveMedia(tenant['logo_url']?.toString())
           : null,

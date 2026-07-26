@@ -10,6 +10,7 @@ import 'package:iconsax/iconsax.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/utils/formats.dart';
 import '../../../core/widgets/app_page.dart';
+import '../../../core/widgets/tenant_brand_row.dart';
 import '../../../data/models/ess_models.dart';
 import '../../../routes/app_pages.dart';
 import '../../main/main_controller.dart';
@@ -282,6 +283,11 @@ class HomeTab extends GetView<HomeController> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          const TenantBrandRow(),
+          Padding(
+            padding: EdgeInsets.symmetric(vertical: 14.h),
+            child: Divider(height: 1, color: AppColors.border),
+          ),
           Row(
             children: [
               _shiftBadge(),
