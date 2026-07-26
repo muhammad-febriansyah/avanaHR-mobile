@@ -12,6 +12,8 @@
 	</dict>
 	<key>NSCameraUsageDescription</key>
 	<string>Kamera digunakan untuk verifikasi wajah saat absensi.</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>Mikrofon tidak digunakan, izin ini muncul karena modul kamera.</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>Lokasi digunakan untuk memverifikasi Anda berada di area kantor saat absensi.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
@@ -75,5 +77,13 @@
 	<array>
 		<string>UIInterfaceOrientationPortrait</string>
 	</array>
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>remote-notification</string>
+	</array>
+	<!-- App uses only exempt encryption (HTTPS). Skips the export-compliance
+	     questionnaire on every TestFlight upload. -->
+	<key>ITSAppUsesNonExemptEncryption</key>
+	<false/>
 </dict>
 </plist>
