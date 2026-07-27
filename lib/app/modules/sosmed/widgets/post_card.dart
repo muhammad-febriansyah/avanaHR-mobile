@@ -4,6 +4,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:iconsax/iconsax.dart';
 
 import '../../../core/theme/app_colors.dart';
+import '../../../core/utils/relative_time.dart';
 import '../../../data/models/ess_models.dart';
 import '../sosmed_view.dart' show hexColor;
 
@@ -20,6 +21,10 @@ class PostCard extends StatelessWidget {
   /// Opens the detail screen — the whole card is a tap target for it.
   final VoidCallback onOpen;
 
+  /// Set when the card shares its row with others: everything shrinks and the
+  /// body is clamped, because a two-column card is roughly half as wide.
+  final bool compact;
+
   const PostCard({
     super.key,
     required this.post,
@@ -27,6 +32,7 @@ class PostCard extends StatelessWidget {
     required this.onComment,
     required this.onMenu,
     required this.onOpen,
+    this.compact = false,
   });
 
   @override
@@ -46,27 +52,31 @@ class PostCard extends StatelessWidget {
             Row(
               children: [
                 _avatar(),
-                SizedBox(width: 10.w),
+                SizedBox(width: compact ? 8.w : 10.w),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
                         post.author,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                         style: TextStyle(
-                          fontSize: 13.5.sp,
+                          fontSize: (compact ? 12.5 : 13.5).sp,
                           fontWeight: FontWeight.w700,
                           color: AppColors.textPrimary,
                         ),
                       ),
-                      if (post.createdAt != null)
-                        Text(
-                          post.createdAt!.split(' ').first,
-                          style: TextStyle(
-                            fontSize: 11.sp,
-                            color: AppColors.textMuted,
-                          ),
+                      Text(
+                        [
+                          RelativeTime.format(post.createdAt),
+                          if (post.edited) 'diedit',
+                        ].where((part) => part.isNotEmpty).join(' · '),
+                        style: TextStyle(
+                          fontSize: (compact ? 10 : 11).sp,
+                          color: AppColors.textMuted,
                         ),
+                      ),
                     ],
                   ),
                 ),
@@ -93,8 +103,12 @@ class PostCard extends StatelessWidget {
             SizedBox(height: 10.h),
             Text(
               post.body,
+              // Clamped in a lane so one long post cannot stretch its column
+              // far past the others; the detail screen shows all of it.
+              maxLines: compact ? 4 : null,
+              overflow: compact ? TextOverflow.ellipsis : null,
               style: TextStyle(
-                fontSize: 13.5.sp,
+                fontSize: (compact ? 12.5 : 13.5).sp,
                 height: 1.5,
                 color: AppColors.textPrimary,
               ),
@@ -107,7 +121,7 @@ class PostCard extends StatelessWidget {
                 child: CachedNetworkImage(
                   imageUrl: post.imageUrl!,
                   width: double.infinity,
-                  height: 190.h,
+                  height: (compact ? 120 : 190).h,
                   fit: BoxFit.cover,
                   errorWidget: (_, _, _) => const SizedBox.shrink(),
                 ),
@@ -125,7 +139,7 @@ class PostCard extends StatelessWidget {
                       : AppColors.textMuted,
                   onTap: onLike,
                 ),
-                SizedBox(width: 18.w),
+                SizedBox(width: compact ? 12.w : 18.w),
                 _action(
                   icon: Iconsax.message_text,
                   label: '${post.commentsCount}',
@@ -144,15 +158,20 @@ class PostCard extends StatelessWidget {
     final accent = hexColor(post.categoryColor);
 
     return Container(
-      padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 4.h),
+      padding: EdgeInsets.symmetric(
+        horizontal: compact ? 8.w : 10.w,
+        vertical: 4.h,
+      ),
       decoration: BoxDecoration(
         color: accent.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(99.r),
       ),
       child: Text(
         post.category!,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
         style: TextStyle(
-          fontSize: 11.sp,
+          fontSize: (compact ? 10 : 11).sp,
           fontWeight: FontWeight.w700,
           color: accent,
         ),
@@ -192,8 +211,8 @@ class PostCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(99.r),
         child: CachedNetworkImage(
           imageUrl: post.authorPhoto!,
-          width: 38.w,
-          height: 38.w,
+          width: (compact ? 30 : 38).w,
+          height: (compact ? 30 : 38).w,
           fit: BoxFit.cover,
           errorWidget: (_, _, _) => _initials(),
         ),
@@ -205,8 +224,8 @@ class PostCard extends StatelessWidget {
 
   Widget _initials() {
     return Container(
-      width: 38.w,
-      height: 38.w,
+      width: (compact ? 30 : 38).w,
+      height: (compact ? 30 : 38).w,
       alignment: Alignment.center,
       decoration: BoxDecoration(
         color: AppColors.primary.withValues(alpha: 0.12),

@@ -1,11 +1,27 @@
 import 'package:intl/intl.dart';
 
-final _rupiah = NumberFormat.currency(locale: 'id_ID', symbol: 'Rp ', decimalDigits: 0);
+final _rupiah = NumberFormat.currency(
+  locale: 'id_ID',
+  symbol: 'Rp ',
+  decimalDigits: 0,
+);
 
 String formatRupiah(num value) => _rupiah.format(value);
 
 const _months = [
-  '', 'Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des',
+  '',
+  'Jan',
+  'Feb',
+  'Mar',
+  'Apr',
+  'Mei',
+  'Jun',
+  'Jul',
+  'Agu',
+  'Sep',
+  'Okt',
+  'Nov',
+  'Des',
 ];
 
 String monthLabel(int? month, int? year) {
@@ -64,4 +80,5 @@ String formatJam(dynamic value, {String fallback = '-'}) {
 
 /// Format a DateTime that is already the wall-clock we want to show (a picked
 /// date, say) without shifting it into another zone.
-String formatTanggalLokal(DateTime d) => '${d.day} ${_months[d.month]} ${d.year}';
+String formatTanggalLokal(DateTime d) =>
+    '${d.day} ${_months[d.month]} ${d.year}';

@@ -1,5 +1,6 @@
 import 'package:dio/dio.dart';
 import 'package:get/get.dart' hide Response;
+import 'package:get_storage/get_storage.dart';
 
 import '../../core/utils/image_compressor.dart';
 import '../../core/widgets/app_toast.dart';
@@ -24,16 +25,42 @@ class SosmedController extends GetxController {
 
   /// null = "Semua"; otherwise the category being filtered on.
   final activeCategory = Rxn<int>();
+
+  /// How many cards sit side by side. Remembered across launches — a layout
+  /// preference the user set once should not reset every time they open the app.
+  final columns = 2.obs;
+
+  /// `latest` or `trending`.
+  final sort = 'latest'.obs;
   final leaderRange = 'all'.obs;
   final loadingLeaders = false.obs;
 
   int _page = 1;
   bool _hasMore = true;
 
+  static const _columnsKey = 'sosmed_columns';
+
+  final GetStorage _box = GetStorage();
+
   @override
   void onInit() {
     super.onInit();
+    columns.value = (_box.read(_columnsKey) as int?) ?? 2;
     load();
+  }
+
+  void setColumns(int value) {
+    columns.value = value.clamp(1, 3);
+    _box.write(_columnsKey, columns.value);
+  }
+
+  Future<void> setSort(String value) async {
+    if (sort.value == value) {
+      return;
+    }
+
+    sort.value = value;
+    await load();
   }
 
   Future<void> load() async {
@@ -44,7 +71,11 @@ class SosmedController extends GetxController {
     try {
       final results = await Future.wait([
         _api.socialCategories(),
-        _api.socialFeed(page: 1, categoryId: activeCategory.value),
+        _api.socialFeed(
+          page: 1,
+          categoryId: activeCategory.value,
+          sort: sort.value,
+        ),
       ]);
 
       categories.assignAll(results[0] as List<SocialCategoryItem>);
@@ -71,6 +102,7 @@ class SosmedController extends GetxController {
       final feed = await _api.socialFeed(
         page: _page + 1,
         categoryId: activeCategory.value,
+        sort: sort.value,
       );
       posts.addAll(feed.items);
       _page += 1;

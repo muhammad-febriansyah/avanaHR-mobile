@@ -649,11 +649,16 @@ class AvanaApi {
         .toList();
   }
 
-  Future<Paged<SocialPostItem>> socialFeed({int page = 1, int? categoryId}) async {
+  Future<Paged<SocialPostItem>> socialFeed({
+    int page = 1,
+    int? categoryId,
+    String sort = 'latest',
+  }) async {
     final res = await _dio.get(
       '/me/social/feed',
       queryParameters: {
         'page': page,
+        'sort': sort,
         if (categoryId != null) 'category': categoryId,
       },
     );

@@ -64,6 +64,8 @@ class SosmedView extends GetView<SosmedController> {
                 _composerRow(context),
                 SizedBox(height: 14.h),
                 _categoryChips(),
+                SizedBox(height: 12.h),
+                _toolbar(),
                 SizedBox(height: 14.h),
                 if (controller.posts.isEmpty)
                   Padding(
@@ -74,18 +76,7 @@ class SosmedView extends GetView<SosmedController> {
                     ),
                   )
                 else
-                  ...controller.posts.map(
-                    (post) => Padding(
-                      padding: EdgeInsets.only(bottom: 12.h),
-                      child: PostCard(
-                        post: post,
-                        onLike: () => controller.toggleLike(post),
-                        onComment: () => _openDetail(post),
-                        onOpen: () => _openDetail(post),
-                        onMenu: () => _openPostMenu(context, post),
-                      ),
-                    ),
-                  ),
+                  _feed(context),
                 if (controller.isLoadingMore.value)
                   Padding(
                     padding: EdgeInsets.symmetric(vertical: 18.h),
@@ -154,6 +145,135 @@ class SosmedView extends GetView<SosmedController> {
           ],
         ),
       ),
+    );
+  }
+
+  /// Sort tabs on the left, column picker on the right.
+  Widget _toolbar() {
+    return Obx(
+      () => Row(
+        children: [
+          _sortTab('latest', 'Terbaru'),
+          SizedBox(width: 6.w),
+          _sortTab('trending', 'Trending'),
+          const Spacer(),
+          ...[1, 2, 3].map((count) {
+            final selected = controller.columns.value == count;
+
+            return Padding(
+              padding: EdgeInsets.only(left: 6.w),
+              child: GestureDetector(
+                onTap: () => controller.setColumns(count),
+                behavior: HitTestBehavior.opaque,
+                child: Container(
+                  width: 30.w,
+                  height: 30.w,
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(
+                    color: selected
+                        ? AppColors.primary.withValues(alpha: 0.12)
+                        : AppColors.surface,
+                    borderRadius: BorderRadius.circular(8.r),
+                  ),
+                  child: Icon(
+                    count == 1
+                        ? Iconsax.row_vertical
+                        : count == 2
+                        ? Iconsax.element_3
+                        : Iconsax.element_4,
+                    size: 15.sp,
+                    color: selected ? AppColors.primary : AppColors.textMuted,
+                  ),
+                ),
+              ),
+            );
+          }),
+        ],
+      ),
+    );
+  }
+
+  Widget _sortTab(String value, String label) {
+    final selected = controller.sort.value == value;
+
+    return GestureDetector(
+      onTap: () => controller.setSort(value),
+      behavior: HitTestBehavior.opaque,
+      child: Container(
+        padding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 7.h),
+        decoration: BoxDecoration(
+          color: selected ? AppColors.primary : AppColors.surface,
+          borderRadius: BorderRadius.circular(99.r),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            fontSize: 12.sp,
+            fontWeight: FontWeight.w600,
+            color: selected ? Colors.white : AppColors.textMuted,
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// One column, or a masonry of two or three.
+  ///
+  /// Cards differ in height — a photo post is far taller than a one-liner — so
+  /// a GridView with a fixed aspect ratio would leave ragged gaps. Dealing the
+  /// posts round-robin into N columns keeps them tight without pulling in a
+  /// staggered-grid package.
+  Widget _feed(BuildContext context) {
+    final columns = controller.columns.value;
+    final posts = controller.posts;
+
+    if (columns == 1) {
+      return Column(
+        children: posts
+            .map(
+              (post) => Padding(
+                padding: EdgeInsets.only(bottom: 12.h),
+                child: _card(context, post, compact: false),
+              ),
+            )
+            .toList(),
+      );
+    }
+
+    final lanes = List.generate(columns, (_) => <Widget>[]);
+
+    for (var i = 0; i < posts.length; i++) {
+      lanes[i % columns].add(
+        Padding(
+          padding: EdgeInsets.only(bottom: 10.h),
+          child: _card(context, posts[i], compact: true),
+        ),
+      );
+    }
+
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        for (var i = 0; i < columns; i++) ...[
+          if (i > 0) SizedBox(width: 10.w),
+          Expanded(child: Column(children: lanes[i])),
+        ],
+      ],
+    );
+  }
+
+  Widget _card(
+    BuildContext context,
+    SocialPostItem post, {
+    required bool compact,
+  }) {
+    return PostCard(
+      post: post,
+      compact: compact,
+      onLike: () => controller.toggleLike(post),
+      onComment: () => _openDetail(post),
+      onOpen: () => _openDetail(post),
+      onMenu: () => _openPostMenu(context, post),
     );
   }
 

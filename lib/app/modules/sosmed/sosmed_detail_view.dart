@@ -7,6 +7,7 @@ import 'package:iconsax/iconsax.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/widgets/app_page.dart';
 import '../../core/widgets/ui.dart';
+import '../../core/utils/relative_time.dart';
 import '../../data/models/ess_models.dart';
 import 'sosmed_controller.dart';
 import 'sosmed_view.dart' show hexColor;
@@ -200,10 +201,9 @@ class _SosmedDetailViewState extends State<SosmedDetailView> {
                     ),
                     Text(
                       [
-                        if (post.createdAt != null)
-                          post.createdAt!.split(' ').first,
+                        RelativeTime.format(post.createdAt),
                         if (post.edited) 'diedit',
-                      ].join(' · '),
+                      ].where((part) => part.isNotEmpty).join(' · '),
                       style: TextStyle(
                         fontSize: 11.sp,
                         color: AppColors.textMuted,
