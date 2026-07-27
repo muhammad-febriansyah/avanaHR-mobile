@@ -466,13 +466,21 @@ class AvanaApi {
         .toList();
   }
 
+  /// Overtime is filed as a range; the server derives the hours from it, so
+  /// the app never sends a total of its own.
   Future<Response> submitOvertime({
     required String date,
-    required double hours,
+    required String startTime,
+    required String endTime,
     String? reason,
   }) => _dio.post(
     '/me/overtime',
-    data: {'date': date, 'hours': hours, if (reason != null) 'reason': reason},
+    data: {
+      'date': date,
+      'start_time': startTime,
+      'end_time': endTime,
+      if (reason != null) 'reason': reason,
+    },
   );
 
   // ---- Permission (izin) ----

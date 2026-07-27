@@ -40,14 +40,16 @@ class OvertimeController extends GetxController {
 
   Future<bool> submit({
     required String date,
-    required double hours,
+    required String startTime,
+    required String endTime,
     String? reason,
   }) async {
     submitting.value = true;
     try {
       final res = await _api.submitOvertime(
         date: date,
-        hours: hours,
+        startTime: startTime,
+        endTime: endTime,
         reason: reason,
       );
       submitting.value = false;

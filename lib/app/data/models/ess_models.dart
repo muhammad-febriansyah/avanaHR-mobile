@@ -215,6 +215,9 @@ class OvertimeItem {
   final int id;
   final String date;
   final double hours;
+
+  /// "18:00 – 20:00", or null for requests filed before overtime became a range.
+  final String? timeRange;
   final String? reason;
   final String status;
 
@@ -222,6 +225,7 @@ class OvertimeItem {
     required this.id,
     required this.date,
     required this.hours,
+    this.timeRange,
     required this.status,
     this.reason,
   });
@@ -230,6 +234,7 @@ class OvertimeItem {
     id: j['id'],
     date: fmtDate(j['date']),
     hours: (j['hours'] ?? 0).toDouble(),
+    timeRange: j['time_range'] as String?,
     reason: j['reason'],
     status: j['status'] ?? '',
   );

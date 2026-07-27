@@ -81,7 +81,9 @@ class OvertimeView extends GetView<OvertimeController> {
                                         CrossAxisAlignment.start,
                                     children: [
                                       Text(
-                                        '${o.hours} jam',
+                                        o.timeRange != null
+                                            ? '${o.hours} jam · ${o.timeRange}'
+                                            : '${o.hours} jam',
                                         style: TextStyle(
                                           fontWeight: FontWeight.w700,
                                           color: AppColors.navy,
@@ -130,7 +132,8 @@ class OvertimeView extends GetView<OvertimeController> {
 
   void _openSheet(BuildContext context) {
     final date = Rxn<DateTime>();
-    final hoursC = TextEditingController();
+    final startTime = RxnString();
+    final endTime = RxnString();
     final reasonC = TextEditingController();
     final now = DateTime.now();
     String fmt(DateTime d) =>
@@ -157,16 +160,55 @@ class OvertimeView extends GetView<OvertimeController> {
               ),
             ),
             SizedBox(height: 14.h),
-            AppTextField(
-              controller: hoursC,
-              label: 'Jumlah Jam',
-              hint: '0',
-              icon: Iconsax.clock,
-              keyboardType: const TextInputType.numberWithOptions(
-                decimal: true,
-              ),
-              required: true,
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  child: Obx(
+                    () => AppTimeField(
+                      label: 'Jam Mulai',
+                      value: startTime.value,
+                      onPick: (v) => startTime.value = v,
+                      required: true,
+                    ),
+                  ),
+                ),
+                SizedBox(width: 12.w),
+                Expanded(
+                  child: Obx(
+                    () => AppTimeField(
+                      label: 'Jam Selesai',
+                      value: endTime.value,
+                      onPick: (v) => endTime.value = v,
+                      required: true,
+                    ),
+                  ),
+                ),
+              ],
             ),
+            Obx(() {
+              final hours = _hoursBetween(startTime.value, endTime.value);
+              if (hours == null) {
+                return const SizedBox.shrink();
+              }
+
+              final tooLong = hours > 12 || hours < 0.5;
+
+              return Padding(
+                padding: EdgeInsets.only(top: 8.h),
+                child: Text(
+                  tooLong
+                      ? 'Durasi ${_trim(hours)} jam — di luar batas 0,5–12 jam'
+                      : 'Durasi ${_trim(hours)} jam',
+                  style: TextStyle(
+                    fontSize: 12.sp,
+                    color: tooLong
+                        ? AppColors.destructive
+                        : AppColors.textMuted,
+                  ),
+                ),
+              );
+            }),
             SizedBox(height: 14.h),
             AppTextField(
               controller: reasonC,
@@ -180,14 +222,27 @@ class OvertimeView extends GetView<OvertimeController> {
               () => AppSubmitButton(
                 loading: controller.submitting.value,
                 onPressed: () async {
-                  final hours = double.tryParse(hoursC.text.trim());
-                  if (date.value == null || hours == null || hours <= 0) {
-                    AppToast.warning('Lengkapi tanggal & jam.');
+                  final start = startTime.value;
+                  final end = endTime.value;
+
+                  if (date.value == null || start == null || end == null) {
+                    AppToast.warning('Lengkapi tanggal, jam mulai & selesai.');
                     return;
                   }
+
+                  final hours = _hoursBetween(start, end);
+
+                  if (hours == null || hours < 0.5 || hours > 12) {
+                    AppToast.warning(
+                      'Durasi lembur harus antara 0,5 dan 12 jam.',
+                    );
+                    return;
+                  }
+
                   final ok = await controller.submit(
                     date: fmt(date.value!),
-                    hours: hours,
+                    startTime: start,
+                    endTime: end,
                     reason: reasonC.text.trim().isEmpty
                         ? null
                         : reasonC.text.trim(),
@@ -202,3 +257,30 @@ class OvertimeView extends GetView<OvertimeController> {
     );
   }
 }
+
+/// Hours between two `HH:MM` values, mirroring the server: an end at or before
+/// the start means the work ran past midnight, which is the usual shape for
+/// evening overtime.
+double? _hoursBetween(String? start, String? end) {
+  if (start == null || end == null) {
+    return null;
+  }
+
+  final from = start.split(':');
+  final to = end.split(':');
+
+  if (from.length < 2 || to.length < 2) {
+    return null;
+  }
+
+  final startMinutes = int.parse(from[0]) * 60 + int.parse(from[1]);
+  final endMinutes = int.parse(to[0]) * 60 + int.parse(to[1]);
+  final diff = endMinutes - startMinutes;
+
+  return (diff <= 0 ? diff + 24 * 60 : diff) / 60;
+}
+
+/// "2" rather than "2.0", but "2.5" kept intact.
+String _trim(double value) => value == value.roundToDouble()
+    ? value.toInt().toString()
+    : value.toString();
