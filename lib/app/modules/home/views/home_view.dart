@@ -331,12 +331,6 @@ class HomeView extends GetView<HomeController> {
         const Color(0xFF64748B),
       ),
       _Action(
-        'Employee of the Month',
-        Iconsax.star_1,
-        Routes.EOTM,
-        const Color(0xFFF59E0B),
-      ),
-      _Action(
         'Visiting',
         Iconsax.location,
         Routes.VISITING,

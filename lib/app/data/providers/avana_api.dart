@@ -725,8 +725,14 @@ class AvanaApi {
         .toList();
   }
 
-  Future<Response> createSocialComment(int postId, String body) =>
-      _dio.post('/me/social/posts/$postId/comments', data: {'body': body});
+  Future<Response> createSocialComment(
+    int postId,
+    String body, {
+    int? parentId,
+  }) => _dio.post(
+    '/me/social/posts/$postId/comments',
+    data: {'body': body, if (parentId != null) 'parent_id': parentId},
+  );
 
   Future<Response> deleteSocialComment(int id) =>
       _dio.delete('/me/social/comments/$id');

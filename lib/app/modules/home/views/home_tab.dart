@@ -930,12 +930,6 @@ class HomeTab extends GetView<HomeController> {
 
       // ── Sosial ──
       _Action(
-        'Employee of the Month',
-        Iconsax.star_1,
-        const Color(0xFFF59E0B),
-        () => Get.toNamed(Routes.EOTM),
-      ),
-      _Action(
         'Perasaan',
         Iconsax.emoji_happy,
         const Color(0xFF2547F9),

@@ -243,10 +243,15 @@ class SosmedController extends GetxController {
 
   Future<SocialCommentItem?> addComment(
     SocialPostItem post,
-    String body,
-  ) async {
+    String body, {
+    int? parentId,
+  }) async {
     try {
-      final res = await _api.createSocialComment(post.id, body);
+      final res = await _api.createSocialComment(
+        post.id,
+        body,
+        parentId: parentId,
+      );
       post.commentsCount += 1;
       posts.refresh();
 

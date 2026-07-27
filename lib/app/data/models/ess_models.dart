@@ -637,6 +637,13 @@ class SocialCommentItem {
   final bool isMine;
   final String? createdAt;
 
+  /// Null on a top-level comment; the parent's id on a reply.
+  final int? parentId;
+
+  /// Replies under this comment. Threads are one level deep, so a reply never
+  /// carries replies of its own.
+  final List<SocialCommentItem> replies;
+
   SocialCommentItem({
     required this.id,
     required this.body,
@@ -644,6 +651,8 @@ class SocialCommentItem {
     required this.isMine,
     this.authorPhoto,
     this.createdAt,
+    this.parentId,
+    this.replies = const [],
   });
 
   factory SocialCommentItem.fromJson(Map<String, dynamic> j) =>
@@ -654,6 +663,10 @@ class SocialCommentItem {
         authorPhoto: Env.resolveMedia(j['author_photo'] as String?),
         isMine: j['is_mine'] == true,
         createdAt: j['created_at'],
+        parentId: (j['parent_id'] as num?)?.toInt(),
+        replies: ((j['replies'] as List?) ?? [])
+            .map((e) => SocialCommentItem.fromJson(Map<String, dynamic>.from(e)))
+            .toList(),
       );
 }
 

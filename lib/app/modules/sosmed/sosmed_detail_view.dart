@@ -32,11 +32,15 @@ class SosmedDetailView extends StatefulWidget {
 class _SosmedDetailViewState extends State<SosmedDetailView> {
   final SosmedController controller = Get.find<SosmedController>();
   final TextEditingController _input = TextEditingController();
+  final FocusNode _focus = FocusNode();
 
   final Rxn<SocialPostItem> _post = Rxn<SocialPostItem>();
   final RxList<SocialCommentItem> _comments = <SocialCommentItem>[].obs;
   final RxBool _loading = true.obs;
   final RxBool _sending = false.obs;
+
+  /// The comment being replied to, or null for a top-level comment.
+  final Rxn<SocialCommentItem> _replyTo = Rxn<SocialCommentItem>();
 
   @override
   void initState() {
@@ -48,6 +52,7 @@ class _SosmedDetailViewState extends State<SosmedDetailView> {
   @override
   void dispose() {
     _input.dispose();
+    _focus.dispose();
     super.dispose();
   }
 
@@ -143,7 +148,19 @@ class _SosmedDetailViewState extends State<SosmedDetailView> {
                         ),
                       )
                     else
-                      ..._comments.map((c) => _comment(post, c)),
+                      ..._comments.expand(
+                        (c) => [
+                          _comment(post, c),
+                          // Replies sit indented under their parent; threads are
+                          // one level deep so this never nests further.
+                          ...c.replies.map(
+                            (r) => Padding(
+                              padding: EdgeInsets.only(left: 42.w),
+                              child: _comment(post, r, isReply: true),
+                            ),
+                          ),
+                        ],
+                      ),
                   ],
                 ),
               ),
@@ -304,13 +321,17 @@ class _SosmedDetailViewState extends State<SosmedDetailView> {
     );
   }
 
-  Widget _comment(SocialPostItem post, SocialCommentItem comment) {
+  Widget _comment(
+    SocialPostItem post,
+    SocialCommentItem comment, {
+    bool isReply = false,
+  }) {
     return Padding(
       padding: EdgeInsets.only(bottom: 14.h),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _avatar(comment.authorPhoto, comment.author, 32),
+          _avatar(comment.authorPhoto, comment.author, isReply ? 26 : 32),
           SizedBox(width: 10.w),
           Expanded(
             child: Container(
@@ -363,6 +384,22 @@ class _SosmedDetailViewState extends State<SosmedDetailView> {
                       color: AppColors.textPrimary,
                     ),
                   ),
+                  SizedBox(height: 6.h),
+                  GestureDetector(
+                    onTap: () {
+                      _replyTo.value = comment;
+                      _focus.requestFocus();
+                    },
+                    behavior: HitTestBehavior.opaque,
+                    child: Text(
+                      'Balas',
+                      style: TextStyle(
+                        fontSize: 11.5.sp,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.primary,
+                      ),
+                    ),
+                  ),
                 ],
               ),
             ),
@@ -376,63 +413,114 @@ class _SosmedDetailViewState extends State<SosmedDetailView> {
     return Container(
       padding: EdgeInsets.fromLTRB(16.w, 10.h, 16.w, 16.h),
       color: AppColors.background,
-      child: Row(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
         children: [
-          Expanded(
-            child: TextField(
-              controller: _input,
-              style: TextStyle(fontSize: 13.5.sp),
-              decoration: InputDecoration(
-                hintText: 'Tulis komentar…',
-                hintStyle: TextStyle(
-                  fontSize: 13.sp,
-                  color: AppColors.textMuted,
-                ),
-                filled: true,
-                fillColor: AppColors.surface,
-                contentPadding: EdgeInsets.symmetric(
-                  horizontal: 14.w,
-                  vertical: 10.h,
-                ),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(99.r),
-                  borderSide: BorderSide.none,
-                ),
-                enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(99.r),
-                  borderSide: BorderSide.none,
-                ),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(99.r),
-                  borderSide: BorderSide(color: AppColors.primary, width: 1.4),
+          // Without this banner a reply looks identical to a new comment, and
+          // the user cannot tell where it will land.
+          Obx(() {
+            final target = _replyTo.value;
+
+            if (target == null) {
+              return const SizedBox.shrink();
+            }
+
+            return Padding(
+              padding: EdgeInsets.only(bottom: 8.h),
+              child: Row(
+                children: [
+                  Icon(Iconsax.undo, size: 14.sp, color: AppColors.textMuted),
+                  SizedBox(width: 6.w),
+                  Expanded(
+                    child: Text(
+                      'Membalas ${target.author}',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontSize: 12.sp,
+                        color: AppColors.textMuted,
+                      ),
+                    ),
+                  ),
+                  GestureDetector(
+                    onTap: () => _replyTo.value = null,
+                    child: Icon(
+                      Iconsax.close_circle,
+                      size: 16.sp,
+                      color: AppColors.textMuted,
+                    ),
+                  ),
+                ],
+              ),
+            );
+          }),
+          Row(
+            children: [
+              Expanded(
+                child: TextField(
+                  controller: _input,
+                  focusNode: _focus,
+                  style: TextStyle(fontSize: 13.5.sp),
+                  decoration: InputDecoration(
+                    hintText: 'Tulis komentar…',
+                    hintStyle: TextStyle(
+                      fontSize: 13.sp,
+                      color: AppColors.textMuted,
+                    ),
+                    filled: true,
+                    fillColor: AppColors.surface,
+                    contentPadding: EdgeInsets.symmetric(
+                      horizontal: 14.w,
+                      vertical: 10.h,
+                    ),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(99.r),
+                      borderSide: BorderSide.none,
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(99.r),
+                      borderSide: BorderSide.none,
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(99.r),
+                      borderSide: BorderSide(
+                        color: AppColors.primary,
+                        width: 1.4,
+                      ),
+                    ),
+                  ),
                 ),
               ),
-            ),
-          ),
-          SizedBox(width: 8.w),
-          Obx(
-            () => GestureDetector(
-              onTap: _sending.value ? null : () => _send(post),
-              child: Container(
-                width: 42.w,
-                height: 42.w,
-                alignment: Alignment.center,
-                decoration: BoxDecoration(
-                  color: AppColors.primary,
-                  shape: BoxShape.circle,
+              SizedBox(width: 8.w),
+              Obx(
+                () => GestureDetector(
+                  onTap: _sending.value ? null : () => _send(post),
+                  child: Container(
+                    width: 42.w,
+                    height: 42.w,
+                    alignment: Alignment.center,
+                    decoration: BoxDecoration(
+                      color: AppColors.primary,
+                      shape: BoxShape.circle,
+                    ),
+                    child: _sending.value
+                        ? SizedBox(
+                            width: 16.w,
+                            height: 16.w,
+                            child: const CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: Colors.white,
+                            ),
+                          )
+                        : Icon(
+                            Iconsax.send_1,
+                            size: 18.sp,
+                            color: Colors.white,
+                          ),
+                  ),
                 ),
-                child: _sending.value
-                    ? SizedBox(
-                        width: 16.w,
-                        height: 16.w,
-                        child: const CircularProgressIndicator(
-                          strokeWidth: 2,
-                          color: Colors.white,
-                        ),
-                      )
-                    : Icon(Iconsax.send_1, size: 18.sp, color: Colors.white),
               ),
-            ),
+            ],
           ),
         ],
       ),
@@ -446,15 +534,48 @@ class _SosmedDetailViewState extends State<SosmedDetailView> {
       return;
     }
 
+    final target = _replyTo.value;
+
     _sending.value = true;
-    final created = await controller.addComment(post, body);
+    final created = await controller.addComment(
+      post,
+      body,
+      parentId: target?.id,
+    );
     _sending.value = false;
 
-    if (created != null) {
-      _comments.add(created);
-      _input.clear();
-      _post.refresh();
+    if (created == null) {
+      return;
     }
+
+    _input.clear();
+    _replyTo.value = null;
+
+    if (created.parentId == null) {
+      _comments.add(created);
+    } else {
+      // Rebuild the parent with the reply appended: SocialCommentItem holds an
+      // unmodifiable list, and the thread must show the reply immediately.
+      final index = _comments.indexWhere((c) => c.id == created.parentId);
+
+      if (index >= 0) {
+        final parent = _comments[index];
+        _comments[index] = SocialCommentItem(
+          id: parent.id,
+          body: parent.body,
+          author: parent.author,
+          authorPhoto: parent.authorPhoto,
+          isMine: parent.isMine,
+          createdAt: parent.createdAt,
+          parentId: parent.parentId,
+          replies: [...parent.replies, created],
+        );
+      } else {
+        await _load();
+      }
+    }
+
+    _post.refresh();
   }
 
   /// Edit sheet — text and category only. Swapping the photo is left to the
