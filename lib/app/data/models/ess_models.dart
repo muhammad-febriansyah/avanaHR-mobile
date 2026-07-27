@@ -587,9 +587,9 @@ class SocialPostItem {
   final String? createdAt;
   final bool edited;
 
-  /// Set when the post is edited, so the open detail screen updates without a
-  /// round trip through the feed.
-  int? categoryId;
+  /// Which category the post is filed under. `category` carries the name for
+  /// display; this is the id the edit sheet needs to preselect the right chip.
+  final int? categoryId;
 
   SocialPostItem({
     required this.id,
