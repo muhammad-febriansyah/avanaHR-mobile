@@ -157,7 +157,7 @@ class SosmedView extends GetView<SosmedController> {
           SizedBox(width: 6.w),
           _sortTab('trending', 'Trending'),
           const Spacer(),
-          ...[1, 2, 3].map((count) {
+          ...[1, 2].map((count) {
             final selected = controller.columns.value == count;
 
             return Padding(
@@ -176,11 +176,7 @@ class SosmedView extends GetView<SosmedController> {
                     borderRadius: BorderRadius.circular(8.r),
                   ),
                   child: Icon(
-                    count == 1
-                        ? Iconsax.row_vertical
-                        : count == 2
-                        ? Iconsax.element_3
-                        : Iconsax.element_4,
+                    count == 1 ? Iconsax.row_vertical : Iconsax.element_3,
                     size: 15.sp,
                     color: selected ? AppColors.primary : AppColors.textMuted,
                   ),

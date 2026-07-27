@@ -26,8 +26,11 @@ class SosmedController extends GetxController {
   /// null = "Semua"; otherwise the category being filtered on.
   final activeCategory = Rxn<int>();
 
-  /// How many cards sit side by side. Remembered across launches — a layout
-  /// preference the user set once should not reset every time they open the app.
+  /// How many cards sit side by side, one or two. Remembered across launches —
+  /// a layout preference set once should not reset on every open.
+  ///
+  /// Three was tried and dropped: at a third of a phone's width the card's
+  /// author line and category chip overflow.
   final columns = 2.obs;
 
   /// `latest` or `trending`.
@@ -45,12 +48,14 @@ class SosmedController extends GetxController {
   @override
   void onInit() {
     super.onInit();
-    columns.value = (_box.read(_columnsKey) as int?) ?? 2;
+    // clamp, not just a default: anyone who already picked the old 3-column
+    // layout would otherwise stay stuck on it.
+    columns.value = ((_box.read(_columnsKey) as int?) ?? 2).clamp(1, 2);
     load();
   }
 
   void setColumns(int value) {
-    columns.value = value.clamp(1, 3);
+    columns.value = value.clamp(1, 2);
     _box.write(_columnsKey, columns.value);
   }
 
