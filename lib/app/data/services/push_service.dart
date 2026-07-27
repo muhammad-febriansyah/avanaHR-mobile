@@ -38,7 +38,10 @@ class PushService extends GetxService {
     const androidInit = AndroidInitializationSettings('@mipmap/ic_launcher');
     const iosInit = DarwinInitializationSettings();
     await _local.initialize(
-      settings: const InitializationSettings(android: androidInit, iOS: iosInit),
+      settings: const InitializationSettings(
+        android: androidInit,
+        iOS: iosInit,
+      ),
     );
     await _local
         .resolvePlatformSpecificImplementation<
@@ -61,7 +64,9 @@ class PushService extends GetxService {
     FirebaseMessaging.onMessage.listen(_showLocal);
 
     _token = await _fm.getToken();
-    debugPrint('[FCM] getToken => ${_token ?? "NULL (Google Play services missing?)"}');
+    debugPrint(
+      '[FCM] getToken => ${_token ?? "NULL (Google Play services missing?)"}',
+    );
     await registerToken();
   }
 
@@ -82,7 +87,9 @@ class PushService extends GetxService {
     try {
       final device = await Get.find<DeviceService>().current();
       await _api.registerFcmToken(deviceId: device.deviceId, token: token);
-      debugPrint('[FCM] token registered to backend (device ${device.deviceId})');
+      debugPrint(
+        '[FCM] token registered to backend (device ${device.deviceId})',
+      );
     } catch (e) {
       debugPrint('[FCM] registerToken FAILED: $e');
     }

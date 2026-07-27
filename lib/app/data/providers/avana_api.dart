@@ -677,8 +677,7 @@ class AvanaApi {
     final form = FormData.fromMap({
       'body': body,
       if (categoryId != null) 'social_category_id': categoryId,
-      if (imagePath != null)
-        'image': await MultipartFile.fromFile(imagePath),
+      if (imagePath != null) 'image': await MultipartFile.fromFile(imagePath),
     });
 
     return _dio.post('/me/social/posts', data: form);
@@ -767,7 +766,9 @@ class AvanaApi {
   Future<List<EotmNomineeItem>> eotmNominees({String? search}) async {
     final res = await _dio.get(
       '/me/eotm/nominees',
-      queryParameters: {if (search != null && search.isNotEmpty) 'search': search},
+      queryParameters: {
+        if (search != null && search.isNotEmpty) 'search': search,
+      },
     );
     final list = (res.data['data'] as List?) ?? [];
     return list
@@ -779,11 +780,14 @@ class AvanaApi {
     required int nomineeId,
     int? coreValueId,
     String? reason,
-  }) => _dio.post('/me/eotm/vote', data: {
-    'nominee_employee_id': nomineeId,
-    if (coreValueId != null) 'eotm_core_value_id': coreValueId,
-    if (reason != null && reason.isNotEmpty) 'reason': reason,
-  });
+  }) => _dio.post(
+    '/me/eotm/vote',
+    data: {
+      'nominee_employee_id': nomineeId,
+      if (coreValueId != null) 'eotm_core_value_id': coreValueId,
+      if (reason != null && reason.isNotEmpty) 'reason': reason,
+    },
+  );
 
   // ---- SOP ----
   Future<List<SopItem>> sops() async {

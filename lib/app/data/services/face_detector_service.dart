@@ -41,7 +41,10 @@ class FaceDetectorService {
     // partly out of frame) and both eyes open.
     final leftEye = f.leftEyeOpenProbability;
     final rightEye = f.rightEyeOpenProbability;
-    if (leftEye == null || rightEye == null || leftEye < 0.5 || rightEye < 0.5) {
+    if (leftEye == null ||
+        rightEye == null ||
+        leftEye < 0.5 ||
+        rightEye < 0.5) {
       return false;
     }
 

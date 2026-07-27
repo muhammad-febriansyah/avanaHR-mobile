@@ -16,11 +16,13 @@ class LeaveBalance {
   });
 
   factory LeaveBalance.fromJson(Map<String, dynamic> json) => LeaveBalance(
-        leaveType: json['leave_type'],
-        year: (json['year'] ?? 0) is int ? json['year'] : int.tryParse('${json['year']}') ?? 0,
-        entitled: (json['entitled'] ?? 0).toDouble(),
-        used: (json['used'] ?? 0).toDouble(),
-        pending: (json['pending'] ?? 0).toDouble(),
-        available: (json['available'] ?? 0).toDouble(),
-      );
+    leaveType: json['leave_type'],
+    year: (json['year'] ?? 0) is int
+        ? json['year']
+        : int.tryParse('${json['year']}') ?? 0,
+    entitled: (json['entitled'] ?? 0).toDouble(),
+    used: (json['used'] ?? 0).toDouble(),
+    pending: (json['pending'] ?? 0).toDouble(),
+    available: (json['available'] ?? 0).toDouble(),
+  );
 }

@@ -24,14 +24,14 @@ class ShiftDay {
   });
 
   factory ShiftDay.fromJson(Map<String, dynamic> j) => ShiftDay(
-        date: (j['date'] ?? '').toString(),
-        dayLabel: (j['day_label'] ?? '').toString(),
-        dayShort: (j['day_short'] ?? '').toString(),
-        isToday: j['is_today'] == true,
-        isScheduled: j['is_scheduled'] == true,
-        isOff: j['is_off'] == true,
-        shiftName: j['shift_name']?.toString(),
-        start: j['start']?.toString(),
-        end: j['end']?.toString(),
-      );
+    date: (j['date'] ?? '').toString(),
+    dayLabel: (j['day_label'] ?? '').toString(),
+    dayShort: (j['day_short'] ?? '').toString(),
+    isToday: j['is_today'] == true,
+    isScheduled: j['is_scheduled'] == true,
+    isOff: j['is_off'] == true,
+    shiftName: j['shift_name']?.toString(),
+    start: j['start']?.toString(),
+    end: j['end']?.toString(),
+  );
 }

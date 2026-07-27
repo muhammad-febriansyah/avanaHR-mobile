@@ -14,12 +14,12 @@ class AppNotification {
   });
 
   AppNotification copyWith({bool? isRead}) => AppNotification(
-        id: id,
-        type: type,
-        payload: payload,
-        isRead: isRead ?? this.isRead,
-        createdAt: createdAt,
-      );
+    id: id,
+    type: type,
+    payload: payload,
+    isRead: isRead ?? this.isRead,
+    createdAt: createdAt,
+  );
 
   /// Best-effort human title from the notification payload.
   String get title {
@@ -28,10 +28,13 @@ class AppNotification {
     return type.replaceAll('.', ' ');
   }
 
-  factory AppNotification.fromJson(Map<String, dynamic> json) => AppNotification(
+  factory AppNotification.fromJson(Map<String, dynamic> json) =>
+      AppNotification(
         id: json['id'],
         type: json['type'] ?? '',
-        payload: json['payload'] is Map ? Map<String, dynamic>.from(json['payload']) : {},
+        payload: json['payload'] is Map
+            ? Map<String, dynamic>.from(json['payload'])
+            : {},
         isRead: json['is_read'] ?? false,
         createdAt: json['created_at'],
       );

@@ -44,9 +44,14 @@ class ApiClient extends GetxService {
   }
 
   /// Extract a friendly message from an error-shaped response body.
-  static String messageFrom(Response? response, [String fallback = 'Terjadi kesalahan.']) {
+  static String messageFrom(
+    Response? response, [
+    String fallback = 'Terjadi kesalahan.',
+  ]) {
     final data = response?.data;
-    if (data is Map && data['message'] is String && (data['message'] as String).isNotEmpty) {
+    if (data is Map &&
+        data['message'] is String &&
+        (data['message'] as String).isNotEmpty) {
       return data['message'] as String;
     }
     return fallback;

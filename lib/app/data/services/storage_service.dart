@@ -26,7 +26,9 @@ class StorageService extends GetxService {
   Future<void> clearToken() => _box.remove(_kToken);
   Future<void> setOnboarded() => _box.write(_kOnboarded, true);
   Future<void> clearOnboarded() => _box.remove(_kOnboarded);
-  Future<void> saveRememberedEmail(String email) => _box.write(_kRememberEmail, email);
+  Future<void> saveRememberedEmail(String email) =>
+      _box.write(_kRememberEmail, email);
   Future<void> clearRememberedEmail() => _box.remove(_kRememberEmail);
-  Future<void> setMoodPromptDate(String date) => _box.write(_kMoodPromptDate, date);
+  Future<void> setMoodPromptDate(String date) =>
+      _box.write(_kMoodPromptDate, date);
 }

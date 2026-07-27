@@ -409,8 +409,22 @@ class _SosmedDetailViewState extends State<SosmedDetailView> {
                     ],
                   ),
                   SizedBox(height: 3.h),
-                  Text(
-                    comment.body,
+                  // The name leads the text rather than sitting above it, so a
+                  // reply reads as a sentence addressed to someone.
+                  Text.rich(
+                    TextSpan(
+                      children: [
+                        if (comment.replyTo != null)
+                          TextSpan(
+                            text: '${comment.replyTo} ',
+                            style: TextStyle(
+                              fontWeight: FontWeight.w700,
+                              color: AppColors.primary,
+                            ),
+                          ),
+                        TextSpan(text: comment.body),
+                      ],
+                    ),
                     style: TextStyle(
                       fontSize: 13.sp,
                       height: 1.45,

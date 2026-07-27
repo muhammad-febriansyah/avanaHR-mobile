@@ -21,7 +21,8 @@ class AppConfig {
     final contact = json['contact'] is Map ? json['contact'] as Map : const {};
     return AppConfig(
       siteName: (json['site_name'] ?? 'AvanaHR').toString(),
-      tagline: (json['tagline'] ?? 'Advancing People, Empowering Growth').toString(),
+      tagline: (json['tagline'] ?? 'Advancing People, Empowering Growth')
+          .toString(),
       logoUrl: Env.resolveMedia(json['logo_url'] as String?),
       faviconUrl: Env.resolveMedia(json['favicon_url'] as String?),
       contactEmail: contact['email'],

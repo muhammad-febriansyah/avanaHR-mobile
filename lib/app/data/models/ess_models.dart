@@ -640,6 +640,10 @@ class SocialCommentItem {
   /// Null on a top-level comment; the parent's id on a reply.
   final int? parentId;
 
+  /// Whose comment this answers, set only when the indent cannot say — a reply
+  /// to a reply sits beside the one it answers, not under it.
+  final String? replyTo;
+
   /// Replies under this comment. Threads are one level deep, so a reply never
   /// carries replies of its own.
   final List<SocialCommentItem> replies;
@@ -652,6 +656,7 @@ class SocialCommentItem {
     this.authorPhoto,
     this.createdAt,
     this.parentId,
+    this.replyTo,
     this.replies = const [],
   });
 
@@ -664,8 +669,11 @@ class SocialCommentItem {
         isMine: j['is_mine'] == true,
         createdAt: j['created_at'],
         parentId: (j['parent_id'] as num?)?.toInt(),
+        replyTo: j['reply_to'] as String?,
         replies: ((j['replies'] as List?) ?? [])
-            .map((e) => SocialCommentItem.fromJson(Map<String, dynamic>.from(e)))
+            .map(
+              (e) => SocialCommentItem.fromJson(Map<String, dynamic>.from(e)),
+            )
             .toList(),
       );
 }
