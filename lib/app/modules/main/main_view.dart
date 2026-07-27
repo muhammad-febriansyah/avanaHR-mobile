@@ -76,7 +76,7 @@ class MainView extends GetView<MainController> {
         // the wall is opened many times a day and history only occasionally.
         PersistentTabConfig(
           screen: const SosmedView(),
-          item: _item(Iconsax.people, 'Sosmed'),
+          item: _item(Iconsax.people, 'Ruang Kita'),
         ),
         // Center item (index 2) — rendered as the floating circle by Style 13.
         PersistentTabConfig(

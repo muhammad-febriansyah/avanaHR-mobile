@@ -27,7 +27,7 @@ class SosmedView extends GetView<SosmedController> {
   @override
   Widget build(BuildContext context) {
     return AppPage(
-      title: 'Sosmed',
+      title: 'Ruang Kita',
       subtitle: 'Cerita, ide, dan apresiasi antar karyawan',
       showBack: false,
       actions: [
