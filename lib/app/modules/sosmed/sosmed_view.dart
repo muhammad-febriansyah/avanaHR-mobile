@@ -13,6 +13,7 @@ import '../../core/widgets/app_toast.dart';
 import '../../core/widgets/form_fields.dart';
 import '../../core/widgets/ui.dart';
 import '../../data/models/ess_models.dart';
+import '../../data/services/auth_service.dart';
 import '../../routes/app_pages.dart';
 import 'sosmed_controller.dart';
 import 'sosmed_detail_view.dart';
@@ -36,12 +37,6 @@ class SosmedView extends GetView<SosmedController> {
           () => Get.to(() => const SosmedLeaderboardView()),
         ),
       ],
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => _openCompose(context),
-        backgroundColor: AppColors.primary,
-        icon: const Icon(Iconsax.edit, color: Colors.white),
-        label: const Text('Posting', style: TextStyle(color: Colors.white)),
-      ),
       child: Obx(() {
         if (controller.isLoading.value) {
           return const Loading();
@@ -64,8 +59,10 @@ class SosmedView extends GetView<SosmedController> {
               physics: const AlwaysScrollableScrollPhysics(
                 parent: BouncingScrollPhysics(),
               ),
-              padding: EdgeInsets.fromLTRB(16.w, 12.h, 16.w, 96.h),
+              padding: EdgeInsets.fromLTRB(16.w, 12.h, 16.w, 88.h),
               children: [
+                _composerRow(context),
+                SizedBox(height: 14.h),
                 _categoryChips(),
                 SizedBox(height: 14.h),
                 if (controller.posts.isEmpty)
@@ -108,6 +105,55 @@ class SosmedView extends GetView<SosmedController> {
           ),
         );
       }),
+    );
+  }
+
+  /// The "what's on your mind" row that opens the compose sheet.
+  ///
+  /// This replaced a floating button: the shell already pins the AI shortcut
+  /// bottom-right, and two floating buttons in one corner crowd each other.
+  Widget _composerRow(BuildContext context) {
+    final name = Get.find<AuthService>().user.value?.name ?? '';
+
+    return GestureDetector(
+      onTap: () => _openCompose(context),
+      behavior: HitTestBehavior.opaque,
+      child: Container(
+        padding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 12.h),
+        decoration: BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: BorderRadius.circular(14.r),
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 36.w,
+              height: 36.w,
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                color: AppColors.primary.withValues(alpha: 0.12),
+                shape: BoxShape.circle,
+              ),
+              child: Text(
+                name.isEmpty ? '?' : name.characters.first.toUpperCase(),
+                style: TextStyle(
+                  fontSize: 14.sp,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.primary,
+                ),
+              ),
+            ),
+            SizedBox(width: 12.w),
+            Expanded(
+              child: Text(
+                'Apa yang mau kamu bagikan?',
+                style: TextStyle(fontSize: 13.5.sp, color: AppColors.textMuted),
+              ),
+            ),
+            Icon(Iconsax.gallery, size: 19.sp, color: AppColors.primary),
+          ],
+        ),
+      ),
     );
   }
 
