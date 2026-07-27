@@ -1,3 +1,4 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:get/get.dart';
@@ -156,7 +157,9 @@ class _EmptyState extends StatelessWidget {
               color: AppColors.primary,
               borderRadius: BorderRadius.circular(18.r),
             ),
-            child: Center(child: RobotIcon(size: 32.sp, color: Colors.white)),
+            child: Center(
+              child: RobotIcon(size: 32.sp, color: Colors.white),
+            ),
           ),
         ),
         SizedBox(height: 16.h),
@@ -266,7 +269,7 @@ class _MessageBubble extends StatelessWidget {
           color: isUser ? AppColors.primary : AppColors.surface,
           borderRadius: BorderRadius.circular(13.r),
         ),
-        child: _FormattedText(
+        child: _MessageBody(
           message.content,
           color: isUser ? Colors.white : AppColors.textPrimary,
         ),
@@ -384,7 +387,10 @@ class _Composer extends GetView<AiAssistantController> {
                   ),
                   focusedBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(16.r),
-                    borderSide: BorderSide(color: AppColors.primary, width: 1.5),
+                    borderSide: BorderSide(
+                      color: AppColors.primary,
+                      width: 1.5,
+                    ),
                   ),
                 ),
               ),
@@ -517,6 +523,128 @@ class _HistorySheet extends GetView<AiAssistantController> {
             );
           }),
         ],
+      ),
+    );
+  }
+}
+
+/// Matches a picture the assistant drew.
+///
+/// Only the server's own `/storage/ai-images/` path is accepted: a reply is
+/// model-written text, and a looser pattern would let it point the app at any
+/// host on the internet.
+final _aiImage = RegExp(
+  r'!\[([^\]]*)\]\((https?://[^\s)]+/storage/ai-images/[^\s)]+)\)',
+);
+
+/// A chat bubble's contents: prose, with any generated image rendered inline
+/// where it appeared rather than as a raw markdown link.
+class _MessageBody extends StatelessWidget {
+  final String text;
+  final Color color;
+
+  const _MessageBody(this.text, {required this.color});
+
+  @override
+  Widget build(BuildContext context) {
+    final matches = _aiImage.allMatches(text).toList();
+
+    if (matches.isEmpty) {
+      return _FormattedText(text, color: color);
+    }
+
+    final children = <Widget>[];
+    var cursor = 0;
+
+    void addText(String chunk) {
+      final trimmed = chunk.trim();
+      if (trimmed.isNotEmpty) {
+        children.add(_FormattedText(trimmed, color: color));
+      }
+    }
+
+    for (final match in matches) {
+      addText(text.substring(cursor, match.start));
+      children.add(_AiImage(url: match.group(2)!));
+      cursor = match.end;
+    }
+
+    addText(text.substring(cursor));
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        for (var i = 0; i < children.length; i++) ...[
+          if (i > 0) SizedBox(height: 8.h),
+          children[i],
+        ],
+      ],
+    );
+  }
+}
+
+/// One generated image. Tapping it opens a full-screen view, because a picture
+/// squeezed into a chat bubble is rarely readable at bubble width.
+class _AiImage extends StatelessWidget {
+  final String url;
+
+  const _AiImage({required this.url});
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: () => Get.dialog(
+        Scaffold(
+          backgroundColor: Colors.black,
+          body: Stack(
+            children: [
+              Center(
+                child: InteractiveViewer(
+                  child: CachedNetworkImage(imageUrl: url),
+                ),
+              ),
+              Positioned(
+                top: 40.h,
+                right: 16.w,
+                child: IconButton(
+                  icon: Icon(
+                    Iconsax.close_circle,
+                    color: Colors.white,
+                    size: 28.sp,
+                  ),
+                  onPressed: Get.back,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(12.r),
+        child: CachedNetworkImage(
+          imageUrl: url,
+          width: double.infinity,
+          fit: BoxFit.cover,
+          placeholder: (_, _) => Container(
+            height: 160.h,
+            color: AppColors.surface,
+            alignment: Alignment.center,
+            child: SizedBox(
+              width: 20.w,
+              height: 20.w,
+              child: const CircularProgressIndicator(strokeWidth: 2),
+            ),
+          ),
+          errorWidget: (_, _, _) => Container(
+            height: 90.h,
+            color: AppColors.surface,
+            alignment: Alignment.center,
+            child: Text(
+              'Gambar gagal dimuat',
+              style: TextStyle(fontSize: 12.sp, color: AppColors.textMuted),
+            ),
+          ),
+        ),
       ),
     );
   }
