@@ -64,9 +64,12 @@ class ConnectionDialog extends StatelessWidget {
               children: [
                 Expanded(
                   child: OutlinedButton(
+                    // Filled-muted rather than outlined: same secondary weight
+                    // without drawing a line.
                     style: OutlinedButton.styleFrom(
                       foregroundColor: AppColors.textMuted,
-                      side: BorderSide(color: AppColors.border),
+                      backgroundColor: AppColors.muted,
+                      side: BorderSide.none,
                       minimumSize: Size(0, 46.h),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(12.r),

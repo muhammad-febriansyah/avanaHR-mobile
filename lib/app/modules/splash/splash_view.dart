@@ -2,10 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:get/get.dart';
-import 'package:get_storage/get_storage.dart';
 
 import '../../core/theme/app_colors.dart';
-import '../../core/widgets/brand_mark.dart';
 import '../../data/services/auth_service.dart';
 import '../../data/services/config_service.dart';
 import '../../data/services/storage_service.dart';
@@ -47,21 +45,9 @@ class _SplashViewState extends State<SplashView> {
 
   @override
   Widget build(BuildContext context) {
-    // AvanaHR is only the pre-login / onboarding splash. Once there is a session
-    // the launch splash shows the tenant brand — matching the post-login
-    // BrandSplash — so a cold start or hot restart never flips back to AvanaHR.
-    final auth = Get.find<AuthService>();
-    final box = GetStorage();
-    final loggedIn = auth.isLoggedIn;
-    final cachedName = box.read<String>(kBrandNameKey);
-    // Prefer the cached brand (persisted at login); fall back to the live user
-    // if this frame runs before the cache is warm.
-    final company = (cachedName != null && cachedName.isNotEmpty)
-        ? cachedName
-        : (auth.user.value?.tenantName ?? '');
-    final logo =
-        box.read<String>(kBrandLogoKey) ?? auth.user.value?.tenantLogoUrl;
-
+    // Always AvanaHR, logged in or not: the launch screen is the product's own
+    // identity. Tenant branding still applies once the app is open (the accent
+    // colour and the logo on the Beranda card), just not here.
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: SystemUiOverlayStyle.dark.copyWith(
         statusBarColor: Colors.transparent,
@@ -75,27 +61,12 @@ class _SplashViewState extends State<SplashView> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              if (loggedIn) ...[
-                BrandMark(logoUrl: logo, company: company),
-                if (company.isNotEmpty) ...[
-                  SizedBox(height: 18.h),
-                  Text(
-                    company,
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      fontSize: 18.sp,
-                      fontWeight: FontWeight.w700,
-                      color: AppColors.navy,
-                    ),
-                  ),
-                ],
-              ] else
-                Image.asset(
-                  'assets/AvanaHR.png',
-                  width: 200.w,
-                  fit: BoxFit.contain,
-                  semanticLabel: 'AvanaHR',
-                ),
+              Image.asset(
+                'assets/AvanaHR.png',
+                width: 200.w,
+                fit: BoxFit.contain,
+                semanticLabel: 'AvanaHR',
+              ),
               SizedBox(height: 44.h),
               SizedBox(
                 width: 26.w,

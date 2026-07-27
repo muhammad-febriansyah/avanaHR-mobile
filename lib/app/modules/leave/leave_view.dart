@@ -11,6 +11,7 @@ import '../../core/widgets/filter_chips.dart';
 import '../../core/widgets/form_fields.dart';
 import '../../core/widgets/status_chip.dart';
 import '../../core/widgets/ui.dart';
+import '../../data/models/ess_models.dart';
 import 'leave_controller.dart';
 
 class LeaveView extends GetView<LeaveController> {
@@ -140,9 +141,48 @@ class LeaveView extends GetView<LeaveController> {
     );
   }
 
+  /// One dropdown row: a branched type's name as a muted, non-selectable
+  /// header, and its sub-types indented underneath.
+  Widget _pickerRow(LeavePickerEntry entry) {
+    if (entry.isHeader) {
+      return Text(
+        entry.label.toUpperCase(),
+        style: TextStyle(
+          fontSize: 11.sp,
+          fontWeight: FontWeight.w800,
+          letterSpacing: 0.5,
+          color: AppColors.textMuted,
+        ),
+      );
+    }
+
+    return Padding(
+      padding: EdgeInsets.only(left: entry.isChild ? 12.w : 0),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (entry.isChild) ...[
+            Icon(
+              Iconsax.arrow_right_3,
+              size: 12.sp,
+              color: AppColors.textMuted,
+            ),
+            SizedBox(width: 6.w),
+          ],
+          Text(entry.label),
+        ],
+      ),
+    );
+  }
+
   void _openSheet(BuildContext context) {
-    final typeId =
-        (controller.types.isNotEmpty ? controller.types.first.id : 0).obs;
+    // A branched type is only a header, so the default falls on the first row
+    // the employee is actually allowed to submit.
+    final firstSelectable = leavePickerEntries(
+      controller.types,
+    ).firstWhereOrNull((entry) => !entry.isHeader);
+
+    final typeId = (firstSelectable?.id ?? 0).obs;
     final start = Rxn<DateTime>();
     final end = Rxn<DateTime>();
     final reasonC = TextEditingController();
@@ -159,22 +199,29 @@ class LeaveView extends GetView<LeaveController> {
           children: [
             const SheetHeader('Ajukan Cuti'),
             SizedBox(height: 18.h),
-            Obx(
-              () => AppDropdownField<int>(
+            Obx(() {
+              final entries = leavePickerEntries(controller.types);
+              final selectable = entries.where((e) => !e.isHeader);
+
+              return AppDropdownField<int>(
                 label: 'Jenis Cuti',
                 hint: 'Pilih jenis cuti',
-                value: controller.types.any((t) => t.id == typeId.value)
+                value: selectable.any((e) => e.id == typeId.value)
                     ? typeId.value
                     : null,
-                items: controller.types
+                items: entries
                     .map(
-                      (t) => DropdownMenuItem(value: t.id, child: Text(t.name)),
+                      (entry) => DropdownMenuItem(
+                        value: entry.id,
+                        enabled: !entry.isHeader,
+                        child: _pickerRow(entry),
+                      ),
                     )
                     .toList(),
                 onChanged: (v) => typeId.value = v ?? 0,
                 required: true,
-              ),
-            ),
+              );
+            }),
             SizedBox(height: 14.h),
             Row(
               children: [

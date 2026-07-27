@@ -40,6 +40,41 @@ class Paged<T> {
   }
 }
 
+/// A sub-type under a leave type. It has no quota of its own — the days come
+/// off the parent's balance — and `subLimit` optionally caps how many of them
+/// it may take in a year.
+class LeaveSubType {
+  final int id;
+  final String code;
+  final String name;
+  final int? subLimit;
+  final bool requiresAttachment;
+
+  LeaveSubType({
+    required this.id,
+    required this.code,
+    required this.name,
+    required this.requiresAttachment,
+    this.subLimit,
+  });
+
+  factory LeaveSubType.fromJson(Map<String, dynamic> j) => LeaveSubType(
+    id: j['id'],
+    code: j['code'] ?? '',
+    name: j['name'] ?? '',
+    subLimit: j['sub_limit'] == null
+        ? null
+        : (j['sub_limit'] is int
+              ? j['sub_limit']
+              : int.tryParse('${j['sub_limit']}')),
+    requiresAttachment: j['requires_attachment'] ?? false,
+  );
+
+  /// Name with its yearly cap, e.g. "Cuti Bersama (maks 3 hari)".
+  String get pickerLabel =>
+      subLimit == null ? name : '$name (maks $subLimit hari)';
+}
+
 class LeaveType {
   final int id;
   final String code;
@@ -47,12 +82,16 @@ class LeaveType {
   final int defaultQuota;
   final bool requiresAttachment;
 
+  /// Sub-types sharing this type's quota. Empty for an unbranched type.
+  final List<LeaveSubType> children;
+
   LeaveType({
     required this.id,
     required this.code,
     required this.name,
     required this.defaultQuota,
     required this.requiresAttachment,
+    this.children = const [],
   });
 
   factory LeaveType.fromJson(Map<String, dynamic> j) => LeaveType(
@@ -63,7 +102,81 @@ class LeaveType {
         ? j['default_quota']
         : int.tryParse('${j['default_quota']}') ?? 0,
     requiresAttachment: j['requires_attachment'] ?? false,
+    children: ((j['children'] as List?) ?? const [])
+        .map((e) => LeaveSubType.fromJson(Map<String, dynamic>.from(e as Map)))
+        .toList(),
   );
+
+  /// A branched type only groups its sub-types; the request must name one of
+  /// them so the sub-caps still apply.
+  bool get isSelectable => children.isEmpty;
+}
+
+/// One row of a leave type picker: either a non-selectable group header or a
+/// choice. Flutter's dropdown has no `<optgroup>`, so the tree is flattened and
+/// headers are rendered as disabled entries.
+class LeavePickerEntry {
+  final int id;
+  final String label;
+  final bool isHeader;
+  final bool isChild;
+  final bool requiresAttachment;
+
+  const LeavePickerEntry({
+    required this.id,
+    required this.label,
+    required this.isHeader,
+    required this.isChild,
+    required this.requiresAttachment,
+  });
+}
+
+/// Flatten leave types for a dropdown: unbranched types stay single rows, and a
+/// branched one becomes a disabled header followed by its sub-types.
+List<LeavePickerEntry> leavePickerEntries(List<LeaveType> types) {
+  final entries = <LeavePickerEntry>[];
+
+  for (final type in types) {
+    if (type.isSelectable) {
+      entries.add(
+        LeavePickerEntry(
+          id: type.id,
+          label: type.name,
+          isHeader: false,
+          isChild: false,
+          requiresAttachment: type.requiresAttachment,
+        ),
+      );
+
+      continue;
+    }
+
+    entries.add(
+      LeavePickerEntry(
+        // Headers are never submitted; the negative id keeps them distinct
+        // from any real leave type id.
+        id: -type.id,
+        label: type.name,
+        isHeader: true,
+        isChild: false,
+        requiresAttachment: false,
+      ),
+    );
+
+    for (final child in type.children) {
+      entries.add(
+        LeavePickerEntry(
+          id: child.id,
+          label: child.pickerLabel,
+          isHeader: false,
+          isChild: true,
+          requiresAttachment: child.requiresAttachment,
+        ),
+      );
+    }
+  }
+
+  return entries;
 }
 
 class LeaveRequestItem {
@@ -200,14 +313,15 @@ class AttendanceCorrectionItem {
     this.reason,
   });
 
-  factory AttendanceCorrectionItem.fromJson(Map<String, dynamic> j) => AttendanceCorrectionItem(
-    id: j['id'],
-    date: fmtDate(j['date']),
-    clockIn: j['requested_clock_in'],
-    clockOut: j['requested_clock_out'],
-    reason: j['reason'],
-    status: j['status'] ?? '',
-  );
+  factory AttendanceCorrectionItem.fromJson(Map<String, dynamic> j) =>
+      AttendanceCorrectionItem(
+        id: j['id'],
+        date: fmtDate(j['date']),
+        clockIn: j['requested_clock_in'],
+        clockOut: j['requested_clock_out'],
+        reason: j['reason'],
+        status: j['status'] ?? '',
+      );
 }
 
 class ReimbursementItem {
@@ -240,6 +354,73 @@ class ReimbursementItem {
       );
 }
 
+/// A PDF or image attached to an announcement. The backend decides whether the
+/// file is previewable via `is_image`, so the app never has to sniff the URL.
+class AnnouncementAttachment {
+  final String url;
+  final String? name;
+  final String? mime;
+  final int size;
+  final bool isImage;
+
+  AnnouncementAttachment({
+    required this.url,
+    required this.size,
+    required this.isImage,
+    this.name,
+    this.mime,
+  });
+
+  /// Returns null when the payload carries no usable file, so callers can just
+  /// null-check the attachment instead of testing the url separately.
+  static AnnouncementAttachment? fromJson(Map<String, dynamic>? j) {
+    if (j == null) {
+      return null;
+    }
+
+    final url = Env.resolveMedia(j['url'] as String?);
+    if (url == null || url.isEmpty) {
+      return null;
+    }
+
+    return AnnouncementAttachment(
+      url: url,
+      name: j['name'],
+      mime: j['mime'],
+      size: (j['size'] ?? 0) is int
+          ? j['size']
+          : int.tryParse('${j['size']}') ?? 0,
+      isImage: j['is_image'] ?? false,
+    );
+  }
+
+  /// Short label for the file kind, e.g. 'PDF' or 'Gambar'.
+  String get kindLabel {
+    if (isImage) {
+      return 'Gambar';
+    }
+
+    final ext = (name ?? '').split('.').last.toUpperCase();
+
+    return ext.isEmpty || ext == (name ?? '').toUpperCase() ? 'Dokumen' : ext;
+  }
+
+  /// Human-readable file size, or '' when the backend did not report one.
+  String get sizeLabel {
+    if (size <= 0) {
+      return '';
+    }
+    if (size >= 1048576) {
+      return '${(size / 1048576).toStringAsFixed(1)} MB';
+    }
+    if (size >= 1024) {
+      return '${(size / 1024).toStringAsFixed(0)} KB';
+    }
+
+    return '$size B';
+  }
+}
+
 class AnnouncementItem {
   final int id;
   final String title;
@@ -247,6 +428,7 @@ class AnnouncementItem {
   final String? category;
   final bool pinned;
   final String? publishedAt;
+  final AnnouncementAttachment? attachment;
 
   AnnouncementItem({
     required this.id,
@@ -255,6 +437,7 @@ class AnnouncementItem {
     this.body,
     this.category,
     this.publishedAt,
+    this.attachment,
   });
 
   factory AnnouncementItem.fromJson(Map<String, dynamic> j) => AnnouncementItem(
@@ -264,6 +447,11 @@ class AnnouncementItem {
     category: j['category'],
     pinned: j['pinned'] ?? false,
     publishedAt: j['published_at'],
+    attachment: AnnouncementAttachment.fromJson(
+      j['attachment'] == null
+          ? null
+          : Map<String, dynamic>.from(j['attachment']),
+    ),
   );
 }
 
@@ -302,6 +490,386 @@ class DocumentItem {
         s.endsWith('.jpeg') ||
         s.endsWith('.png') ||
         s.endsWith('.webp');
+  }
+}
+
+/// A company SOP document the signed-in employee is allowed to read.
+///
+/// Mirrors `Api\SopController@index`. Only documents the server considers
+/// visible for this user ever reach the app, so there is no client-side
+/// visibility check to keep in step.
+class SopItem {
+  final int id;
+  final String title;
+  final String? code;
+  final String category;
+  final String? summary;
+  final String? version;
+  final String visibility;
+  final String? effectiveDate;
+  final String? fileName;
+  final bool hasFile;
+
+  SopItem({
+    required this.id,
+    required this.title,
+    required this.category,
+    required this.visibility,
+    required this.hasFile,
+    this.code,
+    this.summary,
+    this.version,
+    this.effectiveDate,
+    this.fileName,
+  });
+
+  factory SopItem.fromJson(Map<String, dynamic> j) => SopItem(
+    id: j['id'],
+    title: j['title'] ?? '',
+    code: j['code'],
+    category: j['category'] ?? 'Umum',
+    summary: j['summary'],
+    version: j['version'],
+    visibility: j['visibility'] ?? 'public',
+    effectiveDate: j['effective_date'],
+    fileName: j['file_name'],
+    hasFile: j['has_file'] == true,
+  );
+
+  /// "SOP-HR-001 · v1.0" — whichever of the two the document actually carries.
+  String get subtitle => [
+    if ((code ?? '').isNotEmpty) code,
+    if ((version ?? '').isNotEmpty) 'v$version',
+  ].join(' · ');
+}
+
+/// A category chip on the employee social wall.
+class SocialCategoryItem {
+  final int id;
+  final String name;
+  final String icon;
+  final String color;
+  final String? description;
+
+  SocialCategoryItem({
+    required this.id,
+    required this.name,
+    required this.icon,
+    required this.color,
+    this.description,
+  });
+
+  factory SocialCategoryItem.fromJson(Map<String, dynamic> j) =>
+      SocialCategoryItem(
+        id: j['id'],
+        name: j['name'] ?? '',
+        icon: j['icon'] ?? 'sparkles',
+        color: j['color'] ?? '#2F54C9',
+        description: j['description'],
+      );
+}
+
+/// One post on the social wall. `liked` and `likesCount` are mutable so the
+/// like button can flip instantly and roll back if the request fails.
+class SocialPostItem {
+  final int id;
+  final String body;
+  final String? imageUrl;
+  int likesCount;
+  int commentsCount;
+  bool liked;
+  final bool isMine;
+  final String author;
+  final String? authorPhoto;
+  final String? category;
+  final String? categoryIcon;
+  final String? categoryColor;
+  final String? createdAt;
+  final bool edited;
+
+  /// Set when the post is edited, so the open detail screen updates without a
+  /// round trip through the feed.
+  int? categoryId;
+
+  SocialPostItem({
+    required this.id,
+    required this.body,
+    required this.likesCount,
+    required this.commentsCount,
+    required this.liked,
+    required this.isMine,
+    required this.author,
+    this.imageUrl,
+    this.authorPhoto,
+    this.category,
+    this.categoryIcon,
+    this.categoryColor,
+    this.createdAt,
+    this.edited = false,
+    this.categoryId,
+  });
+
+  factory SocialPostItem.fromJson(Map<String, dynamic> j) => SocialPostItem(
+    id: j['id'],
+    body: j['body'] ?? '',
+    imageUrl: Env.resolveMedia(j['image_url'] as String?),
+    likesCount: (j['likes_count'] as num?)?.toInt() ?? 0,
+    commentsCount: (j['comments_count'] as num?)?.toInt() ?? 0,
+    liked: j['liked'] == true,
+    isMine: j['is_mine'] == true,
+    author: j['author'] ?? 'Karyawan',
+    authorPhoto: Env.resolveMedia(j['author_photo'] as String?),
+    category: j['category'],
+    categoryIcon: j['category_icon'],
+    categoryColor: j['category_color'],
+    createdAt: j['created_at'],
+    edited: j['edited'] == true,
+    categoryId: (j['social_category_id'] as num?)?.toInt(),
+  );
+}
+
+/// A comment under a social post.
+class SocialCommentItem {
+  final int id;
+  final String body;
+  final String author;
+  final String? authorPhoto;
+  final bool isMine;
+  final String? createdAt;
+
+  SocialCommentItem({
+    required this.id,
+    required this.body,
+    required this.author,
+    required this.isMine,
+    this.authorPhoto,
+    this.createdAt,
+  });
+
+  factory SocialCommentItem.fromJson(Map<String, dynamic> j) =>
+      SocialCommentItem(
+        id: j['id'],
+        body: j['body'] ?? '',
+        author: j['author'] ?? 'Karyawan',
+        authorPhoto: Env.resolveMedia(j['author_photo'] as String?),
+        isMine: j['is_mine'] == true,
+        createdAt: j['created_at'],
+      );
+}
+
+/// One row of the idea-contributor leaderboard.
+class SocialLeaderItem {
+  final int rank;
+  final int employeeId;
+  final String name;
+  final String? photo;
+  final int posts;
+  final int likes;
+  final int comments;
+  final int points;
+  final bool isMe;
+
+  SocialLeaderItem({
+    required this.rank,
+    required this.employeeId,
+    required this.name,
+    required this.posts,
+    required this.likes,
+    required this.comments,
+    required this.points,
+    required this.isMe,
+    this.photo,
+  });
+
+  factory SocialLeaderItem.fromJson(Map<String, dynamic> j) => SocialLeaderItem(
+    rank: (j['rank'] as num?)?.toInt() ?? 0,
+    employeeId: (j['employee_id'] as num?)?.toInt() ?? 0,
+    name: j['name'] ?? 'Karyawan',
+    photo: Env.resolveMedia(j['photo'] as String?),
+    posts: (j['posts'] as num?)?.toInt() ?? 0,
+    likes: (j['likes'] as num?)?.toInt() ?? 0,
+    comments: (j['comments'] as num?)?.toInt() ?? 0,
+    points: (j['points'] as num?)?.toInt() ?? 0,
+    isMe: j['is_me'] == true,
+  );
+}
+
+/// One month of Employee of the Month voting.
+class EotmPeriodItem {
+  final int id;
+  final String period;
+  final String label;
+  final String? title;
+  final String? description;
+  final String status;
+  final bool isOpen;
+  final String? winner;
+  final int winnerVotes;
+  final int totalVotes;
+
+  EotmPeriodItem({
+    required this.id,
+    required this.period,
+    required this.label,
+    required this.status,
+    required this.isOpen,
+    required this.winnerVotes,
+    required this.totalVotes,
+    this.title,
+    this.description,
+    this.winner,
+  });
+
+  factory EotmPeriodItem.fromJson(Map<String, dynamic> j) => EotmPeriodItem(
+    id: j['id'],
+    period: j['period'] ?? '',
+    label: j['label'] ?? '',
+    title: j['title'],
+    description: j['description'],
+    status: j['status'] ?? 'draft',
+    isOpen: j['is_open'] == true,
+    winner: j['winner'],
+    winnerVotes: (j['winner_votes'] as num?)?.toInt() ?? 0,
+    totalVotes: (j['total_votes'] as num?)?.toInt() ?? 0,
+  );
+}
+
+/// A core value a voter attributes to their nominee.
+class EotmCoreValueItem {
+  final int id;
+  final String name;
+  final String icon;
+  final String color;
+
+  EotmCoreValueItem({
+    required this.id,
+    required this.name,
+    required this.icon,
+    required this.color,
+  });
+
+  factory EotmCoreValueItem.fromJson(Map<String, dynamic> j) =>
+      EotmCoreValueItem(
+        id: j['id'],
+        name: j['name'] ?? '',
+        icon: j['icon'] ?? 'sparkles',
+        color: j['color'] ?? '#7C3AED',
+      );
+}
+
+/// One nominee's standing in the live tally.
+class EotmStandingItem {
+  final int rank;
+  final int employeeId;
+  final String name;
+  final String? photo;
+  final int votes;
+  final int percent;
+  final String? coreValue;
+  final String? coreValueColor;
+
+  EotmStandingItem({
+    required this.rank,
+    required this.employeeId,
+    required this.name,
+    required this.votes,
+    required this.percent,
+    this.photo,
+    this.coreValue,
+    this.coreValueColor,
+  });
+
+  factory EotmStandingItem.fromJson(Map<String, dynamic> j) => EotmStandingItem(
+    rank: (j['rank'] as num?)?.toInt() ?? 0,
+    employeeId: (j['employee_id'] as num?)?.toInt() ?? 0,
+    name: j['name'] ?? 'Karyawan',
+    photo: Env.resolveMedia(j['photo'] as String?),
+    votes: (j['votes'] as num?)?.toInt() ?? 0,
+    percent: (j['percent'] as num?)?.toInt() ?? 0,
+    coreValue: j['core_value'],
+    coreValueColor: j['core_value_color'],
+  );
+}
+
+/// A colleague who can be voted for.
+class EotmNomineeItem {
+  final int id;
+  final String name;
+  final String? employeeNumber;
+  final String? photo;
+
+  EotmNomineeItem({
+    required this.id,
+    required this.name,
+    this.employeeNumber,
+    this.photo,
+  });
+
+  factory EotmNomineeItem.fromJson(Map<String, dynamic> j) => EotmNomineeItem(
+    id: j['id'],
+    name: j['name'] ?? 'Karyawan',
+    employeeNumber: j['employee_number'],
+    photo: Env.resolveMedia(j['photo'] as String?),
+  );
+}
+
+/// The vote this employee already cast, if any.
+class EotmMyVote {
+  final int nomineeEmployeeId;
+  final String? nominee;
+  final int? coreValueId;
+  final String? coreValue;
+  final String? reason;
+
+  EotmMyVote({
+    required this.nomineeEmployeeId,
+    this.nominee,
+    this.coreValueId,
+    this.coreValue,
+    this.reason,
+  });
+
+  factory EotmMyVote.fromJson(Map<String, dynamic> j) => EotmMyVote(
+    nomineeEmployeeId: (j['nominee_employee_id'] as num?)?.toInt() ?? 0,
+    nominee: j['nominee'],
+    coreValueId: (j['core_value_id'] as num?)?.toInt(),
+    coreValue: j['core_value'],
+    reason: j['reason'],
+  );
+}
+
+/// Everything the voting screen needs, fetched in one call.
+class EotmSnapshot {
+  final EotmPeriodItem? period;
+  final EotmMyVote? myVote;
+  final List<EotmCoreValueItem> coreValues;
+  final List<EotmStandingItem> standings;
+
+  EotmSnapshot({
+    required this.coreValues,
+    required this.standings,
+    this.period,
+    this.myVote,
+  });
+
+  factory EotmSnapshot.fromJson(Map<String, dynamic> j) {
+    final period = j['period'];
+    final myVote = j['my_vote'];
+
+    return EotmSnapshot(
+      period: period == null
+          ? null
+          : EotmPeriodItem.fromJson(Map<String, dynamic>.from(period as Map)),
+      myVote: myVote == null
+          ? null
+          : EotmMyVote.fromJson(Map<String, dynamic>.from(myVote as Map)),
+      coreValues: ((j['core_values'] as List?) ?? [])
+          .map((e) => EotmCoreValueItem.fromJson(Map<String, dynamic>.from(e)))
+          .toList(),
+      standings: ((j['standings'] as List?) ?? [])
+          .map((e) => EotmStandingItem.fromJson(Map<String, dynamic>.from(e)))
+          .toList(),
+    );
   }
 }
 

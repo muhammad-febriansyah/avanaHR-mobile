@@ -34,7 +34,9 @@ class RiwayatView extends GetView<RiwayatController> {
     return AppPage(
       title: 'Riwayat Aktivitas',
       subtitle: 'Aktivitas terbaru',
-      showBack: false,
+      // Reached from Menu Cepat now, not a bottom-nav tab, so it needs a way
+      // back.
+      showBack: true,
       child: Obx(() {
         if (controller.isLoading.value) {
           return const Center(child: CircularProgressIndicator());

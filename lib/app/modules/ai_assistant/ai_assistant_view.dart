@@ -6,6 +6,7 @@ import 'package:iconsax/iconsax.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/widgets/app_page.dart';
 import '../../core/widgets/app_sheet.dart';
+import '../../core/widgets/robot_icon.dart';
 import '../../core/widgets/ui.dart';
 import '../../data/models/ai_models.dart';
 import 'ai_assistant_controller.dart';
@@ -152,12 +153,10 @@ class _EmptyState extends StatelessWidget {
             width: 64.w,
             height: 64.w,
             decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [AppColors.primary, Color(0xFF7C3AED)],
-              ),
+              color: AppColors.primary,
               borderRadius: BorderRadius.circular(18.r),
             ),
-            child: Icon(Iconsax.magicpen, color: Colors.white, size: 30.sp),
+            child: Center(child: RobotIcon(size: 32.sp, color: Colors.white)),
           ),
         ),
         SizedBox(height: 16.h),
@@ -190,7 +189,7 @@ class _EmptyState extends StatelessWidget {
               onTap: () => onPick(s),
               child: Row(
                 children: [
-                  Icon(Iconsax.magicpen, size: 17.sp, color: AppColors.primary),
+                  RobotIcon(size: 18.sp, color: AppColors.primary),
                   SizedBox(width: 10.w),
                   Expanded(
                     child: Text(
@@ -252,17 +251,12 @@ class _MessageBubble extends StatelessWidget {
       height: 30.w,
       alignment: Alignment.center,
       decoration: BoxDecoration(
-        gradient: isUser
-            ? null
-            : LinearGradient(colors: [AppColors.primary, Color(0xFF7C3AED)]),
-        color: isUser ? AppColors.primaryLight : null,
+        color: isUser ? AppColors.primaryLight : AppColors.primary,
         borderRadius: BorderRadius.circular(9.r),
       ),
-      child: Icon(
-        isUser ? Iconsax.user : Iconsax.magicpen,
-        size: 15.sp,
-        color: isUser ? AppColors.primary : Colors.white,
-      ),
+      child: isUser
+          ? Icon(Iconsax.user, size: 15.sp, color: AppColors.primary)
+          : RobotIcon(size: 17.sp, color: Colors.white),
     );
 
     final bubble = Flexible(
@@ -309,12 +303,10 @@ class _TypingBubble extends StatelessWidget {
             height: 30.w,
             alignment: Alignment.center,
             decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [AppColors.primary, Color(0xFF7C3AED)],
-              ),
+              color: AppColors.primary,
               borderRadius: BorderRadius.circular(9.r),
             ),
-            child: Icon(Iconsax.magicpen, size: 15.sp, color: Colors.white),
+            child: RobotIcon(size: 17.sp, color: Colors.white),
           ),
           SizedBox(width: 9.w),
           Container(
@@ -364,31 +356,35 @@ class _Composer extends GetView<AiAssistantController> {
           crossAxisAlignment: CrossAxisAlignment.end,
           children: [
             Expanded(
-              child: Container(
-                padding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 2.h),
-                decoration: BoxDecoration(
-                  color: AppColors.surface,
-                  borderRadius: BorderRadius.circular(16.r),
-                  border: Border.all(color: AppColors.border),
-                ),
-                child: TextField(
-                  controller: controller.inputCtrl,
-                  minLines: 1,
-                  maxLines: 5,
-                  textInputAction: TextInputAction.newline,
-                  style: TextStyle(
+              // The field draws its own surface + border. Wrapping it in a
+              // decorated Container would double up: the global
+              // inputDecorationTheme is `filled` with an OutlineInputBorder,
+              // so the box inside the box reads as two stacked inputs.
+              child: TextField(
+                controller: controller.inputCtrl,
+                minLines: 1,
+                maxLines: 5,
+                textInputAction: TextInputAction.newline,
+                style: TextStyle(fontSize: 14.sp, color: AppColors.textPrimary),
+                decoration: InputDecoration(
+                  filled: true,
+                  fillColor: AppColors.surface,
+                  hintText: 'Tulis pertanyaan…',
+                  hintStyle: TextStyle(
                     fontSize: 14.sp,
-                    color: AppColors.textPrimary,
+                    color: AppColors.textMuted,
                   ),
-                  decoration: InputDecoration(
-                    isCollapsed: true,
-                    contentPadding: EdgeInsets.symmetric(vertical: 12.h),
-                    border: InputBorder.none,
-                    hintText: 'Tulis pertanyaan…',
-                    hintStyle: TextStyle(
-                      fontSize: 14.sp,
-                      color: AppColors.textMuted,
-                    ),
+                  contentPadding: EdgeInsets.symmetric(
+                    horizontal: 16.w,
+                    vertical: 13.h,
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(16.r),
+                    borderSide: BorderSide.none,
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(16.r),
+                    borderSide: BorderSide(color: AppColors.primary, width: 1.5),
                   ),
                 ),
               ),

@@ -3,7 +3,6 @@ part of 'app_pages.dart';
 abstract class Routes {
   Routes._();
   static const SPLASH = _Paths.SPLASH;
-  static const BRAND_SPLASH = _Paths.BRAND_SPLASH;
   static const ONBOARDING = _Paths.ONBOARDING;
   static const LOGIN = _Paths.LOGIN;
   static const MAIN = _Paths.MAIN;
@@ -23,6 +22,10 @@ abstract class Routes {
   static const SETTLEMENT_DETAIL = _Paths.SETTLEMENT_DETAIL;
   static const ANNOUNCEMENT = _Paths.ANNOUNCEMENT;
   static const DOKUMEN = _Paths.DOKUMEN;
+  static const SOP = _Paths.SOP;
+  static const SOSMED = _Paths.SOSMED;
+  static const RIWAYAT = _Paths.RIWAYAT;
+  static const EOTM = _Paths.EOTM;
   static const VISITING = _Paths.VISITING;
   static const VISITING_REPORT = _Paths.VISITING_REPORT;
   static const SHIFT_SWAP = _Paths.SHIFT_SWAP;
@@ -40,7 +43,6 @@ abstract class Routes {
 abstract class _Paths {
   _Paths._();
   static const SPLASH = '/splash';
-  static const BRAND_SPLASH = '/brand-splash';
   static const ONBOARDING = '/onboarding';
   static const LOGIN = '/login';
   static const MAIN = '/main';
@@ -60,6 +62,10 @@ abstract class _Paths {
   static const SETTLEMENT_DETAIL = '/settlement/detail';
   static const ANNOUNCEMENT = '/announcement';
   static const DOKUMEN = '/dokumen';
+  static const SOP = '/sop';
+  static const SOSMED = '/sosmed';
+  static const RIWAYAT = '/riwayat';
+  static const EOTM = '/eotm';
   static const VISITING = '/visiting';
   static const VISITING_REPORT = '/visiting/report';
   static const SHIFT_SWAP = '/shift-swap';

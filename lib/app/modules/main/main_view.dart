@@ -5,12 +5,13 @@ import 'package:iconsax/iconsax.dart';
 import 'package:persistent_bottom_nav_bar_v2/persistent_bottom_nav_bar_v2.dart';
 
 import '../../core/theme/app_colors.dart';
+import '../../core/widgets/ai_fab.dart';
 import '../../data/services/connectivity_service.dart';
 import '../announcement/announcement_view.dart';
 import '../attendance/attendance_view.dart';
 import '../home/views/home_tab.dart';
 import '../profile/profile_view.dart';
-import '../riwayat/riwayat_view.dart';
+import '../sosmed/sosmed_view.dart';
 import 'main_controller.dart';
 
 /// App shell: five persistent tabs behind a `persistent_bottom_nav_bar_v2`
@@ -19,6 +20,9 @@ import 'main_controller.dart';
 class MainView extends GetView<MainController> {
   const MainView({super.key});
 
+  /// Nav bar height the floating AI button has to clear.
+  static const double _navBarHeight = 64;
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -26,7 +30,28 @@ class MainView extends GetView<MainController> {
       body: Column(
         children: [
           _offlineBanner(),
-          Expanded(child: _tabView()),
+          Expanded(
+            // The AI shortcut is stacked over the tabs, not handed to
+            // Scaffold.floatingActionButton: this Scaffold owns no
+            // bottomNavigationBar (the persistent bar draws itself), so a
+            // Scaffold FAB would sit under the bar instead of above it.
+            child: Stack(
+              children: [
+                _tabView(),
+                Positioned(
+                  right: 16.w,
+                  bottom: _navBarHeight.h + 28.h,
+                  // Hidden on Absensi: that tab is a full-bleed camera/GPS flow
+                  // where a floating button would sit over the face frame.
+                  child: Obx(
+                    () => controller.tab.value == MainController.attendanceTab
+                        ? const SizedBox.shrink()
+                        : const AiFab(),
+                  ),
+                ),
+              ],
+            ),
+          ),
         ],
       ),
     );
@@ -47,9 +72,11 @@ class MainView extends GetView<MainController> {
           screen: const HomeTab(),
           item: _item(Iconsax.home_2, 'Beranda'),
         ),
+        // Sosmed replaced Riwayat here; Riwayat moved into Menu Cepat, since
+        // the wall is opened many times a day and history only occasionally.
         PersistentTabConfig(
-          screen: const RiwayatView(),
-          item: _item(Iconsax.clock, 'Riwayat'),
+          screen: const SosmedView(),
+          item: _item(Iconsax.people, 'Sosmed'),
         ),
         // Center item (index 2) — rendered as the floating circle by Style 13.
         PersistentTabConfig(

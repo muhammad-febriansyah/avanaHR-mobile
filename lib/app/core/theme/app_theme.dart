@@ -30,17 +30,20 @@ class AppTheme {
           fontWeight: FontWeight.w600,
         ),
       ),
+      // Fields are defined by their fill, not by an outline: the muted ground
+      // already separates them from the white surfaces they sit on. Only focus
+      // draws a line, since that state has to be visible to be usable.
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
         fillColor: AppColors.muted,
         contentPadding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 14.h),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12.r),
-          borderSide: const BorderSide(color: AppColors.border),
+          borderSide: BorderSide.none,
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12.r),
-          borderSide: const BorderSide(color: AppColors.border),
+          borderSide: BorderSide.none,
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12.r),
@@ -67,7 +70,6 @@ class AppTheme {
         elevation: 0,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(16.r),
-          side: const BorderSide(color: AppColors.border),
         ),
       ),
     );

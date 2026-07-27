@@ -6,6 +6,14 @@ import '../modules/announcement/announcement_binding.dart';
 import '../modules/announcement/announcement_view.dart';
 import '../modules/dokumen/dokumen_binding.dart';
 import '../modules/dokumen/dokumen_view.dart';
+import '../modules/sop/sop_binding.dart';
+import '../modules/sop/sop_view.dart';
+import '../modules/eotm/eotm_binding.dart';
+import '../modules/eotm/eotm_view.dart';
+import '../modules/riwayat/riwayat_binding.dart';
+import '../modules/riwayat/riwayat_view.dart';
+import '../modules/sosmed/sosmed_binding.dart';
+import '../modules/sosmed/sosmed_view.dart';
 import '../modules/face_enroll/face_enroll_binding.dart';
 import '../modules/face_enroll/face_enroll_view.dart';
 import '../modules/face_verify/face_verify_binding.dart';
@@ -56,7 +64,6 @@ import '../modules/notification/notification_view.dart';
 import '../modules/onboarding/onboarding_view.dart';
 import '../modules/payslip/payslip_binding.dart';
 import '../modules/payslip/payslip_view.dart';
-import '../modules/brand_splash/brand_splash_view.dart';
 import '../modules/profile/profile_binding.dart';
 import '../modules/profile/profile_view.dart';
 import '../modules/splash/splash_view.dart';
@@ -70,7 +77,6 @@ class AppPages {
 
   static final routes = [
     GetPage(name: _Paths.SPLASH, page: () => const SplashView()),
-    GetPage(name: _Paths.BRAND_SPLASH, page: () => const BrandSplashView()),
     GetPage(name: _Paths.ONBOARDING, page: () => const OnboardingView()),
     GetPage(
       name: _Paths.LOGIN,
@@ -161,6 +167,28 @@ class AppPages {
       name: _Paths.DOKUMEN,
       page: () => const DokumenView(),
       binding: DokumenBinding(),
+    ),
+    GetPage(
+      name: _Paths.SOP,
+      page: () => const SopView(),
+      binding: SopBinding(),
+    ),
+    GetPage(
+      name: _Paths.SOSMED,
+      page: () => const SosmedView(),
+      binding: SosmedBinding(),
+    ),
+    // Riwayat left the bottom nav for Menu Cepat, so it needs a route of its
+    // own now that it is pushed rather than swapped into a tab.
+    GetPage(
+      name: _Paths.RIWAYAT,
+      page: () => const RiwayatView(),
+      binding: RiwayatBinding(),
+    ),
+    GetPage(
+      name: _Paths.EOTM,
+      page: () => const EotmView(),
+      binding: EotmBinding(),
     ),
     GetPage(
       name: _Paths.VISITING,

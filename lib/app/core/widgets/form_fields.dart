@@ -53,8 +53,10 @@ InputDecoration _decoration({
     fillColor: AppColors.muted,
     isDense: true,
     contentPadding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 14.h),
-    border: border(AppColors.border),
-    enabledBorder: border(AppColors.border),
+    // Resting fields carry no outline — the muted fill is the field. Focus is
+    // the one state that has to be visible, so it keeps its brand line.
+    border: border(Colors.transparent),
+    enabledBorder: border(Colors.transparent),
     focusedBorder: border(AppColors.primary, 1.5),
   );
 }
@@ -230,7 +232,6 @@ class AppDateField extends StatelessWidget {
             decoration: BoxDecoration(
               color: AppColors.muted,
               borderRadius: BorderRadius.circular(14.r),
-              border: Border.all(color: AppColors.border),
             ),
             child: Row(
               children: [
@@ -298,7 +299,6 @@ class AppTimeField extends StatelessWidget {
             decoration: BoxDecoration(
               color: AppColors.muted,
               borderRadius: BorderRadius.circular(14.r),
-              border: Border.all(color: AppColors.border),
             ),
             child: Row(
               children: [

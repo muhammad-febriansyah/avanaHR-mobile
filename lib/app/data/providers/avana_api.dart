@@ -306,6 +306,16 @@ class AvanaApi {
     );
   }
 
+  /// Everyone in the tenant celebrating a birthday today. The dashboard only
+  /// carries a preview slice, so the "lihat semua" sheet fetches the full list.
+  Future<List<BirthdayPerson>> birthdays() async {
+    final res = await _dio.get('/me/birthdays');
+
+    return ((res.data['data'] as List?) ?? [])
+        .map((e) => BirthdayPerson.fromJson(Map<String, dynamic>.from(e)))
+        .toList();
+  }
+
   Future<Response> moodToday() => _dio.get('/me/mood');
 
   Future<Response> submitMood(String mood) =>
@@ -628,6 +638,159 @@ class AvanaApi {
       ),
     });
     return _dio.post('/me/documents', data: form);
+  }
+
+  // ---- Social wall ----
+  Future<List<SocialCategoryItem>> socialCategories() async {
+    final res = await _dio.get('/me/social/categories');
+    final list = (res.data['data'] as List?) ?? [];
+    return list
+        .map((e) => SocialCategoryItem.fromJson(Map<String, dynamic>.from(e)))
+        .toList();
+  }
+
+  Future<Paged<SocialPostItem>> socialFeed({int page = 1, int? categoryId}) async {
+    final res = await _dio.get(
+      '/me/social/feed',
+      queryParameters: {
+        'page': page,
+        if (categoryId != null) 'category': categoryId,
+      },
+    );
+
+    return Paged.fromJson(
+      Map<String, dynamic>.from(res.data),
+      SocialPostItem.fromJson,
+    );
+  }
+
+  Future<Response> createSocialPost({
+    required String body,
+    int? categoryId,
+    String? imagePath,
+  }) async {
+    final form = FormData.fromMap({
+      'body': body,
+      if (categoryId != null) 'social_category_id': categoryId,
+      if (imagePath != null)
+        'image': await MultipartFile.fromFile(imagePath),
+    });
+
+    return _dio.post('/me/social/posts', data: form);
+  }
+
+  Future<SocialPostItem> socialPost(int id) async {
+    final res = await _dio.get('/me/social/posts/$id');
+    return SocialPostItem.fromJson(
+      Map<String, dynamic>.from(res.data['data'] as Map),
+    );
+  }
+
+  Future<Response> updateSocialPost({
+    required int id,
+    required String body,
+    int? categoryId,
+    String? imagePath,
+    bool removeImage = false,
+  }) async {
+    final form = FormData.fromMap({
+      'body': body,
+      if (categoryId != null) 'social_category_id': categoryId,
+      if (removeImage) 'remove_image': 1,
+      if (imagePath != null) 'image': await MultipartFile.fromFile(imagePath),
+    });
+
+    return _dio.post('/me/social/posts/$id/update', data: form);
+  }
+
+  Future<Response> reportSocialPost(int id, String? reason) => _dio.post(
+    '/me/social/posts/$id/report',
+    data: {if (reason != null && reason.isNotEmpty) 'reason': reason},
+  );
+
+  Future<Response> deleteSocialPost(int id) =>
+      _dio.delete('/me/social/posts/$id');
+
+  /// Returns `{liked, likes_count}` as the server counted it.
+  Future<Map<String, dynamic>> toggleSocialLike(int id) async {
+    final res = await _dio.post('/me/social/posts/$id/like');
+    return Map<String, dynamic>.from(res.data['data'] as Map);
+  }
+
+  Future<List<SocialCommentItem>> socialComments(int postId) async {
+    final res = await _dio.get('/me/social/posts/$postId/comments');
+    final list = (res.data['data'] as List?) ?? [];
+    return list
+        .map((e) => SocialCommentItem.fromJson(Map<String, dynamic>.from(e)))
+        .toList();
+  }
+
+  Future<Response> createSocialComment(int postId, String body) =>
+      _dio.post('/me/social/posts/$postId/comments', data: {'body': body});
+
+  Future<Response> deleteSocialComment(int id) =>
+      _dio.delete('/me/social/comments/$id');
+
+  Future<List<SocialLeaderItem>> socialLeaderboard({
+    String range = 'all',
+    int limit = 20,
+  }) async {
+    final res = await _dio.get(
+      '/me/social/leaderboard',
+      queryParameters: {'range': range, 'limit': limit},
+    );
+    final list = (res.data['data'] as List?) ?? [];
+    return list
+        .map((e) => SocialLeaderItem.fromJson(Map<String, dynamic>.from(e)))
+        .toList();
+  }
+
+  // ---- Employee of the Month ----
+  Future<EotmSnapshot> eotm() async {
+    final res = await _dio.get('/me/eotm');
+    return EotmSnapshot.fromJson(
+      Map<String, dynamic>.from(res.data['data'] as Map),
+    );
+  }
+
+  Future<List<EotmNomineeItem>> eotmNominees({String? search}) async {
+    final res = await _dio.get(
+      '/me/eotm/nominees',
+      queryParameters: {if (search != null && search.isNotEmpty) 'search': search},
+    );
+    final list = (res.data['data'] as List?) ?? [];
+    return list
+        .map((e) => EotmNomineeItem.fromJson(Map<String, dynamic>.from(e)))
+        .toList();
+  }
+
+  Future<Response> eotmVote({
+    required int nomineeId,
+    int? coreValueId,
+    String? reason,
+  }) => _dio.post('/me/eotm/vote', data: {
+    'nominee_employee_id': nomineeId,
+    if (coreValueId != null) 'eotm_core_value_id': coreValueId,
+    if (reason != null && reason.isNotEmpty) 'reason': reason,
+  });
+
+  // ---- SOP ----
+  Future<List<SopItem>> sops() async {
+    final res = await _dio.get('/me/sop');
+    final list = (res.data['data'] as List?) ?? [];
+    return list
+        .map((e) => SopItem.fromJson(Map<String, dynamic>.from(e)))
+        .toList();
+  }
+
+  /// Raw PDF bytes for one SOP; the server re-checks visibility per record.
+  Future<List<int>> sopPdf(int id) async {
+    final res = await _dio.get<List<int>>(
+      '/me/sop/$id/download',
+      options: Options(responseType: ResponseType.bytes),
+    );
+
+    return res.data ?? <int>[];
   }
 
   // ---- Field visits ----

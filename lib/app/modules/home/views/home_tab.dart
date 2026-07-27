@@ -10,8 +10,11 @@ import 'package:iconsax/iconsax.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/utils/formats.dart';
 import '../../../core/widgets/app_page.dart';
+import '../../../core/widgets/app_sheet.dart';
 import '../../../core/widgets/tenant_brand_row.dart';
+import '../../../data/models/dashboard.dart';
 import '../../../data/models/ess_models.dart';
+import '../../../data/providers/avana_api.dart';
 import '../../../routes/app_pages.dart';
 import '../../main/main_controller.dart';
 import '../controllers/home_controller.dart';
@@ -238,6 +241,7 @@ class HomeTab extends GetView<HomeController> {
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   _managerBanner(),
+                  _birthdays(),
                   // ── Monthly attendance ──
                   _monthlyHeader(),
                   SizedBox(height: 14.h),
@@ -614,6 +618,43 @@ class HomeTab extends GetView<HomeController> {
     );
   }
 
+  // ── Birthdays ───────────────────────────────────────────────────────────────
+
+  /// Today's birthdays inside the employee's own company. Renders nothing on
+  /// the vast majority of days, which is why it sits above the monthly stats:
+  /// when it does appear it is the one thing on the page that expires today.
+  Widget _birthdays() {
+    return Obx(() {
+      final summary = controller.summary.value;
+      final people = summary?.birthdays ?? const <BirthdayPerson>[];
+
+      if (people.isEmpty) {
+        return const SizedBox.shrink();
+      }
+
+      final total = summary?.birthdaysTotal ?? people.length;
+
+      return Padding(
+        padding: EdgeInsets.only(bottom: 28.h),
+        child: Builder(
+          builder: (context) => _BirthdayBanner(
+            people,
+            total: total,
+            // Three names fit on the banner; anyone past that is only reachable
+            // through the sheet, so the tap only exists once it has a purpose.
+            onTap: total > _BirthdayBanner.maxFaces
+                ? () => showAppSheet(
+                    context,
+                    scrollable: true,
+                    child: const _BirthdaySheet(),
+                  )
+                : null,
+          ),
+        ),
+      );
+    });
+  }
+
   // ── Manager banner ──────────────────────────────────────────────────────────
 
   Widget _managerBanner() {
@@ -774,38 +815,14 @@ class HomeTab extends GetView<HomeController> {
     );
   }
 
+  /// Quick-menu order, grouped by the job the employee came to do rather than
+  /// by when each screen was built. The carousel fills left-to-right, so the
+  /// first page holds the things people open weekly (leave, permits, overtime)
+  /// and the tail holds the occasional ones (documents, SOP, mood).
   List<_Action> _allActions() {
     return [
-      _Action(
-        'Perasaan',
-        Iconsax.emoji_happy,
-        const Color(0xFF2547F9),
-        controller.openMoodDialog,
-      ),
-      _Action(
-        'Slip Gaji',
-        Iconsax.receipt_2,
-        const Color(0xFF0891B2),
-        () => Get.toNamed(Routes.PAYSLIP),
-      ),
-      _Action(
-        'AI Assistant',
-        Iconsax.magicpen,
-        const Color(0xFF7C3AED),
-        () => Get.toNamed(Routes.AI_ASSISTANT),
-      ),
-      _Action(
-        'Cuti',
-        Iconsax.sun_1,
-        const Color(0xFF22C55E),
-        () => Get.toNamed(Routes.LEAVE),
-      ),
-      _Action(
-        'Jadwal',
-        Iconsax.calendar_1,
-        const Color(0xFF0D9488),
-        () => Get.toNamed(Routes.SCHEDULE),
-      ),
+      // Manager first: for the few who see it, the dashboard is their landing
+      // point, and it would be buried mid-list otherwise.
       if (controller.isManager)
         _Action(
           'Dasbor',
@@ -813,11 +830,13 @@ class HomeTab extends GetView<HomeController> {
           const Color(0xFF7C3AED),
           () => Get.toNamed(Routes.DASHBOARD),
         ),
+
+      // ── Cuti & izin ──
       _Action(
-        'Lembur',
-        Iconsax.timer_1,
-        const Color(0xFFF59E0B),
-        () => Get.toNamed(Routes.OVERTIME),
+        'Cuti',
+        Iconsax.sun_1,
+        const Color(0xFF22C55E),
+        () => Get.toNamed(Routes.LEAVE),
       ),
       _Action(
         'Izin',
@@ -826,28 +845,30 @@ class HomeTab extends GetView<HomeController> {
         () => Get.toNamed(Routes.PERMISSION),
       ),
       _Action(
-        'Reimburse',
-        Iconsax.wallet_money,
-        const Color(0xFFDB2777),
-        () => Get.toNamed(Routes.REIMBURSEMENT),
-      ),
-      _Action(
-        'Settlement',
-        Iconsax.receipt_2_1,
-        const Color(0xFF2563EB),
-        () => Get.toNamed(Routes.SETTLEMENT),
-      ),
-      _Action(
-        'Uang Muka',
-        Iconsax.wallet_add,
-        const Color(0xFF7C3AED),
-        () => Get.toNamed(Routes.KASBON),
+        'Lembur',
+        Iconsax.timer_1,
+        const Color(0xFFF59E0B),
+        () => Get.toNamed(Routes.OVERTIME),
       ),
       _Action(
         'WFH',
         Iconsax.house,
         const Color(0xFF0EA5E9),
         () => Get.toNamed(Routes.WFH),
+      ),
+
+      // ── Kehadiran & jadwal ──
+      _Action(
+        'Jadwal',
+        Iconsax.calendar_1,
+        const Color(0xFF0D9488),
+        () => Get.toNamed(Routes.SCHEDULE),
+      ),
+      _Action(
+        'Riwayat',
+        Iconsax.clock,
+        const Color(0xFF64748B),
+        () => Get.toNamed(Routes.RIWAYAT),
       ),
       _Action(
         'Koreksi',
@@ -856,11 +877,40 @@ class HomeTab extends GetView<HomeController> {
         () => Get.toNamed(Routes.ATTENDANCE_CORRECTION),
       ),
       _Action(
-        'Dokumen',
-        Iconsax.document_text,
-        const Color(0xFF9333EA),
-        () => Get.toNamed(Routes.DOKUMEN),
+        'Tukar Shift',
+        Iconsax.arrow_swap_horizontal,
+        const Color(0xFF0D9488),
+        () => Get.toNamed(Routes.SHIFT_SWAP),
       ),
+
+      // ── Keuangan ──
+      _Action(
+        'Slip Gaji',
+        Iconsax.receipt_2,
+        const Color(0xFF0891B2),
+        () => Get.toNamed(Routes.PAYSLIP),
+      ),
+      _Action(
+        'Reimburse',
+        Iconsax.wallet_money,
+        const Color(0xFFDB2777),
+        () => Get.toNamed(Routes.REIMBURSEMENT),
+      ),
+      _Action(
+        'Uang Muka',
+        Iconsax.wallet_add,
+        const Color(0xFF7C3AED),
+        () => Get.toNamed(Routes.KASBON),
+      ),
+      // Settlement follows Uang Muka: it is how an advance is closed out.
+      _Action(
+        'Settlement',
+        Iconsax.receipt_2_1,
+        const Color(0xFF2563EB),
+        () => Get.toNamed(Routes.SETTLEMENT),
+      ),
+
+      // ── Lapangan & referensi ──
       _Action(
         'Kunjungan',
         Iconsax.location,
@@ -868,10 +918,28 @@ class HomeTab extends GetView<HomeController> {
         () => Get.toNamed(Routes.VISITING),
       ),
       _Action(
-        'Tukar Shift',
-        Iconsax.arrow_swap_horizontal,
-        const Color(0xFF0D9488),
-        () => Get.toNamed(Routes.SHIFT_SWAP),
+        'Dokumen',
+        Iconsax.document_text,
+        const Color(0xFF9333EA),
+        () => Get.toNamed(Routes.DOKUMEN),
+      ),
+      // SOP is intentionally absent: employees ask the AI assistant instead,
+      // which reads the same documents through its `daftar_sop` / `baca_sop`
+      // tools. Routes.SOP and its module stay wired up so the screen can be
+      // put back by re-adding this entry.
+
+      // ── Sosial ──
+      _Action(
+        'Employee of the Month',
+        Iconsax.star_1,
+        const Color(0xFFF59E0B),
+        () => Get.toNamed(Routes.EOTM),
+      ),
+      _Action(
+        'Perasaan',
+        Iconsax.emoji_happy,
+        const Color(0xFF2547F9),
+        controller.openMoodDialog,
       ),
     ];
   }
@@ -960,6 +1028,16 @@ class HomeTab extends GetView<HomeController> {
               ],
             ),
           ),
+          // No room for a labelled chip on this compact row, so a bare icon
+          // flags that the announcement carries a file.
+          if (a.attachment != null) ...[
+            Icon(
+              a.attachment!.isImage ? Iconsax.gallery : Iconsax.document_text,
+              size: 13.sp,
+              color: AppColors.textMuted,
+            ),
+            SizedBox(width: 6.w),
+          ],
           if (a.publishedAt != null)
             Text(
               formatTanggal(a.publishedAt),
@@ -1203,6 +1281,399 @@ class _DonutPainter extends CustomPainter {
   @override
   bool shouldRepaint(covariant _DonutPainter oldDelegate) =>
       oldDelegate.segments != segments;
+}
+
+/// Today's birthdays, as a warm banner rather than another white card: the
+/// page is a column of work numbers, and this is the one social item on it —
+/// giving it its own colour is what stops it reading as one more stat block.
+///
+/// Up to three faces are stacked like a photo pile; the rest are counted in the
+/// caption, so a company with twenty birthdays still renders one tidy row.
+class _BirthdayBanner extends StatelessWidget {
+  /// The preview slice from the dashboard — capped by the API, so it can be
+  /// shorter than [total].
+  final List<BirthdayPerson> people;
+
+  /// Everyone celebrating today, which is what the headline counts.
+  final int total;
+
+  /// Opens the full list; null when the banner already shows everyone.
+  final VoidCallback? onTap;
+
+  const _BirthdayBanner(this.people, {required this.total, this.onTap});
+
+  /// Warm cream ground and its ink, kept local: these are the only two places
+  /// in the app that need a celebratory palette instead of the brand blue.
+  static const _cream = Color(0xFFFFF6E9);
+  static const _ink = Color(0xFF7C4A03);
+
+  static const maxFaces = 3;
+
+  @override
+  Widget build(BuildContext context) {
+    final faces = people.take(maxFaces).toList();
+
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(20.r),
+      child: Material(
+        color: _cream,
+        child: InkWell(
+          onTap: onTap,
+          child: CustomPaint(
+            painter: const _ConfettiPainter(),
+            child: Padding(
+              padding: EdgeInsets.fromLTRB(16.w, 15.h, 16.w, 15.h),
+              child: Row(
+                children: [
+                SizedBox(
+                  // Each extra face peeks out by 22 of its 44 logical pixels.
+                  width: (44 + (faces.length - 1) * 22).w,
+                  height: 44.w,
+                  child: Stack(
+                    clipBehavior: Clip.none,
+                    children: [
+                      for (var i = faces.length - 1; i >= 0; i--)
+                        Positioned(
+                          left: (i * 22).w,
+                          child: _BirthdayAvatar(
+                            faces[i],
+                            // Only the front face carries the cake, otherwise
+                            // the badges collide with the face behind them.
+                            showCake: i == 0,
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+                  SizedBox(width: 14.w),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          _headline(),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontSize: 14.sp,
+                            fontWeight: FontWeight.w800,
+                            height: 1.25,
+                            color: _ink,
+                          ),
+                        ),
+                        SizedBox(height: 3.h),
+                        Text(
+                          _caption(),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontSize: 11.5.sp,
+                            height: 1.35,
+                            color: _ink.withValues(alpha: 0.72),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  if (onTap != null) ...[
+                    SizedBox(width: 6.w),
+                    Icon(
+                      Iconsax.arrow_right_3,
+                      size: 16.sp,
+                      color: _ink.withValues(alpha: 0.55),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  String _headline() {
+    if (total > 1) {
+      return '$total rekan berulang tahun hari ini';
+    }
+    final person = people.first;
+    return person.isMe
+        ? 'Selamat ulang tahun!'
+        : 'Selamat ulang tahun, ${_firstName(person.name)}!';
+  }
+
+  String _caption() {
+    if (total > 1) {
+      // Counted against `total`, not the preview slice: with 23 celebrants the
+      // API only sends 12, and "+9 lainnya" would be a lie.
+      final shown = people.take(maxFaces).map((p) => _firstName(p.name));
+      final rest = total - shown.length;
+      return rest > 0
+          ? '${shown.join(', ')}, +$rest lainnya'
+          : shown.join(', ');
+    }
+    final person = people.first;
+    return person.isMe
+        ? 'Semoga tahun ini menyenangkan.'
+        : person.role.isEmpty
+        ? person.name
+        : '${person.name} · ${person.role}';
+  }
+
+  static String _firstName(String fullName) {
+    final parts = fullName.trim().split(RegExp(r'\s+'));
+    return parts.isEmpty || parts.first.isEmpty ? fullName : parts.first;
+  }
+}
+
+/// The full birthday list, fetched on open. The dashboard only carries a
+/// preview slice, so this is the only place a big tenant's whole list appears.
+class _BirthdaySheet extends StatefulWidget {
+  const _BirthdaySheet();
+
+  @override
+  State<_BirthdaySheet> createState() => _BirthdaySheetState();
+}
+
+class _BirthdaySheetState extends State<_BirthdaySheet> {
+  late Future<List<BirthdayPerson>> _future;
+
+  @override
+  void initState() {
+    super.initState();
+    _future = Get.find<AvanaApi>().birthdays();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: EdgeInsets.fromLTRB(20.w, 16.h, 20.w, 24.h),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Center(
+            child: Container(
+              width: 40.w,
+              height: 4.h,
+              decoration: BoxDecoration(
+                color: AppColors.border,
+                borderRadius: BorderRadius.circular(99.r),
+              ),
+            ),
+          ),
+          SizedBox(height: 16.h),
+          Text(
+            'Ulang Tahun Hari Ini',
+            style: TextStyle(
+              fontSize: 16.sp,
+              fontWeight: FontWeight.w800,
+              color: AppColors.navy,
+            ),
+          ),
+          SizedBox(height: 14.h),
+          FutureBuilder<List<BirthdayPerson>>(
+            future: _future,
+            builder: (context, snapshot) {
+              if (snapshot.connectionState != ConnectionState.done) {
+                return Padding(
+                  padding: EdgeInsets.symmetric(vertical: 32.h),
+                  child: Center(
+                    child: SizedBox(
+                      width: 24.w,
+                      height: 24.w,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2.4,
+                        color: AppColors.primary,
+                      ),
+                    ),
+                  ),
+                );
+              }
+
+              final people = snapshot.data ?? const <BirthdayPerson>[];
+              if (snapshot.hasError || people.isEmpty) {
+                return Padding(
+                  padding: EdgeInsets.symmetric(vertical: 28.h),
+                  child: Text(
+                    snapshot.hasError
+                        ? 'Gagal memuat daftar. Coba lagi nanti.'
+                        : 'Tidak ada yang berulang tahun hari ini.',
+                    style: TextStyle(
+                      fontSize: 13.sp,
+                      color: AppColors.textMuted,
+                    ),
+                  ),
+                );
+              }
+
+              return Flexible(
+                child: ListView.separated(
+                  shrinkWrap: true,
+                  itemCount: people.length,
+                  separatorBuilder: (_, _) => SizedBox(height: 10.h),
+                  itemBuilder: (context, index) {
+                    final person = people[index];
+                    return Row(
+                      children: [
+                        _BirthdayAvatar(person),
+                        SizedBox(width: 12.w),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                person.isMe ? '${person.name} (Anda)' : person.name,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(
+                                  fontSize: 13.5.sp,
+                                  fontWeight: FontWeight.w700,
+                                  color: AppColors.navy,
+                                ),
+                              ),
+                              if (person.role.isNotEmpty) ...[
+                                SizedBox(height: 1.h),
+                                Text(
+                                  person.role,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: TextStyle(
+                                    fontSize: 11.5.sp,
+                                    color: AppColors.textMuted,
+                                  ),
+                                ),
+                              ],
+                            ],
+                          ),
+                        ),
+                      ],
+                    );
+                  },
+                ),
+              );
+            },
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// A celebrant's photo (or initials) in a white ring, optionally cake-badged.
+class _BirthdayAvatar extends StatelessWidget {
+  final BirthdayPerson person;
+  final bool showCake;
+
+  const _BirthdayAvatar(this.person, {this.showCake = false});
+
+  @override
+  Widget build(BuildContext context) {
+    final size = 44.w;
+
+    return SizedBox(
+      width: size,
+      height: size,
+      child: Stack(
+        clipBehavior: Clip.none,
+        children: [
+          Container(
+            width: size,
+            height: size,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: person.avatarColor,
+              // The ring is what separates overlapping faces from each other.
+              border: Border.all(color: Colors.white, width: 2),
+            ),
+            child: ClipOval(
+              child: person.photoUrl == null
+                  ? _initials()
+                  : Image.network(
+                      person.photoUrl!,
+                      width: size,
+                      height: size,
+                      fit: BoxFit.cover,
+                      errorBuilder: (_, _, _) => _initials(),
+                    ),
+            ),
+          ),
+          if (showCake)
+            Positioned(
+              right: -2.w,
+              bottom: -1.h,
+              child: Container(
+                padding: EdgeInsets.all(3.w),
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: AppColors.warning,
+                  border: Border.all(color: Colors.white, width: 1.5),
+                ),
+                child: Icon(Iconsax.cake, size: 9.sp, color: Colors.white),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _initials() {
+    return Text(
+      person.initials,
+      style: TextStyle(
+        color: Colors.white,
+        fontSize: 14.sp,
+        fontWeight: FontWeight.w700,
+      ),
+    );
+  }
+}
+
+/// Scattered confetti behind the birthday banner — a handful of tilted slivers
+/// and dots. Positions come from a fixed table, not a random source, so the
+/// pattern is identical on every rebuild instead of twitching as the page
+/// repaints.
+class _ConfettiPainter extends CustomPainter {
+  const _ConfettiPainter();
+
+  /// `(x, y)` as a fraction of the banner, tilt in turns, and colour index.
+  static const List<(double, double, double, int)> _pieces = [
+    (0.30, 0.18, 0.10, 0),
+    (0.44, 0.72, 0.35, 1),
+    (0.57, 0.12, 0.62, 2),
+    (0.68, 0.55, 0.18, 0),
+    (0.79, 0.24, 0.44, 1),
+    (0.88, 0.78, 0.08, 2),
+    (0.95, 0.40, 0.55, 0),
+  ];
+
+  static const List<Color> _colors = [
+    Color(0xFFF59E0B),
+    Color(0xFFEC4899),
+    Color(0xFF22C55E),
+  ];
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    for (final (fx, fy, turn, colorIndex) in _pieces) {
+      final paint = Paint()..color = _colors[colorIndex].withValues(alpha: 0.22);
+      canvas.save();
+      canvas.translate(fx * size.width, fy * size.height);
+      canvas.rotate(turn * 2 * math.pi);
+      canvas.drawRRect(
+        RRect.fromRectAndRadius(
+          const Rect.fromLTWH(-3, -1.25, 6, 2.5),
+          const Radius.circular(1.25),
+        ),
+        paint,
+      );
+      canvas.restore();
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _ConfettiPainter oldDelegate) => false;
 }
 
 class _Action {

@@ -1,12 +1,15 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:get/get.dart';
 import 'package:iconsax/iconsax.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../core/theme/app_colors.dart';
 import '../../core/utils/formats.dart';
 import '../../core/widgets/app_page.dart';
 import '../../core/widgets/app_sheet.dart';
+import '../../core/widgets/app_toast.dart';
 import '../../core/widgets/form_fields.dart';
 import '../../core/widgets/ui.dart';
 import '../../data/models/ess_models.dart';
@@ -123,6 +126,11 @@ class AnnouncementView extends GetView<AnnouncementController> {
             children: [
               if (a.category != null && a.category!.isNotEmpty)
                 _categoryChip(a.category!),
+              if (a.attachment != null) ...[
+                if (a.category != null && a.category!.isNotEmpty)
+                  SizedBox(width: 8.w),
+                _attachmentChip(a.attachment!),
+              ],
               const Spacer(),
               if (a.publishedAt != null) ...[
                 Icon(
@@ -189,6 +197,142 @@ class AnnouncementView extends GetView<AnnouncementController> {
         ),
       ),
     );
+  }
+
+  /// Marks on the list card that the announcement carries a file, so the user
+  /// knows the detail sheet has something to open.
+  Widget _attachmentChip(AnnouncementAttachment file) {
+    final size = file.sizeLabel;
+
+    return Container(
+      padding: EdgeInsets.symmetric(horizontal: 9.w, vertical: 4.h),
+      decoration: BoxDecoration(
+        color: _accent.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(8.r),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            file.isImage ? Iconsax.gallery : Iconsax.document_text,
+            size: 11.sp,
+            color: _accent,
+          ),
+          SizedBox(width: 4.w),
+          Text(
+            size.isEmpty ? file.kindLabel : '${file.kindLabel} · $size',
+            style: TextStyle(
+              color: _accent,
+              fontSize: 10.5.sp,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// The attached file inside the detail sheet: images preview inline, anything
+  /// else shows a placeholder. Either way it opens in an external viewer, which
+  /// is also where the user downloads it from.
+  Widget _attachmentBlock(AnnouncementAttachment file) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: EdgeInsets.symmetric(vertical: 16.h),
+          child: Divider(height: 1, color: AppColors.border),
+        ),
+        Text(
+          'Lampiran',
+          style: TextStyle(
+            fontWeight: FontWeight.w700,
+            color: AppColors.navy,
+            fontSize: 13.sp,
+          ),
+        ),
+        SizedBox(height: 10.h),
+        ClipRRect(
+          borderRadius: BorderRadius.circular(14.r),
+          child: file.isImage
+              ? CachedNetworkImage(
+                  imageUrl: file.url,
+                  width: double.infinity,
+                  height: 220.h,
+                  fit: BoxFit.cover,
+                  memCacheHeight: 720,
+                  placeholder: (_, _) =>
+                      Container(height: 220.h, color: AppColors.muted),
+                  errorWidget: (_, _, _) => _previewFallback(
+                    Iconsax.gallery_slash,
+                    'Gambar gagal dimuat',
+                  ),
+                )
+              : _previewFallback(
+                  Iconsax.document_text,
+                  'Berkas ${file.kindLabel}',
+                ),
+        ),
+        SizedBox(height: 10.h),
+        Text(
+          file.sizeLabel.isEmpty
+              ? (file.name ?? file.kindLabel)
+              : '${file.name ?? file.kindLabel} · ${file.sizeLabel}',
+          style: TextStyle(color: AppColors.textMuted, fontSize: 12.sp),
+        ),
+        SizedBox(height: 12.h),
+        AppSubmitButton(
+          label: 'Buka / Unduh',
+          loading: false,
+          onPressed: () => _openAttachment(file),
+        ),
+      ],
+    );
+  }
+
+  Widget _previewFallback(IconData icon, String label) {
+    return Container(
+      width: double.infinity,
+      height: 170.h,
+      color: AppColors.muted,
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(icon, size: 42.sp, color: AppColors.textMuted),
+          SizedBox(height: 10.h),
+          Text(
+            label,
+            style: TextStyle(fontSize: 12.sp, color: AppColors.textMuted),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Hand the file to the OS. Tries an external app first, then an in-app tab,
+  /// so a missing default browser doesn't dead-end the user.
+  Future<void> _openAttachment(AnnouncementAttachment file) async {
+    final uri = Uri.tryParse(file.url);
+    if (uri == null) {
+      AppToast.error('URL lampiran tidak valid.');
+
+      return;
+    }
+
+    for (final mode in const [
+      LaunchMode.externalApplication,
+      LaunchMode.platformDefault,
+    ]) {
+      try {
+        if (await launchUrl(uri, mode: mode)) {
+          return;
+        }
+      } catch (_) {
+        // Try the next launch mode.
+      }
+    }
+
+    AppToast.error('Tidak ada aplikasi untuk membuka lampiran.');
   }
 
   /// Full announcement in a bottom sheet — the card truncates the body, this
@@ -272,6 +416,7 @@ class AnnouncementView extends GetView<AnnouncementController> {
                   ),
                 ),
               ],
+              if (a.attachment != null) _attachmentBlock(a.attachment!),
             ],
           ),
         ),

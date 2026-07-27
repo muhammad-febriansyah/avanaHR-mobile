@@ -322,6 +322,20 @@ class HomeView extends GetView<HomeController> {
         Routes.DOKUMEN,
         const Color(0xFF9333EA),
       ),
+      // SOP dropped here too — employees reach those documents by asking the
+      // AI assistant, which reads them through its `baca_sop` tool.
+      _Action(
+        'Riwayat',
+        Iconsax.clock,
+        Routes.RIWAYAT,
+        const Color(0xFF64748B),
+      ),
+      _Action(
+        'Employee of the Month',
+        Iconsax.star_1,
+        Routes.EOTM,
+        const Color(0xFFF59E0B),
+      ),
       _Action(
         'Visiting',
         Iconsax.location,

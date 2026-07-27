@@ -66,7 +66,8 @@ Widget _dialogButton(
             onPressed: onTap,
             style: OutlinedButton.styleFrom(
               foregroundColor: AppColors.textMuted,
-              side: BorderSide(color: AppColors.border),
+              backgroundColor: AppColors.muted,
+              side: BorderSide.none,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(12.r),
               ),
