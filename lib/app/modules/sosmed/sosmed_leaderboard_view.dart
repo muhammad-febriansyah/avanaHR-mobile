@@ -113,14 +113,19 @@ class SosmedLeaderboardView extends GetView<SosmedController> {
   Widget _rangeChips() {
     return SizedBox(
       height: 34.h,
-      child: Obx(
-        () => ListView.separated(
+      // The active range is read here, in the Obx body: a ListView builds its
+      // items lazily, so an observable touched only inside itemBuilder is read
+      // outside the Obx scope — GetX then reports "improper use of a GetX".
+      child: Obx(() {
+        final active = controller.leaderRange.value;
+
+        return ListView.separated(
           scrollDirection: Axis.horizontal,
           itemCount: _ranges.length,
           separatorBuilder: (_, _) => SizedBox(width: 8.w),
           itemBuilder: (_, i) {
             final (value, label) = _ranges[i];
-            final selected = controller.leaderRange.value == value;
+            final selected = active == value;
 
             return GestureDetector(
               onTap: () => controller.loadLeaderboard(range: value),
@@ -142,8 +147,8 @@ class SosmedLeaderboardView extends GetView<SosmedController> {
               ),
             );
           },
-        ),
-      ),
+        );
+      }),
     );
   }
 

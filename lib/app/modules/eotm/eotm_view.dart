@@ -251,7 +251,9 @@ class EotmView extends GetView<EotmController> {
                   style: TextStyle(
                     fontSize: 13.sp,
                     fontWeight: FontWeight.w700,
-                    color: row.rank <= 3 ? Colors.amber[700] : AppColors.textMuted,
+                    color: row.rank <= 3
+                        ? Colors.amber[700]
+                        : AppColors.textMuted,
                   ),
                 ),
               ),
@@ -397,16 +399,20 @@ class EotmView extends GetView<EotmController> {
                 );
               }
 
+              // Both lists are read here rather than inside itemBuilder, which
+              // builds lazily and so sits outside the Obx scope.
+              final nominees = controller.nominees.toList();
+              final selectedId = controller.selectedNominee.value?.id;
+
               return ConstrainedBox(
                 constraints: BoxConstraints(maxHeight: 190.h),
                 child: ListView.separated(
                   shrinkWrap: true,
-                  itemCount: controller.nominees.length,
+                  itemCount: nominees.length,
                   separatorBuilder: (_, _) => SizedBox(height: 6.h),
                   itemBuilder: (_, i) {
-                    final nominee = controller.nominees[i];
-                    final selected =
-                        controller.selectedNominee.value?.id == nominee.id;
+                    final nominee = nominees[i];
+                    final selected = selectedId == nominee.id;
 
                     return GestureDetector(
                       onTap: () => controller.selectedNominee.value = nominee,

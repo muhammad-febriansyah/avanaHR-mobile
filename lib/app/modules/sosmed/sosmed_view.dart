@@ -162,6 +162,9 @@ class SosmedView extends GetView<SosmedController> {
       height: 34.h,
       child: Obx(() {
         final options = <SocialCategoryItem?>[null, ...controller.categories];
+        // Read in the body, not in itemBuilder: lazily-built items fall outside
+        // the Obx scope, so the chip highlight would not follow the selection.
+        final active = controller.activeCategory.value;
 
         return ListView.separated(
           scrollDirection: Axis.horizontal,
@@ -169,7 +172,7 @@ class SosmedView extends GetView<SosmedController> {
           separatorBuilder: (_, _) => SizedBox(width: 8.w),
           itemBuilder: (_, i) {
             final category = options[i];
-            final selected = controller.activeCategory.value == category?.id;
+            final selected = active == category?.id;
             final accent = category == null
                 ? AppColors.primary
                 : _hexColor(category.color);
