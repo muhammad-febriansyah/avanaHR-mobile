@@ -149,19 +149,7 @@ class _SosmedDetailViewState extends State<SosmedDetailView> {
                         ),
                       )
                     else
-                      ..._comments.expand(
-                        (c) => [
-                          _comment(post, c),
-                          // Replies sit indented under their parent; threads are
-                          // one level deep so this never nests further.
-                          ...c.replies.map(
-                            (r) => Padding(
-                              padding: EdgeInsets.only(left: 42.w),
-                              child: _comment(post, r, isReply: true),
-                            ),
-                          ),
-                        ],
-                      ),
+                      ..._comments.map((c) => _thread(post, c)),
                   ],
                 ),
               ),
@@ -321,13 +309,58 @@ class _SosmedDetailViewState extends State<SosmedDetailView> {
     );
   }
 
+  /// A top-level comment and its replies, tied together by an elbow line.
+  ///
+  /// Indentation alone is ambiguous once a thread scrolls: the reader has to
+  /// guess which comment above a reply belongs to. The line answers it.
+  Widget _thread(SocialPostItem post, SocialCommentItem comment) {
+    if (comment.replies.isEmpty) {
+      return _comment(post, comment);
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // No gap under the parent — the connector picks up where it ends.
+        _comment(post, comment, tightBottom: true),
+        ...comment.replies.asMap().entries.map(
+          (entry) => IntrinsicHeight(
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                SizedBox(
+                  width: _connectorWidth.w,
+                  child: CustomPaint(
+                    painter: _ThreadConnector(
+                      // The last reply ends the line at its elbow; the others
+                      // carry it on down to the next one.
+                      isLast: entry.key == comment.replies.length - 1,
+                      lineX: 16.w,
+                      elbowY: 13.h + 14.h,
+                      color: AppColors.border,
+                    ),
+                  ),
+                ),
+                Expanded(child: _comment(post, entry.value, isReply: true)),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
   Widget _comment(
     SocialPostItem post,
     SocialCommentItem comment, {
     bool isReply = false,
+    bool tightBottom = false,
   }) {
     return Padding(
-      padding: EdgeInsets.only(bottom: 14.h),
+      padding: EdgeInsets.only(
+        top: isReply ? 14.h : 0,
+        bottom: tightBottom ? 0 : 14.h,
+      ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -751,4 +784,69 @@ class _SosmedDetailViewState extends State<SosmedDetailView> {
       ),
     );
   }
+}
+
+/// How far a reply is pushed in. Wide enough to clear the parent's 32px avatar
+/// and leave the elbow somewhere to travel.
+const double _connectorWidth = 42;
+
+/// Draws the elbow that ties a reply to the comment above it: a vertical line
+/// dropping from under the parent's avatar, turning right into the reply's.
+class _ThreadConnector extends CustomPainter {
+  /// The last reply stops the line at its own elbow, so the thread does not
+  /// trail off into empty space.
+  final bool isLast;
+
+  final double lineX;
+  final double elbowY;
+  final Color color;
+
+  const _ThreadConnector({
+    required this.isLast,
+    required this.lineX,
+    required this.elbowY,
+    required this.color,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = color
+      ..strokeWidth = 1.2
+      ..style = PaintingStyle.stroke
+      ..strokeCap = StrokeCap.round;
+
+    const radius = 8.0;
+    final stopY = isLast ? elbowY : size.height;
+
+    final path = Path()
+      ..moveTo(lineX, 0)
+      ..lineTo(lineX, isLast ? elbowY - radius : stopY);
+
+    if (isLast) {
+      // Rounded corner, then out to the avatar.
+      path
+        ..quadraticBezierTo(lineX, elbowY, lineX + radius, elbowY)
+        ..lineTo(size.width, elbowY);
+    } else {
+      // A branch that continues: draw the elbow separately so the trunk stays
+      // unbroken behind it.
+      canvas.drawPath(
+        Path()
+          ..moveTo(lineX, elbowY - radius)
+          ..quadraticBezierTo(lineX, elbowY, lineX + radius, elbowY)
+          ..lineTo(size.width, elbowY),
+        paint,
+      );
+    }
+
+    canvas.drawPath(path, paint);
+  }
+
+  @override
+  bool shouldRepaint(_ThreadConnector oldDelegate) =>
+      oldDelegate.isLast != isLast ||
+      oldDelegate.lineX != lineX ||
+      oldDelegate.elbowY != elbowY ||
+      oldDelegate.color != color;
 }
