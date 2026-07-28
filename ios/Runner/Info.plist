@@ -18,6 +18,8 @@
 	<string>Lokasi digunakan untuk memverifikasi Anda berada di area kantor saat absensi.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>Galeri digunakan untuk memilih foto dokumen, reimbursement, dan lampiran lainnya.</string>
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>Izin ini dipakai untuk menyimpan gambar yang dibuat AI Assistant ke galeri Anda.</string>
 	<key>CADisableMinimumFrameDurationOnPhone</key>
 	<true/>
 	<key>CFBundleDevelopmentRegion</key>

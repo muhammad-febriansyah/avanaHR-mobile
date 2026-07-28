@@ -1,11 +1,16 @@
+import 'dart:typed_data';
+
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:gal/gal.dart';
 import 'package:get/get.dart';
 import 'package:iconsax/iconsax.dart';
 
 import '../../core/theme/app_colors.dart';
 import '../../core/widgets/app_page.dart';
+import '../../core/widgets/app_toast.dart';
 import '../../core/widgets/app_sheet.dart';
 import '../../core/widgets/robot_icon.dart';
 import '../../core/widgets/ui.dart';
@@ -584,68 +589,170 @@ class _MessageBody extends StatelessWidget {
 }
 
 /// One generated image. Tapping it opens a full-screen view, because a picture
-/// squeezed into a chat bubble is rarely readable at bubble width.
-class _AiImage extends StatelessWidget {
+/// squeezed into a chat bubble is rarely readable at bubble width, and a save
+/// button sits underneath: the picture lives on the server behind the session,
+/// so a chat the employee later deletes takes the only copy with it.
+class _AiImage extends StatefulWidget {
   final String url;
 
   const _AiImage({required this.url});
 
   @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: () => Get.dialog(
-        Scaffold(
-          backgroundColor: Colors.black,
-          body: Stack(
-            children: [
-              Center(
-                child: InteractiveViewer(
-                  child: CachedNetworkImage(imageUrl: url),
-                ),
+  State<_AiImage> createState() => _AiImageState();
+}
+
+class _AiImageState extends State<_AiImage> {
+  bool _saving = false;
+
+  /// Fetch the bytes and hand them to the gallery.
+  ///
+  /// Deliberately a fresh Dio rather than the app's API client: this is a
+  /// plain static file on the public disk, so it needs no bearer token and
+  /// no base URL rewriting.
+  Future<void> _save() async {
+    if (_saving) {
+      return;
+    }
+
+    setState(() => _saving = true);
+
+    try {
+      final response = await Dio().get<List<int>>(
+        widget.url,
+        options: Options(responseType: ResponseType.bytes),
+      );
+
+      final bytes = response.data;
+
+      if (bytes == null || bytes.isEmpty) {
+        AppToast.error('Gambar gagal diunduh.');
+        return;
+      }
+
+      await Gal.putImageBytes(
+        Uint8List.fromList(bytes),
+        // Gal appends the extension itself, so the stem is all we give it.
+        name: 'avanahr-${DateTime.now().millisecondsSinceEpoch}',
+      );
+
+      AppToast.success('Gambar disimpan ke galeri.');
+    } on GalException catch (e) {
+      AppToast.error(switch (e.type) {
+        GalExceptionType.accessDenied =>
+          'Izin galeri ditolak. Aktifkan lewat Pengaturan aplikasi.',
+        GalExceptionType.notEnoughSpace =>
+          'Penyimpanan perangkat tidak cukup.',
+        GalExceptionType.notSupportedFormat =>
+          'Format gambar ini tidak didukung galeri.',
+        GalExceptionType.unexpected => 'Gambar gagal disimpan.',
+      });
+    } catch (_) {
+      AppToast.error('Gambar gagal disimpan.');
+    } finally {
+      if (mounted) {
+        setState(() => _saving = false);
+      }
+    }
+  }
+
+  void _openFullScreen() {
+    Get.dialog(
+      Scaffold(
+        backgroundColor: Colors.black,
+        body: Stack(
+          children: [
+            Center(
+              child: InteractiveViewer(
+                child: CachedNetworkImage(imageUrl: widget.url),
               ),
-              Positioned(
-                top: 40.h,
-                right: 16.w,
-                child: IconButton(
-                  icon: Icon(
-                    Iconsax.close_circle,
-                    color: Colors.white,
-                    size: 28.sp,
+            ),
+            Positioned(
+              top: 40.h,
+              right: 16.w,
+              child: Row(
+                children: [
+                  IconButton(
+                    icon: Icon(
+                      Iconsax.document_download,
+                      color: Colors.white,
+                      size: 26.sp,
+                    ),
+                    onPressed: _save,
                   ),
-                  onPressed: Get.back,
+                  IconButton(
+                    icon: Icon(
+                      Iconsax.close_circle,
+                      color: Colors.white,
+                      size: 28.sp,
+                    ),
+                    onPressed: Get.back,
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        GestureDetector(
+          onTap: _openFullScreen,
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(12.r),
+            child: CachedNetworkImage(
+              imageUrl: widget.url,
+              width: double.infinity,
+              fit: BoxFit.cover,
+              placeholder: (_, _) => Container(
+                height: 160.h,
+                color: AppColors.surface,
+                alignment: Alignment.center,
+                child: SizedBox(
+                  width: 20.w,
+                  height: 20.w,
+                  child: const CircularProgressIndicator(strokeWidth: 2),
                 ),
               ),
-            ],
-          ),
-        ),
-      ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(12.r),
-        child: CachedNetworkImage(
-          imageUrl: url,
-          width: double.infinity,
-          fit: BoxFit.cover,
-          placeholder: (_, _) => Container(
-            height: 160.h,
-            color: AppColors.surface,
-            alignment: Alignment.center,
-            child: SizedBox(
-              width: 20.w,
-              height: 20.w,
-              child: const CircularProgressIndicator(strokeWidth: 2),
-            ),
-          ),
-          errorWidget: (_, _, _) => Container(
-            height: 90.h,
-            color: AppColors.surface,
-            alignment: Alignment.center,
-            child: Text(
-              'Gambar gagal dimuat',
-              style: TextStyle(fontSize: 12.sp, color: AppColors.textMuted),
+              errorWidget: (_, _, _) => Container(
+                height: 90.h,
+                color: AppColors.surface,
+                alignment: Alignment.center,
+                child: Text(
+                  'Gambar gagal dimuat',
+                  style: TextStyle(fontSize: 12.sp, color: AppColors.textMuted),
+                ),
+              ),
             ),
           ),
         ),
-      ),
+        SizedBox(height: 8.h),
+        TextButton.icon(
+          onPressed: _saving ? null : _save,
+          icon: _saving
+              ? SizedBox(
+                  width: 14.w,
+                  height: 14.w,
+                  child: const CircularProgressIndicator(strokeWidth: 2),
+                )
+              : Icon(Iconsax.document_download, size: 16.sp),
+          label: Text(
+            _saving ? 'Menyimpan…' : 'Simpan ke Galeri',
+            style: TextStyle(fontSize: 12.5.sp, fontWeight: FontWeight.w600),
+          ),
+          style: TextButton.styleFrom(
+            foregroundColor: AppColors.primary,
+            padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 4.h),
+            minimumSize: Size.zero,
+            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+          ),
+        ),
+      ],
     );
   }
 }
