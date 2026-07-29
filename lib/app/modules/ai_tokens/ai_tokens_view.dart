@@ -109,7 +109,7 @@ class AiTokensView extends GetView<AiTokensController> {
           value: balance.effectiveRemaining == null
               ? 'Tanpa batas'
               : _count.format(balance.effectiveRemaining),
-          note: 'Jatah perusahaan dipakai lebih dulu · ${balance.period}',
+          note: 'Token pribadi dipakai lebih dulu · ${balance.period}',
           wide: true,
         ),
       ],
@@ -224,9 +224,9 @@ class AiTokensView extends GetView<AiTokensController> {
         SizedBox(width: 8.w),
         Expanded(
           child: Text(
-            'Token pribadi baru terpakai setelah jatah perusahaan habis, jadi '
-            'uang Anda tidak terbuang selama perusahaan masih punya kuota. '
-            'Token pribadi juga tidak dibatasi jatah bulanan dari admin.',
+            'Token pribadi Anda dipakai lebih dulu; jatah perusahaan baru '
+            'dipakai setelah token pribadi habis. Token pribadi tidak dibatasi '
+            'jatah bulanan dari admin dan tidak hangus tiap bulan.',
             style: TextStyle(
               fontSize: 11.5.sp,
               color: AppColors.textMuted,
