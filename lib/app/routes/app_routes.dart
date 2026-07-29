@@ -38,6 +38,7 @@ abstract class Routes {
   static const MSS_RECAP = _Paths.MSS_RECAP;
   static const DASHBOARD = _Paths.DASHBOARD;
   static const AI_ASSISTANT = _Paths.AI_ASSISTANT;
+  static const AI_TOKENS = _Paths.AI_TOKENS;
 }
 
 abstract class _Paths {
@@ -78,4 +79,5 @@ abstract class _Paths {
   static const MSS_RECAP = '/mss-recap';
   static const DASHBOARD = '/dashboard';
   static const AI_ASSISTANT = '/ai-assistant';
+  static const AI_TOKENS = '/ai-tokens';
 }

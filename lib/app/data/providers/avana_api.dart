@@ -967,4 +967,25 @@ class AvanaApi {
 
   Future<void> aiDeleteConversation(int conversationId) =>
       _dio.delete('/me/ai/conversations/$conversationId');
+
+  // ---- Personal AI token wallet ----
+
+  /// Balance, packs on sale, and this person's own purchases.
+  Future<Map<String, dynamic>> aiTokens() async {
+    final res = await _dio.get('/me/ai/tokens');
+    return Map<String, dynamic>.from(res.data['data'] ?? {});
+  }
+
+  /// Opens a pending order and returns it with the URL to pay it.
+  Future<Map<String, dynamic>> aiBuyTokens(int packId) async {
+    final res = await _dio.post('/me/ai/tokens', data: {'pack_id': packId});
+    return Map<String, dynamic>.from(res.data['data'] ?? {});
+  }
+
+  /// Asks whether an order has been paid. The server verifies with the gateway
+  /// on the way past, so this settles a payment the webhook has not reached yet.
+  Future<Map<String, dynamic>> aiTokenOrder(String orderNumber) async {
+    final res = await _dio.get('/me/ai/tokens/$orderNumber');
+    return Map<String, dynamic>.from(res.data['data'] ?? {});
+  }
 }

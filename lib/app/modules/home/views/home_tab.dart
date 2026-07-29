@@ -875,6 +875,7 @@ class HomeTab extends GetView<HomeController> {
     'location': Iconsax.location,
     'document_text': Iconsax.document_text,
     'emoji_happy': Iconsax.emoji_happy,
+    'flash_1': Iconsax.flash_1,
   }[name] ?? Iconsax.element_3;
 
   /// `#RRGGBB` to a Color, falling back to the brand blue on anything odd.

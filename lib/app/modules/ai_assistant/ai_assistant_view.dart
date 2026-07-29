@@ -9,6 +9,7 @@ import 'package:get/get.dart';
 import 'package:iconsax/iconsax.dart';
 
 import '../../core/theme/app_colors.dart';
+import '../../routes/app_pages.dart';
 import '../../core/widgets/app_page.dart';
 import '../../core/widgets/app_toast.dart';
 import '../../core/widgets/app_sheet.dart';
@@ -122,14 +123,29 @@ class _TokenMeter extends StatelessWidget {
             ),
           ),
           SizedBox(height: 6.h),
-          Align(
-            alignment: Alignment.centerRight,
-            child: Text(
-              usage.hasQuota
-                  ? 'Sisa ${_fmt(usage.remaining)} token'
-                  : 'Kuota tak terbatas',
-              style: TextStyle(fontSize: 10.5.sp, color: AppColors.textMuted),
-            ),
+          Row(
+            children: [
+              // The way out when the meter runs low: buying your own tokens is
+              // otherwise a screen nobody would think to look for.
+              GestureDetector(
+                onTap: () => Get.toNamed(Routes.AI_TOKENS),
+                child: Text(
+                  'Beli token pribadi',
+                  style: TextStyle(
+                    fontSize: 10.5.sp,
+                    color: AppColors.primary,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+              const Spacer(),
+              Text(
+                usage.hasQuota
+                    ? 'Sisa ${_fmt(usage.remaining)} token'
+                    : 'Kuota tak terbatas',
+                style: TextStyle(fontSize: 10.5.sp, color: AppColors.textMuted),
+              ),
+            ],
           ),
         ],
       ),
