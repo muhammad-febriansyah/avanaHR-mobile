@@ -6,14 +6,20 @@ import 'package:iconsax/iconsax.dart';
 
 import '../../core/theme/app_colors.dart';
 import '../../core/widgets/app_page.dart';
+import '../../core/widgets/app_sheet.dart';
 import '../../core/widgets/ui.dart';
 import '../../core/utils/relative_time.dart';
 import '../../data/models/ess_models.dart';
 import 'sosmed_controller.dart';
 import 'sosmed_view.dart' show hexColor;
 
-/// One post in full: the whole body, the photo uncropped, and the comment
-/// thread inline rather than in a sheet.
+/// One post in full: the whole body and the photo uncropped, with the comment
+/// thread raised from an action bar as a sheet over it.
+///
+/// Comments used to run on below the post, which pushed the post itself off
+/// screen the moment a thread got going — the reader lost the thing being
+/// discussed. In a sheet the post stays put behind the discussion, and closing
+/// the sheet is one swipe rather than a scroll back to the top.
 ///
 /// Reached by tapping a feed card, and by a comment notification — which is why
 /// it can load a post by id instead of only from the list it came from.
@@ -24,7 +30,16 @@ class SosmedDetailView extends StatefulWidget {
   /// Post id, when arriving from a notification with nothing loaded yet.
   final int? postId;
 
-  const SosmedDetailView({super.key, this.post, this.postId});
+  /// Raise the comment sheet as soon as the post is on screen — what someone
+  /// who tapped the comment button (or a comment notification) came for.
+  final bool openComments;
+
+  const SosmedDetailView({
+    super.key,
+    this.post,
+    this.postId,
+    this.openComments = false,
+  });
 
   @override
   State<SosmedDetailView> createState() => _SosmedDetailViewState();
@@ -42,6 +57,10 @@ class _SosmedDetailViewState extends State<SosmedDetailView> {
 
   /// The comment being replied to, or null for a top-level comment.
   final Rxn<SocialCommentItem> _replyTo = Rxn<SocialCommentItem>();
+
+  /// Guards the sheet against a second copy of itself: the post reloads on
+  /// pull-to-refresh, and an auto-open would fire again each time.
+  bool _commentsOpened = false;
 
   @override
   void initState() {
@@ -76,6 +95,16 @@ class _SosmedDetailViewState extends State<SosmedDetailView> {
 
     _comments.assignAll(await controller.comments(id));
     _loading.value = false;
+
+    if (widget.openComments && !_commentsOpened && mounted) {
+      _commentsOpened = true;
+      // After the frame, so the sheet rises over a post that is already drawn.
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          _openComments(context);
+        }
+      });
+    }
   }
 
   @override
@@ -113,52 +142,209 @@ class _SosmedDetailViewState extends State<SosmedDetailView> {
                   padding: EdgeInsets.fromLTRB(16.w, 14.h, 16.w, 20.h),
                   children: [
                     _postBody(post),
-                    SizedBox(height: 16.h),
-                    Row(
-                      children: [
-                        Text(
-                          'Komentar',
-                          style: TextStyle(
-                            fontSize: 14.sp,
-                            fontWeight: FontWeight.w700,
-                            color: AppColors.textPrimary,
-                          ),
-                        ),
-                        SizedBox(width: 6.w),
-                        Text(
-                          '${post.commentsCount}',
-                          style: TextStyle(
-                            fontSize: 12.5.sp,
-                            color: AppColors.textMuted,
-                          ),
-                        ),
-                      ],
-                    ),
-                    SizedBox(height: 10.h),
-                    if (_comments.isEmpty)
-                      Padding(
-                        padding: EdgeInsets.symmetric(vertical: 24.h),
-                        child: Center(
-                          child: Text(
-                            'Belum ada komentar. Jadi yang pertama!',
-                            style: TextStyle(
-                              fontSize: 13.sp,
-                              color: AppColors.textMuted,
-                            ),
-                          ),
-                        ),
-                      )
-                    else
-                      ..._comments.map((c) => _thread(post, c)),
+                    SizedBox(height: 14.h),
+                    _commentTeaser(post),
                   ],
                 ),
               ),
             ),
-            _composer(post),
+            _actionBar(post),
           ],
         );
       }),
     );
+  }
+
+  /// A taste of the thread under the post, so the sheet is not the only hint
+  /// that a discussion exists. Tapping anywhere on it raises the sheet.
+  Widget _commentTeaser(SocialPostItem post) {
+    final preview = _comments.take(2).toList();
+
+    return GestureDetector(
+      onTap: () => _openComments(context),
+      behavior: HitTestBehavior.opaque,
+      child: Container(
+        padding: EdgeInsets.all(14.w),
+        decoration: BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: BorderRadius.circular(14.r),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Text(
+                  post.commentsCount == 0
+                      ? 'Komentar'
+                      : '${post.commentsCount} komentar',
+                  style: TextStyle(
+                    fontSize: 13.sp,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.textPrimary,
+                  ),
+                ),
+                const Spacer(),
+                Text(
+                  post.commentsCount == 0 ? 'Tulis' : 'Lihat semua',
+                  style: TextStyle(
+                    fontSize: 12.sp,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.primary,
+                  ),
+                ),
+                Icon(
+                  Iconsax.arrow_up_2,
+                  size: 14.sp,
+                  color: AppColors.primary,
+                ),
+              ],
+            ),
+            if (preview.isEmpty)
+              Padding(
+                padding: EdgeInsets.only(top: 8.h),
+                child: Text(
+                  'Belum ada komentar. Jadi yang pertama!',
+                  style: TextStyle(fontSize: 12.5.sp, color: AppColors.textMuted),
+                ),
+              )
+            else
+              ...preview.map(
+                (comment) => Padding(
+                  padding: EdgeInsets.only(top: 10.h),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _avatar(comment.authorPhoto, comment.author, 24),
+                      SizedBox(width: 8.w),
+                      Expanded(
+                        child: Text.rich(
+                          TextSpan(
+                            children: [
+                              TextSpan(
+                                text: '${comment.author}  ',
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                              TextSpan(text: comment.body),
+                            ],
+                          ),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontSize: 12.5.sp,
+                            height: 1.4,
+                            color: AppColors.textPrimary,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// Liking, commenting and editing, kept within thumb reach and out of the
+  /// scroll — the actions should not have to be hunted for at the end of a
+  /// long post.
+  Widget _actionBar(SocialPostItem post) {
+    return Container(
+      padding: EdgeInsets.fromLTRB(8.w, 8.h, 8.w, 8.h),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        border: Border(top: BorderSide(color: AppColors.border)),
+      ),
+      child: SafeArea(
+        top: false,
+        child: Row(
+          children: [
+            _action(
+              icon: post.liked ? Iconsax.heart5 : Iconsax.heart,
+              label: '${post.likesCount}',
+              tone: post.liked ? AppColors.destructive : AppColors.textMuted,
+              onTap: () async {
+                await controller.toggleLike(post);
+                _post.refresh();
+              },
+            ),
+            _action(
+              icon: Iconsax.message_text,
+              label: '${post.commentsCount}',
+              tone: AppColors.textMuted,
+              onTap: () => _openComments(context),
+            ),
+            if (post.isMine)
+              _action(
+                icon: Iconsax.edit_2,
+                label: 'Edit',
+                tone: AppColors.primary,
+                onTap: () => _openEdit(post),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _action({
+    required IconData icon,
+    required String label,
+    required Color tone,
+    required VoidCallback onTap,
+  }) {
+    return Expanded(
+      child: GestureDetector(
+        onTap: onTap,
+        behavior: HitTestBehavior.opaque,
+        child: Padding(
+          padding: EdgeInsets.symmetric(vertical: 8.h),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(icon, size: 19.sp, color: tone),
+              SizedBox(width: 6.w),
+              Text(
+                label,
+                style: TextStyle(
+                  fontSize: 12.5.sp,
+                  fontWeight: FontWeight.w600,
+                  color: tone,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// The thread itself: a sheet over the post, dismissed with a swipe.
+  void _openComments(BuildContext context) {
+    final post = _post.value;
+
+    if (post == null) {
+      return;
+    }
+
+    showAppSheet<void>(
+      context,
+      scrollable: true,
+      child: _CommentsSheet(
+        post: _post,
+        comments: _comments,
+        loading: _loading,
+        thread: _thread,
+        composer: _composer,
+      ),
+    ).whenComplete(() {
+      // A reply target only makes sense while the thread is on screen.
+      _replyTo.value = null;
+    });
   }
 
   Widget _postBody(SocialPostItem post) {
@@ -246,63 +432,14 @@ class _SosmedDetailViewState extends State<SosmedDetailView> {
             ),
           ],
 
-          SizedBox(height: 14.h),
-          Row(
-            children: [
-              GestureDetector(
-                onTap: () async {
-                  await controller.toggleLike(post);
-                  _post.refresh();
-                },
-                behavior: HitTestBehavior.opaque,
-                child: Row(
-                  children: [
-                    Icon(
-                      post.liked ? Iconsax.heart5 : Iconsax.heart,
-                      size: 19.sp,
-                      color: post.liked
-                          ? AppColors.destructive
-                          : AppColors.textMuted,
-                    ),
-                    SizedBox(width: 6.w),
-                    Text(
-                      '${post.likesCount} suka',
-                      style: TextStyle(
-                        fontSize: 12.5.sp,
-                        fontWeight: FontWeight.w600,
-                        color: post.liked
-                            ? AppColors.destructive
-                            : AppColors.textMuted,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const Spacer(),
-              if (post.isMine)
-                GestureDetector(
-                  onTap: () => _openEdit(post),
-                  behavior: HitTestBehavior.opaque,
-                  child: Row(
-                    children: [
-                      Icon(
-                        Iconsax.edit_2,
-                        size: 17.sp,
-                        color: AppColors.primary,
-                      ),
-                      SizedBox(width: 5.w),
-                      Text(
-                        'Edit',
-                        style: TextStyle(
-                          fontSize: 12.5.sp,
-                          fontWeight: FontWeight.w700,
-                          color: AppColors.primary,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-            ],
+          SizedBox(height: 12.h),
+          Text(
+            '${post.likesCount} suka',
+            style: TextStyle(
+              fontSize: 12.sp,
+              fontWeight: FontWeight.w600,
+              color: AppColors.textMuted,
+            ),
           ),
         ],
       ),
@@ -370,7 +507,9 @@ class _SosmedDetailViewState extends State<SosmedDetailView> {
             child: Container(
               padding: EdgeInsets.all(12.w),
               decoration: BoxDecoration(
-                color: AppColors.surface,
+                // Muted, not surface: the thread sits on the sheet's own white,
+                // and a white bubble on white would lose its edges.
+                color: AppColors.muted,
                 borderRadius: BorderRadius.circular(12.r),
               ),
               child: Column(
@@ -456,10 +595,15 @@ class _SosmedDetailViewState extends State<SosmedDetailView> {
     );
   }
 
+  /// Pinned to the foot of the comment sheet, so the box to type in is always
+  /// where the thumb already is.
   Widget _composer(SocialPostItem post) {
     return Container(
-      padding: EdgeInsets.fromLTRB(16.w, 10.h, 16.w, 16.h),
-      color: AppColors.background,
+      padding: EdgeInsets.fromLTRB(16.w, 10.h, 16.w, 10.h),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        border: Border(top: BorderSide(color: AppColors.border)),
+      ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
@@ -515,7 +659,7 @@ class _SosmedDetailViewState extends State<SosmedDetailView> {
                       color: AppColors.textMuted,
                     ),
                     filled: true,
-                    fillColor: AppColors.surface,
+                    fillColor: AppColors.muted,
                     contentPadding: EdgeInsets.symmetric(
                       horizontal: 14.w,
                       vertical: 10.h,
@@ -797,6 +941,111 @@ class _SosmedDetailViewState extends State<SosmedDetailView> {
         ),
       ),
     );
+  }
+}
+
+/// The comment thread, raised over the post it belongs to.
+///
+/// State stays with the detail view — one list of comments, one reply target,
+/// one composer — so the count on the post and the thread in the sheet cannot
+/// drift apart while both are on screen.
+class _CommentsSheet extends StatelessWidget {
+  const _CommentsSheet({
+    required this.post,
+    required this.comments,
+    required this.loading,
+    required this.thread,
+    required this.composer,
+  });
+
+  final Rxn<SocialPostItem> post;
+  final RxList<SocialCommentItem> comments;
+  final RxBool loading;
+  final Widget Function(SocialPostItem, SocialCommentItem) thread;
+  final Widget Function(SocialPostItem) composer;
+
+  @override
+  Widget build(BuildContext context) {
+    return Obx(() {
+      final current = post.value;
+
+      if (current == null) {
+        return const SizedBox.shrink();
+      }
+
+      return Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          SizedBox(height: 10.h),
+          Container(
+            width: 40.w,
+            height: 4.h,
+            decoration: BoxDecoration(
+              color: AppColors.border,
+              borderRadius: BorderRadius.circular(99.r),
+            ),
+          ),
+          Padding(
+            padding: EdgeInsets.fromLTRB(16.w, 12.h, 8.w, 10.h),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    current.commentsCount == 0
+                        ? 'Komentar'
+                        : '${current.commentsCount} komentar',
+                    style: TextStyle(
+                      fontSize: 14.sp,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.textPrimary,
+                    ),
+                  ),
+                ),
+                GestureDetector(
+                  onTap: Get.back<void>,
+                  behavior: HitTestBehavior.opaque,
+                  child: Padding(
+                    padding: EdgeInsets.all(8.w),
+                    child: Icon(
+                      Iconsax.close_circle,
+                      size: 20.sp,
+                      color: AppColors.textMuted,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Divider(height: 1, color: AppColors.border),
+          Flexible(
+            child: loading.value && comments.isEmpty
+                ? Padding(
+                    padding: EdgeInsets.symmetric(vertical: 40.h),
+                    child: const Loading(),
+                  )
+                : comments.isEmpty
+                ? Padding(
+                    padding: EdgeInsets.symmetric(vertical: 40.h),
+                    child: Center(
+                      child: Text(
+                        'Belum ada komentar. Jadi yang pertama!',
+                        style: TextStyle(
+                          fontSize: 13.sp,
+                          color: AppColors.textMuted,
+                        ),
+                      ),
+                    ),
+                  )
+                : ListView(
+                    shrinkWrap: true,
+                    padding: EdgeInsets.fromLTRB(16.w, 14.h, 16.w, 6.h),
+                    children: comments.map((c) => thread(current, c)).toList(),
+                  ),
+          ),
+          composer(current),
+        ],
+      );
+    });
   }
 }
 

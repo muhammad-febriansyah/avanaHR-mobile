@@ -267,7 +267,7 @@ class SosmedView extends GetView<SosmedController> {
       post: post,
       compact: compact,
       onLike: () => controller.toggleLike(post),
-      onComment: () => _openDetail(post),
+      onComment: () => _openDetail(post, comments: true),
       onOpen: () => _openDetail(post),
       onMenu: () => _openPostMenu(context, post),
     );
@@ -320,8 +320,14 @@ class SosmedView extends GetView<SosmedController> {
 
   /// The full post with its thread. Commenting lives there now, so the feed
   /// stays a scan surface rather than a place to read long threads.
-  void _openDetail(SocialPostItem post) {
-    Get.to(() => SosmedDetailView(post: post))?.then((_) => controller.load());
+  ///
+  /// [comments] raises the comment sheet on arrival — tapping the comment
+  /// button should land on the thread, not on the post with the thread still a
+  /// tap away.
+  void _openDetail(SocialPostItem post, {bool comments = false}) {
+    Get.to(
+      () => SosmedDetailView(post: post, openComments: comments),
+    )?.then((_) => controller.load());
   }
 
   /// Own post: delete it. Someone else's: report it for HR to review.
