@@ -162,6 +162,7 @@ class AiTokenOrder {
   final int tokenAmount;
   final int amount;
   final String status;
+  final DateTime? createdAt;
 
   const AiTokenOrder({
     required this.orderNumber,
@@ -169,6 +170,7 @@ class AiTokenOrder {
     required this.tokenAmount,
     required this.amount,
     required this.status,
+    this.createdAt,
   });
 
   bool get isPaid => status == 'completed';
@@ -179,5 +181,66 @@ class AiTokenOrder {
     tokenAmount: (j['token_amount'] as num?)?.toInt() ?? 0,
     amount: (j['amount'] as num?)?.toInt() ?? 0,
     status: j['status']?.toString() ?? 'pending',
+    createdAt: DateTime.tryParse(j['created_at']?.toString() ?? '')?.toLocal(),
+  );
+}
+
+/// One bucket of the spending chart — a day or a month.
+class AiTokenSpendPoint {
+  /// Short axis label, already localised by the server ('Sen', 'Jul').
+  final String label;
+
+  /// `yyyy-MM-dd` for a day, `yyyy-MM` for a month.
+  final String key;
+
+  final int tokens;
+
+  const AiTokenSpendPoint({
+    required this.label,
+    required this.key,
+    required this.tokens,
+  });
+
+  factory AiTokenSpendPoint.fromJson(Map<String, dynamic> j) =>
+      AiTokenSpendPoint(
+        label: j['label']?.toString() ?? '',
+        key: (j['date'] ?? j['month'])?.toString() ?? '',
+        tokens: (j['tokens'] as num?)?.toInt() ?? 0,
+      );
+}
+
+/// How much AI budget this person has been spending lately.
+///
+/// Quiet days arrive as zero-token buckets rather than missing ones, so the
+/// chart shows a flat day instead of a gap the reader has to spot.
+class AiTokenSpend {
+  final int today;
+  final int week;
+  final int month;
+  final List<AiTokenSpendPoint> daily;
+  final List<AiTokenSpendPoint> monthly;
+
+  const AiTokenSpend({
+    required this.today,
+    required this.week,
+    required this.month,
+    required this.daily,
+    required this.monthly,
+  });
+
+  bool get isEmpty =>
+      daily.every((p) => p.tokens == 0) && monthly.every((p) => p.tokens == 0);
+
+  static List<AiTokenSpendPoint> _points(dynamic raw) =>
+      ((raw as List?) ?? const [])
+          .map((e) => AiTokenSpendPoint.fromJson(Map<String, dynamic>.from(e)))
+          .toList();
+
+  factory AiTokenSpend.fromJson(Map<String, dynamic> j) => AiTokenSpend(
+    today: (j['today'] as num?)?.toInt() ?? 0,
+    week: (j['week'] as num?)?.toInt() ?? 0,
+    month: (j['month'] as num?)?.toInt() ?? 0,
+    daily: _points(j['daily']),
+    monthly: _points(j['monthly']),
   );
 }
