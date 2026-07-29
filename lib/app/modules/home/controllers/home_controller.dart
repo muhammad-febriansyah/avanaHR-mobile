@@ -233,6 +233,11 @@ class HomeController extends GetxController with WidgetsBindingObserver {
   Future<void> refreshAll() async {
     isLoading.value = true;
     await Future.wait([
+      // Menu Cepat is set on the web and travels with /auth/me. Without this
+      // the tiles were only ever read at cold start, so an admin hiding one
+      // saw no change on a phone that was already open — pulling to refresh
+      // the home tab now picks it up like everything else here.
+      auth.loadMe(),
       _loadToday(),
       _loadUnread(),
       _loadAnnouncements(),

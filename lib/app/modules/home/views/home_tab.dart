@@ -257,7 +257,22 @@ class HomeTab extends GetView<HomeController> {
                       color: AppColors.surface,
                       borderRadius: BorderRadius.circular(20.r),
                     ),
-                    child: _MenuCarousel(_allActions()),
+                    // Reactive: the tiles come from the signed-in user, which a
+                    // pull-to-refresh reloads. Without Obx the carousel kept
+                    // whatever it was built with, so an admin's change only
+                    // showed after the app was killed and reopened.
+                    child: Obx(() {
+                      final actions = _allActions();
+
+                      // Re-key on the set itself so the carousel starts from
+                      // page one rather than a page that no longer exists.
+                      return _MenuCarousel(
+                        actions,
+                        key: ValueKey(
+                          actions.map((a) => a.label).join('|'),
+                        ),
+                      );
+                    }),
                   ),
                   SizedBox(height: 28.h),
                   // ── Announcements ──
@@ -1742,7 +1757,7 @@ class _Action {
 /// Quick-menu carousel: swipeable pages of a 4×2 icon grid with page dots.
 class _MenuCarousel extends StatefulWidget {
   final List<_Action> actions;
-  const _MenuCarousel(this.actions);
+  const _MenuCarousel(this.actions, {super.key});
 
   @override
   State<_MenuCarousel> createState() => _MenuCarouselState();
