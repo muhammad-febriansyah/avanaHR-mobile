@@ -1,6 +1,42 @@
 import '../../core/config/env.dart';
 import 'profile.dart';
 
+/// One Menu Cepat shortcut, as the web Hak Akses screen defines it.
+///
+/// The tiles used to be a hard-coded list in [HomeTab]; hiding one from a role
+/// meant shipping a new build. They now arrive with `/auth/me`, already
+/// filtered for this account and in the order the admin arranged.
+class MenuTile {
+  final String key;
+  final String label;
+
+  /// Iconsax name, e.g. `sun_1`. Resolved against a lookup in the home tab, so
+  /// an icon this build does not know simply falls back rather than crashing.
+  final String icon;
+
+  /// Tile colour as `#RRGGBB`.
+  final String color;
+
+  /// GetX route the tile opens, e.g. `/leave`.
+  final String route;
+
+  MenuTile({
+    required this.key,
+    required this.label,
+    required this.icon,
+    required this.color,
+    required this.route,
+  });
+
+  factory MenuTile.fromJson(Map<String, dynamic> json) => MenuTile(
+    key: json['key']?.toString() ?? '',
+    label: json['label']?.toString() ?? '',
+    icon: json['icon']?.toString() ?? '',
+    color: json['color']?.toString() ?? '#2F54C9',
+    route: json['route']?.toString() ?? '',
+  );
+}
+
 class AppUser {
   final int id;
   final String name;
@@ -8,6 +44,10 @@ class AppUser {
   final List<String> roles;
   final String? avatarUrl;
   final Profile? employee;
+
+  /// Menu Cepat for this account. Empty when the server did not send one —
+  /// an older backend — in which case the home tab keeps its built-in list.
+  final List<MenuTile> menu;
 
   /// The signed-in user's tenant branding, for white-labelling the app.
   /// [tenantName] is the legal name ("PT Avanah Digital Teknologi") and
@@ -25,6 +65,7 @@ class AppUser {
     required this.name,
     required this.email,
     required this.roles,
+    this.menu = const [],
     this.avatarUrl,
     this.employee,
     this.tenantName,
@@ -46,6 +87,11 @@ class AppUser {
       name: json['name'] ?? '',
       email: json['email'] ?? '',
       roles: (json['roles'] as List?)?.map((e) => e.toString()).toList() ?? [],
+      menu:
+          (json['menu'] as List?)
+              ?.map((e) => MenuTile.fromJson(Map<String, dynamic>.from(e)))
+              .toList() ??
+          const [],
       avatarUrl: json['avatar_url'],
       employee: json['employee'] != null
           ? Profile.fromJson(Map<String, dynamic>.from(json['employee']))

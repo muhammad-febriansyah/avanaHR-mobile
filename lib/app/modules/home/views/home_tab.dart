@@ -14,6 +14,7 @@ import '../../../core/widgets/app_sheet.dart';
 import '../../../core/widgets/tenant_brand_row.dart';
 import '../../../data/models/dashboard.dart';
 import '../../../data/models/ess_models.dart';
+import '../../../data/models/user.dart';
 import '../../../data/providers/avana_api.dart';
 import '../../../routes/app_pages.dart';
 import '../../main/main_controller.dart';
@@ -820,6 +821,66 @@ class HomeTab extends GetView<HomeController> {
   /// first page holds the things people open weekly (leave, permits, overtime)
   /// and the tail holds the occasional ones (documents, SOP, mood).
   List<_Action> _allActions() {
+    final tiles = controller.auth.user.value?.menu ?? const [];
+
+    // Nothing from the server — an older backend, or a login that predates the
+    // field — so fall back to the list this build ships with.
+    if (tiles.isEmpty) {
+      return _builtInActions();
+    }
+
+    return tiles
+        .where((tile) => tile.key != 'dasbor' || controller.isManager)
+        .map(
+          (tile) => _Action(
+            tile.label,
+            _iconFor(tile.icon),
+            _colorFor(tile.color),
+            _tapFor(tile),
+          ),
+        )
+        .toList();
+  }
+
+  /// Iconsax icon for the name the server stores, falling back to a neutral
+  /// glyph so a tile added after this build still renders.
+  static IconData _iconFor(String name) => const {
+    'category': Iconsax.category,
+    'sun_1': Iconsax.sun_1,
+    'calendar_remove': Iconsax.calendar_remove,
+    'timer_1': Iconsax.timer_1,
+    'house': Iconsax.house,
+    'calendar_1': Iconsax.calendar_1,
+    'clock': Iconsax.clock,
+    'arrow_swap_horizontal': Iconsax.arrow_swap_horizontal,
+    'receipt_2': Iconsax.receipt_2,
+    'wallet_money': Iconsax.wallet_money,
+    'wallet_add': Iconsax.wallet_add,
+    'receipt_2_1': Iconsax.receipt_2_1,
+    'location': Iconsax.location,
+    'document_text': Iconsax.document_text,
+    'emoji_happy': Iconsax.emoji_happy,
+  }[name] ?? Iconsax.element_3;
+
+  /// `#RRGGBB` to a Color, falling back to the brand blue on anything odd.
+  static Color _colorFor(String hex) {
+    final value = int.tryParse(hex.replaceFirst('#', ''), radix: 16);
+
+    return value == null ? const Color(0xFF2F54C9) : Color(0xFF000000 | value);
+  }
+
+  /// What the tile does. Everything is a route except Perasaan, which opens a
+  /// sheet rather than a page — its route exists only as an identifier.
+  VoidCallback _tapFor(MenuTile tile) {
+    if (tile.key == 'perasaan') {
+      return controller.openMoodDialog;
+    }
+
+    return () => Get.toNamed(tile.route);
+  }
+
+  /// The tiles compiled into this build, used until the server sends its own.
+  List<_Action> _builtInActions() {
     return [
       // Manager first: for the few who see it, the dashboard is their landing
       // point, and it would be buried mid-list otherwise.
