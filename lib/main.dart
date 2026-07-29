@@ -38,7 +38,7 @@ Future<void> main() async {
   AppColors.applyBrand(GetStorage().read(kBrandAccentKey));
 
   // Permanent services, ordered by dependency.
-  await Get.putAsync(() async => StorageService());
+  await Get.putAsync(() => StorageService().init());
   Get.put(ApiClient(), permanent: true);
   Get.put(ConnectivityService(), permanent: true);
   Get.put(DeviceService(), permanent: true);
