@@ -1,8 +1,10 @@
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:get/get.dart';
 import 'package:iconsax/iconsax.dart';
 import 'package:intl/intl.dart';
+import 'package:share_plus/share_plus.dart';
 
 import '../../core/theme/app_colors.dart';
 import '../../core/widgets/app_page.dart';
@@ -29,12 +31,21 @@ class MeetingDetailView extends StatefulWidget {
 class _MeetingDetailViewState extends State<MeetingDetailView> {
   final AvanaApi _api = AvanaApi();
 
+  final TextEditingController _newItem = TextEditingController();
+
   MeetingDetail? _detail;
   bool _loading = true;
   bool _showTranscript = false;
+  bool _busy = false;
 
   /// Which analysis is expanded — one at a time, so the page stays scannable.
   String? _openInsight;
+
+  @override
+  void dispose() {
+    _newItem.dispose();
+    super.dispose();
+  }
 
   @override
   void initState() {
@@ -53,6 +64,91 @@ class _MeetingDetailViewState extends State<MeetingDetailView> {
     }
   }
 
+  /// Run a change that returns the meeting's new state, and redraw from what
+  /// the server actually stored rather than from an optimistic guess.
+  Future<void> _mutate(Future<MeetingDetail> Function() action) async {
+    if (_busy) return;
+    setState(() => _busy = true);
+
+    try {
+      final detail = await action();
+      if (mounted) setState(() => _detail = detail);
+    } on DioException catch (e) {
+      AppToast.error(ApiClient.errorMessage(e));
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  Future<void> _toggle(MeetingActionItem item) => _mutate(
+    () => _api.setMeetingActionItemStatus(
+      meetingId: widget.meetingId,
+      actionItemId: item.id,
+      done: !item.isDone,
+    ),
+  );
+
+  Future<void> _addItem() async {
+    final text = _newItem.text.trim();
+    if (text.isEmpty) return;
+
+    await _mutate(
+      () => _api.addMeetingActionItem(meetingId: widget.meetingId, text: text),
+    );
+
+    _newItem.clear();
+  }
+
+  Future<void> _reprocess() async {
+    await _mutate(() => _api.reprocessMeeting(widget.meetingId));
+
+    if (mounted && _detail?.meeting.isWorking == true) {
+      AppToast.success('Ringkasan sedang dibuat ulang.');
+    }
+  }
+
+  /// Re-running costs tokens, so it is asked for rather than one tap away.
+  Future<void> _confirmReprocess() async {
+    final confirmed = await Get.dialog<bool>(
+      AlertDialog(
+        backgroundColor: AppColors.surface,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(18.r),
+        ),
+        title: Text(
+          'Buat ulang ringkasan?',
+          style: TextStyle(fontSize: 16.sp, fontWeight: FontWeight.w700),
+        ),
+        content: Text(
+          'Ringkasan dan tindak lanjut dari AI akan ditulis ulang, dan token '
+          'Anda terpakai lagi. Tindak lanjut yang Anda tambahkan sendiri tetap ada.',
+          style: TextStyle(fontSize: 13.sp, height: 1.5),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Get.back(result: false),
+            child: const Text('Batal'),
+          ),
+          TextButton(
+            onPressed: () => Get.back(result: true),
+            child: const Text('Buat ulang'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true) await _reprocess();
+  }
+
+  Future<void> _share() async {
+    final detail = _detail;
+    if (detail == null) return;
+
+    await SharePlus.instance.share(
+      ShareParams(text: detail.shareText, subject: detail.meeting.title),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final detail = _detail;
@@ -61,6 +157,12 @@ class _MeetingDetailViewState extends State<MeetingDetailView> {
       title: detail?.meeting.title ?? 'Rapat',
       subtitle: detail == null ? null : _subtitle(detail.meeting),
       onRefresh: _load,
+      actions: [
+        if (detail != null && detail.hasSummaryContent)
+          HeaderAction(Iconsax.share, _share),
+        if (detail != null && detail.canReprocess && !detail.meeting.isWorking)
+          HeaderAction(Iconsax.refresh, _confirmReprocess),
+      ],
       child: _loading
           ? const Loading()
           : detail == null
@@ -79,10 +181,10 @@ class _MeetingDetailViewState extends State<MeetingDetailView> {
                     SizedBox(height: 16.h),
                     _insights(detail),
                   ],
-                  if (detail.actionItems.isNotEmpty) ...[
-                    SizedBox(height: 16.h),
-                    _actionItems(detail),
-                  ],
+                  // Always shown once the meeting is readable: an empty list
+                  // still needs somewhere to add the first item.
+                  SizedBox(height: 16.h),
+                  _actionItems(detail),
                 ],
                 if (detail.transcript.isNotEmpty) ...[
                   SizedBox(height: 16.h),
@@ -442,20 +544,37 @@ class _MeetingDetailViewState extends State<MeetingDetailView> {
             ],
           ),
           SizedBox(height: 14.h),
+          if (detail.actionItems.isEmpty)
+            Padding(
+              padding: EdgeInsets.only(bottom: 12.h),
+              child: Text(
+                'Belum ada tindak lanjut.',
+                style: TextStyle(fontSize: 12.5.sp, color: AppColors.textMuted),
+              ),
+            ),
           for (final item in detail.actionItems)
             Padding(
               padding: EdgeInsets.only(bottom: 12.h),
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Icon(
-                    item.isDone ? Iconsax.tick_square : Iconsax.stop,
-                    size: 16.sp,
-                    color: item.isDone
-                        ? AppColors.success
-                        : AppColors.textMuted,
+                  // A generous tap target: these get ticked off one-handed on
+                  // the walk out of the room.
+                  GestureDetector(
+                    behavior: HitTestBehavior.opaque,
+                    onTap: _busy ? null : () => _toggle(item),
+                    child: Padding(
+                      padding: EdgeInsets.only(right: 4.w, bottom: 4.h),
+                      child: Icon(
+                        item.isDone ? Iconsax.tick_square : Iconsax.stop,
+                        size: 18.sp,
+                        color: item.isDone
+                            ? AppColors.success
+                            : AppColors.textMuted,
+                      ),
+                    ),
                   ),
-                  SizedBox(width: 10.w),
+                  SizedBox(width: 8.w),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -491,6 +610,59 @@ class _MeetingDetailViewState extends State<MeetingDetailView> {
                 ],
               ),
             ),
+          _addItemRow(),
+        ],
+      ),
+    );
+  }
+
+  /// Adding one on the spot, for what the summary missed.
+  Widget _addItemRow() {
+    return Padding(
+      padding: EdgeInsets.only(top: 4.h),
+      child: Row(
+        children: [
+          Expanded(
+            child: TextField(
+              controller: _newItem,
+              enabled: !_busy,
+              textInputAction: TextInputAction.done,
+              onSubmitted: (_) => _addItem(),
+              style: TextStyle(fontSize: 12.8.sp),
+              decoration: InputDecoration(
+                isDense: true,
+                hintText: 'Tambah tindak lanjut…',
+                hintStyle: TextStyle(
+                  fontSize: 12.5.sp,
+                  color: AppColors.textMuted,
+                ),
+                filled: true,
+                fillColor: AppColors.muted,
+                contentPadding: EdgeInsets.symmetric(
+                  horizontal: 13.w,
+                  vertical: 11.h,
+                ),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(11.r),
+                  borderSide: BorderSide.none,
+                ),
+              ),
+            ),
+          ),
+          SizedBox(width: 9.w),
+          GestureDetector(
+            onTap: _busy ? null : _addItem,
+            child: Container(
+              padding: EdgeInsets.all(11.w),
+              decoration: BoxDecoration(
+                color: _busy
+                    ? AppColors.primary.withValues(alpha: 0.5)
+                    : AppColors.primary,
+                borderRadius: BorderRadius.circular(11.r),
+              ),
+              child: Icon(Iconsax.add, size: 16.sp, color: Colors.white),
+            ),
+          ),
         ],
       ),
     );

@@ -283,6 +283,10 @@ class MeetingDetail {
   final List<MeetingActionItem> actionItems;
   final List<MeetingInsight> insights;
 
+  /// Whether this account recorded it, and so may spend its own tokens
+  /// re-running the summary.
+  final bool canReprocess;
+
   const MeetingDetail({
     required this.meeting,
     this.summary,
@@ -291,11 +295,13 @@ class MeetingDetail {
     this.transcript = const [],
     this.actionItems = const [],
     this.insights = const [],
+    this.canReprocess = false,
   });
 
   factory MeetingDetail.fromJson(Map<String, dynamic> j) => MeetingDetail(
     meeting: MeetingItem.fromJson(j),
     summary: j['summary']?.toString(),
+    canReprocess: j['can_reprocess'] == true,
     decisions: ((j['decisions'] as List?) ?? [])
         .map((e) => e.toString())
         .where((e) => e.isNotEmpty)
@@ -314,6 +320,52 @@ class MeetingDetail {
 
   bool get hasSummaryContent =>
       (summary ?? '').trim().isNotEmpty || decisions.isNotEmpty;
+
+  /// The meeting as plain text somebody can paste into a chat.
+  ///
+  /// Summary, decisions and follow-ups only — never the transcript. A shared
+  /// message is forwarded on without much thought, and a verbatim record of
+  /// who said what in a meeting is not something to make that easy.
+  String get shareText {
+    final buffer = StringBuffer()..writeln(meeting.title);
+
+    if (meeting.startedAt != null) {
+      final d = meeting.startedAt!;
+      buffer.writeln(
+        '${d.day.toString().padLeft(2, '0')}/'
+        '${d.month.toString().padLeft(2, '0')}/${d.year} · '
+        '${meeting.durationMinutes} menit',
+      );
+    }
+
+    final body = (summary ?? '').trim();
+    if (body.isNotEmpty) {
+      buffer
+        ..writeln()
+        ..writeln(body);
+    }
+
+    if (decisions.isNotEmpty) {
+      buffer
+        ..writeln()
+        ..writeln('KEPUTUSAN');
+      for (final decision in decisions) {
+        buffer.writeln('• $decision');
+      }
+    }
+
+    if (actionItems.isNotEmpty) {
+      buffer
+        ..writeln()
+        ..writeln('TINDAK LANJUT');
+      for (final item in actionItems) {
+        final owner = item.assignee == null ? '' : ' (${item.assignee})';
+        buffer.writeln('${item.isDone ? '✓' : '•'} ${item.text}$owner');
+      }
+    }
+
+    return buffer.toString().trim();
+  }
 }
 
 /// One finalised utterance the phone is holding to send on the next heartbeat.

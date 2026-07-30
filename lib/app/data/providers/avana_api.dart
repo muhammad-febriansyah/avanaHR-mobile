@@ -1104,4 +1104,45 @@ class AvanaApi {
       data: FormData.fromMap({'audio': await MultipartFile.fromFile(filePath)}),
     );
   }
+
+  /// Tick a follow-up off, or put it back. Returns the meeting as it now
+  /// stands, so the screen redraws from the server rather than from a guess.
+  Future<MeetingDetail> setMeetingActionItemStatus({
+    required int meetingId,
+    required int actionItemId,
+    required bool done,
+  }) async {
+    final res = await _dio.put(
+      '/me/meetings/$meetingId/action-items/$actionItemId',
+      data: {'status': done ? 'done' : 'open'},
+    );
+
+    return MeetingDetail.fromJson(
+      Map<String, dynamic>.from(res.data['data'] ?? {}),
+    );
+  }
+
+  Future<MeetingDetail> addMeetingActionItem({
+    required int meetingId,
+    required String text,
+  }) async {
+    final res = await _dio.post(
+      '/me/meetings/$meetingId/action-items',
+      data: {'text': text},
+    );
+
+    return MeetingDetail.fromJson(
+      Map<String, dynamic>.from(res.data['data'] ?? {}),
+    );
+  }
+
+  /// Ask for the summary to be built again. Spends tokens, so the server
+  /// refuses here rather than failing later on a worker.
+  Future<MeetingDetail> reprocessMeeting(int id) async {
+    final res = await _dio.post('/me/meetings/$id/reprocess');
+
+    return MeetingDetail.fromJson(
+      Map<String, dynamic>.from(res.data['data'] ?? {}),
+    );
+  }
 }
