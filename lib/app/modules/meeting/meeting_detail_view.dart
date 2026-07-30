@@ -33,6 +33,9 @@ class _MeetingDetailViewState extends State<MeetingDetailView> {
   bool _loading = true;
   bool _showTranscript = false;
 
+  /// Which analysis is expanded — one at a time, so the page stays scannable.
+  String? _openInsight;
+
   @override
   void initState() {
     super.initState();
@@ -72,6 +75,10 @@ class _MeetingDetailViewState extends State<MeetingDetailView> {
                 if (detail.meeting.isFailed) _failed(detail),
                 if (detail.meeting.isReady) ...[
                   _summary(detail),
+                  if (detail.insights.isNotEmpty) ...[
+                    SizedBox(height: 16.h),
+                    _insights(detail),
+                  ],
                   if (detail.actionItems.isNotEmpty) ...[
                     SizedBox(height: 16.h),
                     _actionItems(detail),
@@ -164,11 +171,11 @@ class _MeetingDetailViewState extends State<MeetingDetailView> {
     );
   }
 
-  /// The headline output: prose, then the decisions pulled out as their own list.
+  /// The headline output: prose, then the decisions as their own list.
   Widget _summary(MeetingDetail detail) {
-    final parsed = detail.parsedSummary;
+    final body = (detail.summary ?? '').trim();
 
-    if (parsed.body.isEmpty && parsed.decisions.isEmpty) {
+    if (!detail.hasSummaryContent) {
       return Container(
         padding: EdgeInsets.all(18.w),
         decoration: softCard(),
@@ -206,10 +213,10 @@ class _MeetingDetailViewState extends State<MeetingDetailView> {
               ),
             ],
           ),
-          if (parsed.body.isNotEmpty) ...[
+          if (body.isNotEmpty) ...[
             SizedBox(height: 14.h),
             Text(
-              parsed.body,
+              body,
               style: TextStyle(
                 fontSize: 13.sp,
                 height: 1.65,
@@ -217,7 +224,7 @@ class _MeetingDetailViewState extends State<MeetingDetailView> {
               ),
             ),
           ],
-          if (parsed.decisions.isNotEmpty) ...[
+          if (detail.decisions.isNotEmpty) ...[
             SizedBox(height: 18.h),
             Text(
               'KEPUTUSAN',
@@ -229,7 +236,7 @@ class _MeetingDetailViewState extends State<MeetingDetailView> {
               ),
             ),
             SizedBox(height: 10.h),
-            for (final decision in parsed.decisions)
+            for (final decision in detail.decisions)
               Padding(
                 padding: EdgeInsets.only(bottom: 9.h),
                 child: Row(
@@ -259,6 +266,151 @@ class _MeetingDetailViewState extends State<MeetingDetailView> {
               ),
           ],
         ],
+      ),
+    );
+  }
+
+  /// The deep analyses, when somebody has run them on the web.
+  ///
+  /// Read-only here on purpose: each one spends real tokens, and the request
+  /// can run for minutes — far past what a phone request waits for. Generating
+  /// stays where the person choosing to pay for it already is.
+  Widget _insights(MeetingDetail detail) {
+    final icons = <String, IconData>{
+      'executive_summary': Iconsax.crown_1,
+      'decision_analysis': Iconsax.judge,
+      'project_risk': Iconsax.warning_2,
+      'sentiment': Iconsax.emoji_happy,
+      'follow_up': Iconsax.direct_right,
+    };
+
+    return Container(
+      padding: EdgeInsets.all(18.w),
+      decoration: softCard(),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Iconsax.chart_21, size: 16.sp, color: AppColors.primary),
+              SizedBox(width: 9.w),
+              Text(
+                'Analisis AI',
+                style: TextStyle(
+                  fontSize: 14.sp,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.navy,
+                ),
+              ),
+            ],
+          ),
+          SizedBox(height: 6.h),
+          Text(
+            'Dibuat dari web. Tekan untuk membuka.',
+            style: TextStyle(fontSize: 11.5.sp, color: AppColors.textMuted),
+          ),
+          SizedBox(height: 14.h),
+          for (final insight in detail.insights)
+            _insightTile(insight, icons[insight.type] ?? Iconsax.document_text),
+        ],
+      ),
+    );
+  }
+
+  Widget _insightTile(MeetingInsight insight, IconData icon) {
+    final open = _openInsight == insight.type;
+    final bullets = insight.bullets;
+
+    return Padding(
+      padding: EdgeInsets.only(bottom: 10.h),
+      child: Container(
+        decoration: BoxDecoration(
+          color: AppColors.muted,
+          borderRadius: BorderRadius.circular(14.r),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              onTap: () => setState(
+                () => _openInsight = open ? null : insight.type,
+              ),
+              child: Padding(
+                padding: EdgeInsets.all(13.w),
+                child: Row(
+                  children: [
+                    Icon(icon, size: 16.sp, color: AppColors.primary),
+                    SizedBox(width: 10.w),
+                    Expanded(
+                      child: Text(
+                        insight.label,
+                        style: TextStyle(
+                          fontSize: 12.8.sp,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.navy,
+                        ),
+                      ),
+                    ),
+                    Icon(
+                      open ? Iconsax.arrow_up_2 : Iconsax.arrow_down_1,
+                      size: 15.sp,
+                      color: AppColors.textMuted,
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            if (open)
+              Padding(
+                padding: EdgeInsets.fromLTRB(13.w, 0, 13.w, 14.h),
+                child: bullets.isEmpty
+                    ? Text(
+                        'Analisis ini belum berisi apa pun.',
+                        style: TextStyle(
+                          fontSize: 12.sp,
+                          color: AppColors.textMuted,
+                        ),
+                      )
+                    : Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          for (final line in bullets)
+                            Padding(
+                              padding: EdgeInsets.only(bottom: 8.h),
+                              child: Row(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Padding(
+                                    padding: EdgeInsets.only(top: 6.h),
+                                    child: Container(
+                                      width: 5.w,
+                                      height: 5.w,
+                                      decoration: BoxDecoration(
+                                        color: AppColors.primary,
+                                        shape: BoxShape.circle,
+                                      ),
+                                    ),
+                                  ),
+                                  SizedBox(width: 9.w),
+                                  Expanded(
+                                    child: Text(
+                                      line,
+                                      style: TextStyle(
+                                        fontSize: 12.5.sp,
+                                        height: 1.55,
+                                        color: AppColors.textPrimary,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                        ],
+                      ),
+              ),
+          ],
+        ),
       ),
     );
   }

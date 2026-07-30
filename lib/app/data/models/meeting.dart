@@ -190,25 +190,116 @@ class MeetingActionItem {
   bool get isDone => status == 'done';
 }
 
+/// One deep analysis the web already paid for — read-only on the phone.
+class MeetingInsight {
+  final String type;
+  final String label;
+  final Map<String, dynamic> payload;
+  final DateTime? generatedAt;
+
+  const MeetingInsight({
+    required this.type,
+    required this.label,
+    this.payload = const {},
+    this.generatedAt,
+  });
+
+  factory MeetingInsight.fromJson(Map<String, dynamic> j) => MeetingInsight(
+    type: j['type']?.toString() ?? '',
+    label: j['label']?.toString() ?? '',
+    payload: Map<String, dynamic>.from((j['payload'] as Map?) ?? {}),
+    generatedAt: DateTime.tryParse(
+      j['generated_at']?.toString() ?? '',
+    )?.toLocal(),
+  );
+
+  /// The analysis boiled down to lines a phone can show without a bespoke
+  /// layout per type. Each analysis has its own shape, but all of them read as
+  /// a short list of points, so that is what is rendered.
+  List<String> get bullets => switch (type) {
+    'executive_summary' => [
+      if (_string('headline').isNotEmpty) _string('headline'),
+      ..._strings('key_points'),
+    ],
+    'decision_analysis' => _maps(
+      'decisions',
+    ).map((d) => _join([d['decision'], d['rationale']], ' — ')).toList(),
+    'project_risk' => _maps('risks')
+        .map(
+          (r) => _join([
+            r['risk'],
+            if (r['severity'] != null) 'risiko ${r['severity']}',
+            r['mitigation'],
+          ], ' · '),
+        )
+        .toList(),
+    'sentiment' => [
+      if (_string('overall').isNotEmpty) 'Sentimen: ${_string('overall')}',
+      if (_string('note').isNotEmpty) _string('note'),
+      ..._strings('tension_points'),
+    ],
+    'follow_up' => _maps('recommendations')
+        .map(
+          (r) => _join([
+            r['action'],
+            r['owner'],
+            r['deadline'],
+          ], ' · '),
+        )
+        .toList(),
+    _ => const [],
+  };
+
+  String _string(String key) => payload[key]?.toString() ?? '';
+
+  List<String> _strings(String key) => ((payload[key] as List?) ?? [])
+      .map((e) => e.toString())
+      .where((e) => e.isNotEmpty)
+      .toList();
+
+  List<Map<String, dynamic>> _maps(String key) => ((payload[key] as List?) ?? [])
+      .whereType<Map>()
+      .map((e) => Map<String, dynamic>.from(e))
+      .toList();
+
+  String _join(List<Object?> parts, String separator) => parts
+      .map((p) => p?.toString().trim() ?? '')
+      .where((p) => p.isNotEmpty)
+      .join(separator);
+}
+
 /// A meeting opened up: everything the list carries, plus what was said.
 class MeetingDetail {
   final MeetingItem meeting;
   final String? summary;
+
+  /// Decisions as the server stored them. Not carved back out of the summary
+  /// prose — that contract used to be a literal heading, and a model that
+  /// worded it differently dropped them silently.
+  final List<String> decisions;
+
   final String? failureReason;
   final List<MeetingLine> transcript;
   final List<MeetingActionItem> actionItems;
+  final List<MeetingInsight> insights;
 
   const MeetingDetail({
     required this.meeting,
     this.summary,
+    this.decisions = const [],
     this.failureReason,
     this.transcript = const [],
     this.actionItems = const [],
+    this.insights = const [],
   });
 
   factory MeetingDetail.fromJson(Map<String, dynamic> j) => MeetingDetail(
     meeting: MeetingItem.fromJson(j),
     summary: j['summary']?.toString(),
+    decisions: ((j['decisions'] as List?) ?? [])
+        .map((e) => e.toString())
+        .where((e) => e.isNotEmpty)
+        .toList(),
     failureReason: j['failure_reason']?.toString(),
     transcript: ((j['transcript'] as List?) ?? [])
         .map((e) => MeetingLine.fromJson(Map<String, dynamic>.from(e)))
@@ -216,27 +307,13 @@ class MeetingDetail {
     actionItems: ((j['action_items'] as List?) ?? [])
         .map((e) => MeetingActionItem.fromJson(Map<String, dynamic>.from(e)))
         .toList(),
+    insights: ((j['insights'] as List?) ?? [])
+        .map((e) => MeetingInsight.fromJson(Map<String, dynamic>.from(e)))
+        .toList(),
   );
 
-  /// The summary split into the prose and the "## Keputusan" bullets the
-  /// server appends, so each can be styled on its own.
-  ({String body, List<String> decisions}) get parsedSummary {
-    final raw = (summary ?? '').trim();
-    if (raw.isEmpty) return (body: '', decisions: const []);
-
-    final marker = raw.indexOf('## Keputusan');
-    if (marker < 0) return (body: raw, decisions: const []);
-
-    final decisions = raw
-        .substring(marker)
-        .split('\n')
-        .where((l) => l.trimLeft().startsWith('-'))
-        .map((l) => l.trimLeft().substring(1).trim())
-        .where((l) => l.isNotEmpty)
-        .toList();
-
-    return (body: raw.substring(0, marker).trim(), decisions: decisions);
-  }
+  bool get hasSummaryContent =>
+      (summary ?? '').trim().isNotEmpty || decisions.isNotEmpty;
 }
 
 /// One finalised utterance the phone is holding to send on the next heartbeat.
