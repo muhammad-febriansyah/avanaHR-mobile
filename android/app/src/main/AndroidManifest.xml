@@ -6,6 +6,9 @@
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION"/>
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION"/>
     <uses-permission android:name="android.permission.CAMERA"/>
+    <!-- AI Recorder: the meeting recorder streams the microphone to the speech
+         provider. Nothing else in the app listens. -->
+    <uses-permission android:name="android.permission.RECORD_AUDIO"/>
     <!-- Saving an assistant-drawn image to the gallery. Android 10 and up
          writes through MediaStore, which needs no permission at all.
          tools:replace because the camera plugin caps the same permission at

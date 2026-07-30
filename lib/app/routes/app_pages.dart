@@ -3,6 +3,8 @@ import 'package:get/get.dart';
 import '../modules/ai_assistant/ai_assistant_binding.dart';
 import '../modules/ai_tokens/ai_tokens_binding.dart';
 import '../modules/ai_tokens/ai_tokens_view.dart';
+import '../modules/meeting/meeting_binding.dart';
+import '../modules/meeting/meeting_view.dart';
 import '../modules/ai_assistant/ai_assistant_view.dart';
 import '../modules/announcement/announcement_binding.dart';
 import '../modules/announcement/announcement_view.dart';
@@ -256,6 +258,11 @@ class AppPages {
       name: _Paths.AI_TOKENS,
       page: () => const AiTokensView(),
       binding: AiTokensBinding(),
+    ),
+    GetPage(
+      name: _Paths.MEETING,
+      page: () => const MeetingView(),
+      binding: MeetingBinding(),
     ),
   ];
 }

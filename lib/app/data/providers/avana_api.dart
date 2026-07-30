@@ -9,6 +9,7 @@ import '../models/dashboard.dart';
 import '../models/attendance.dart';
 import '../models/ess_models.dart';
 import '../models/leave_balance.dart';
+import '../models/meeting.dart';
 import '../models/mss.dart';
 import '../models/onboarding_slide.dart';
 import '../models/payslip.dart';
@@ -987,5 +988,120 @@ class AvanaApi {
   Future<Map<String, dynamic>> aiTokenOrder(String orderNumber) async {
     final res = await _dio.get('/me/ai/tokens/$orderNumber');
     return Map<String, dynamic>.from(res.data['data'] ?? {});
+  }
+
+  // ---- AI Recorder (Rapat & Transkrip) ----
+
+  /// Whether recording is possible, and what it costs — asked before the
+  /// microphone is ever opened.
+  Future<MeetingRecorderStatus> meetingStatus() async {
+    final res = await _dio.get('/me/meetings/status');
+    return MeetingRecorderStatus.fromJson(
+      Map<String, dynamic>.from(res.data['data'] ?? {}),
+    );
+  }
+
+  Future<List<MeetingItem>> meetings({String? search, int page = 1}) async {
+    final res = await _dio.get(
+      '/me/meetings',
+      queryParameters: {
+        if (search != null && search.isNotEmpty) 'search': search,
+        'page': page,
+      },
+    );
+
+    return ((res.data['data'] as List?) ?? [])
+        .map((e) => MeetingItem.fromJson(Map<String, dynamic>.from(e)))
+        .toList();
+  }
+
+  Future<MeetingDetail> meeting(int id) async {
+    final res = await _dio.get('/me/meetings/$id');
+    return MeetingDetail.fromJson(
+      Map<String, dynamic>.from(res.data['data'] ?? {}),
+    );
+  }
+
+  /// Open a recording. Throws when the wallet cannot fund it — better now than
+  /// forty minutes into a meeting.
+  Future<MeetingItem> startMeeting({
+    required String title,
+    String? location,
+    List<int> participantIds = const [],
+  }) async {
+    final res = await _dio.post(
+      '/me/meetings',
+      data: {
+        'title': title,
+        if (location != null && location.isNotEmpty) 'location': location,
+        if (participantIds.isNotEmpty) 'participant_ids': participantIds,
+      },
+    );
+
+    if (res.statusCode != 201) {
+      throw DioException.badResponse(
+        statusCode: res.statusCode ?? 422,
+        requestOptions: res.requestOptions,
+        response: res,
+      );
+    }
+
+    return MeetingItem.fromJson(Map<String, dynamic>.from(res.data['data']));
+  }
+
+  /// A fresh credential for the listening socket. Re-asked as the old one
+  /// nears expiry; the provider's project key never leaves the server.
+  Future<MeetingSttGrant> meetingSttGrant(int id) async {
+    final res = await _dio.get('/me/meetings/$id/stt-token');
+    return MeetingSttGrant.fromJson(
+      Map<String, dynamic>.from(res.data['data'] ?? {}),
+    );
+  }
+
+  /// Hand over the text settled since the last heartbeat, and the clock.
+  ///
+  /// Returns the server's verdict. `stop` comes back true — with HTTP 409 —
+  /// when the wallet has run dry or the duration ceiling is hit, which is the
+  /// signal to close the socket. Resending a batch is safe: the server keys
+  /// segments on their offset and bills the same audio only once.
+  Future<Map<String, dynamic>> pushMeetingSegments({
+    required int id,
+    required List<PendingSegment> segments,
+    required int elapsedMs,
+  }) async {
+    final res = await _dio.post(
+      '/me/meetings/$id/segments',
+      data: {
+        'elapsed_ms': elapsedMs,
+        'segments': segments.map((s) => s.toJson()).toList(),
+      },
+    );
+
+    return Map<String, dynamic>.from(res.data['data'] ?? {});
+  }
+
+  /// Stop recording; the summary is built on a queue and pushed when ready.
+  Future<MeetingItem> stopMeeting({
+    required int id,
+    required int elapsedMs,
+  }) async {
+    final res = await _dio.post(
+      '/me/meetings/$id/stop',
+      data: {'elapsed_ms': elapsedMs},
+    );
+
+    return MeetingItem.fromJson(Map<String, dynamic>.from(res.data['data']));
+  }
+
+  /// Upload the keepsake audio after the socket closes, so a slow upload never
+  /// holds up the transcript the server already has.
+  Future<void> uploadMeetingAudio({
+    required int id,
+    required String filePath,
+  }) async {
+    await _dio.post(
+      '/me/meetings/$id/audio',
+      data: FormData.fromMap({'audio': await MultipartFile.fromFile(filePath)}),
+    );
   }
 }

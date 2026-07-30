@@ -39,6 +39,7 @@ abstract class Routes {
   static const DASHBOARD = _Paths.DASHBOARD;
   static const AI_ASSISTANT = _Paths.AI_ASSISTANT;
   static const AI_TOKENS = _Paths.AI_TOKENS;
+  static const MEETING = _Paths.MEETING;
 }
 
 abstract class _Paths {
@@ -80,4 +81,5 @@ abstract class _Paths {
   static const DASHBOARD = '/dashboard';
   static const AI_ASSISTANT = '/ai-assistant';
   static const AI_TOKENS = '/ai-tokens';
+  static const MEETING = '/meeting';
 }
