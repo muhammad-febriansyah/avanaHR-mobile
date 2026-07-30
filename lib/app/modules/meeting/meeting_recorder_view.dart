@@ -376,7 +376,11 @@ class MeetingRecorderView extends StatelessWidget {
         children: [
           Row(
             children: [
-              Icon(Iconsax.document_text, size: 15.sp, color: AppColors.primary),
+              Icon(
+                Iconsax.document_text,
+                size: 15.sp,
+                color: AppColors.primary,
+              ),
               SizedBox(width: 8.w),
               Text(
                 'Transkrip langsung',
@@ -494,8 +498,9 @@ class MeetingRecorderView extends StatelessWidget {
           style: TextStyle(fontSize: 16.sp, fontWeight: FontWeight.w700),
         ),
         content: Text(
-          'Rekaman dihentikan tanpa dibuatkan ringkasan. Transkrip yang sudah '
-          'terkirim tetap tersimpan di daftar rapat.',
+          'Rekaman dihentikan sekarang. Kalau belum ada yang terekam, rapat ini '
+          'ditandai gagal; kalau sudah ada, bagian itu tetap tersimpan dan '
+          'tetap diringkas.',
           style: TextStyle(fontSize: 13.sp, height: 1.5),
         ),
         actions: [

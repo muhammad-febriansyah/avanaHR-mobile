@@ -992,22 +992,46 @@ class AvanaApi {
 
   // ---- AI Recorder (Rapat & Transkrip) ----
 
+  /// Fail loudly on a rejected request.
+  ///
+  /// The client treats anything under 500 as a normal response, so a 422 or a
+  /// 409 arrives looking like success and its body reads as an empty payload.
+  /// For most screens that only means a blank list, but the recorder builds a
+  /// WebSocket URL out of it and fails somewhere unrelated with the server's
+  /// actual explanation thrown away. Every recorder call goes through here so
+  /// the reason the server gave is the reason the user is shown.
+  Response _ensureOk(Response res) {
+    final status = res.statusCode ?? 0;
+
+    if (status < 200 || status >= 300) {
+      throw DioException.badResponse(
+        statusCode: status,
+        requestOptions: res.requestOptions,
+        response: res,
+      );
+    }
+
+    return res;
+  }
+
   /// Whether recording is possible, and what it costs — asked before the
   /// microphone is ever opened.
   Future<MeetingRecorderStatus> meetingStatus() async {
-    final res = await _dio.get('/me/meetings/status');
+    final res = _ensureOk(await _dio.get('/me/meetings/status'));
     return MeetingRecorderStatus.fromJson(
       Map<String, dynamic>.from(res.data['data'] ?? {}),
     );
   }
 
   Future<List<MeetingItem>> meetings({String? search, int page = 1}) async {
-    final res = await _dio.get(
-      '/me/meetings',
-      queryParameters: {
-        if (search != null && search.isNotEmpty) 'search': search,
-        'page': page,
-      },
+    final res = _ensureOk(
+      await _dio.get(
+        '/me/meetings',
+        queryParameters: {
+          if (search != null && search.isNotEmpty) 'search': search,
+          'page': page,
+        },
+      ),
     );
 
     return ((res.data['data'] as List?) ?? [])
@@ -1016,7 +1040,7 @@ class AvanaApi {
   }
 
   Future<MeetingDetail> meeting(int id) async {
-    final res = await _dio.get('/me/meetings/$id');
+    final res = _ensureOk(await _dio.get('/me/meetings/$id'));
     return MeetingDetail.fromJson(
       Map<String, dynamic>.from(res.data['data'] ?? {}),
     );
@@ -1038,13 +1062,7 @@ class AvanaApi {
       },
     );
 
-    if (res.statusCode != 201) {
-      throw DioException.badResponse(
-        statusCode: res.statusCode ?? 422,
-        requestOptions: res.requestOptions,
-        response: res,
-      );
-    }
+    _ensureOk(res);
 
     return MeetingItem.fromJson(Map<String, dynamic>.from(res.data['data']));
   }
@@ -1052,7 +1070,7 @@ class AvanaApi {
   /// A fresh credential for the listening socket. Re-asked as the old one
   /// nears expiry; the provider's project key never leaves the server.
   Future<MeetingSttGrant> meetingSttGrant(int id) async {
-    final res = await _dio.get('/me/meetings/$id/stt-token');
+    final res = _ensureOk(await _dio.get('/me/meetings/$id/stt-token'));
     return MeetingSttGrant.fromJson(
       Map<String, dynamic>.from(res.data['data'] ?? {}),
     );
@@ -1069,12 +1087,17 @@ class AvanaApi {
     required List<PendingSegment> segments,
     required int elapsedMs,
   }) async {
-    final res = await _dio.post(
-      '/me/meetings/$id/segments',
-      data: {
-        'elapsed_ms': elapsedMs,
-        'segments': segments.map((s) => s.toJson()).toList(),
-      },
+    // Throws on 409, which is how the server says "stop" — the caller catches
+    // it and closes the socket. Wrapping it also means an unexpected refusal
+    // mid-recording surfaces instead of being read as an empty result.
+    final res = _ensureOk(
+      await _dio.post(
+        '/me/meetings/$id/segments',
+        data: {
+          'elapsed_ms': elapsedMs,
+          'segments': segments.map((s) => s.toJson()).toList(),
+        },
+      ),
     );
 
     return Map<String, dynamic>.from(res.data['data'] ?? {});
@@ -1085,9 +1108,8 @@ class AvanaApi {
     required int id,
     required int elapsedMs,
   }) async {
-    final res = await _dio.post(
-      '/me/meetings/$id/stop',
-      data: {'elapsed_ms': elapsedMs},
+    final res = _ensureOk(
+      await _dio.post('/me/meetings/$id/stop', data: {'elapsed_ms': elapsedMs}),
     );
 
     return MeetingItem.fromJson(Map<String, dynamic>.from(res.data['data']));
@@ -1099,9 +1121,13 @@ class AvanaApi {
     required int id,
     required String filePath,
   }) async {
-    await _dio.post(
-      '/me/meetings/$id/audio',
-      data: FormData.fromMap({'audio': await MultipartFile.fromFile(filePath)}),
+    _ensureOk(
+      await _dio.post(
+        '/me/meetings/$id/audio',
+        data: FormData.fromMap({
+          'audio': await MultipartFile.fromFile(filePath),
+        }),
+      ),
     );
   }
 
@@ -1112,9 +1138,11 @@ class AvanaApi {
     required int actionItemId,
     required bool done,
   }) async {
-    final res = await _dio.put(
-      '/me/meetings/$meetingId/action-items/$actionItemId',
-      data: {'status': done ? 'done' : 'open'},
+    final res = _ensureOk(
+      await _dio.put(
+        '/me/meetings/$meetingId/action-items/$actionItemId',
+        data: {'status': done ? 'done' : 'open'},
+      ),
     );
 
     return MeetingDetail.fromJson(
@@ -1126,9 +1154,11 @@ class AvanaApi {
     required int meetingId,
     required String text,
   }) async {
-    final res = await _dio.post(
-      '/me/meetings/$meetingId/action-items',
-      data: {'text': text},
+    final res = _ensureOk(
+      await _dio.post(
+        '/me/meetings/$meetingId/action-items',
+        data: {'text': text},
+      ),
     );
 
     return MeetingDetail.fromJson(
@@ -1139,7 +1169,7 @@ class AvanaApi {
   /// Ask for the summary to be built again. Spends tokens, so the server
   /// refuses here rather than failing later on a worker.
   Future<MeetingDetail> reprocessMeeting(int id) async {
-    final res = await _dio.post('/me/meetings/$id/reprocess');
+    final res = _ensureOk(await _dio.post('/me/meetings/$id/reprocess'));
 
     return MeetingDetail.fromJson(
       Map<String, dynamic>.from(res.data['data'] ?? {}),

@@ -76,9 +76,7 @@ class MeetingView extends GetView<MeetingController> {
         icon: Iconsax.empty_wallet,
         tone: AppColors.danger,
         title: 'Token tidak mencukupi',
-        body:
-            status.blockedMessage ??
-            'Token AI Anda sudah habis bulan ini.',
+        body: status.blockedMessage ?? 'Token AI Anda sudah habis bulan ini.',
       );
     }
 
@@ -322,7 +320,9 @@ class MeetingView extends GetView<MeetingController> {
     final parts = <String>[];
 
     if (meeting.startedAt != null) {
-      parts.add(DateFormat('d MMM yyyy · HH:mm', 'id').format(meeting.startedAt!));
+      parts.add(
+        DateFormat('d MMM yyyy · HH:mm', 'id').format(meeting.startedAt!),
+      );
     }
     if (meeting.durationMinutes > 0) {
       parts.add('${meeting.durationMinutes} menit');
@@ -380,10 +380,7 @@ class MeetingView extends GetView<MeetingController> {
               SizedBox(height: 4.h),
               Text(
                 'Beri judul supaya mudah dicari nanti.',
-                style: TextStyle(
-                  fontSize: 12.5.sp,
-                  color: AppColors.textMuted,
-                ),
+                style: TextStyle(fontSize: 12.5.sp, color: AppColors.textMuted),
               ),
               SizedBox(height: 18.h),
               _field(titleField, 'Judul rapat', 'mis. Weekly Sync Produk'),

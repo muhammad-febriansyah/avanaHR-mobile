@@ -199,7 +199,9 @@ class _MeetingDetailViewState extends State<MeetingDetailView> {
     final parts = <String>[];
 
     if (meeting.startedAt != null) {
-      parts.add(DateFormat('d MMM yyyy · HH:mm', 'id').format(meeting.startedAt!));
+      parts.add(
+        DateFormat('d MMM yyyy · HH:mm', 'id').format(meeting.startedAt!),
+      );
     }
     if (meeting.durationMinutes > 0) {
       parts.add('${meeting.durationMinutes} menit');
@@ -435,9 +437,8 @@ class _MeetingDetailViewState extends State<MeetingDetailView> {
           children: [
             GestureDetector(
               behavior: HitTestBehavior.opaque,
-              onTap: () => setState(
-                () => _openInsight = open ? null : insight.type,
-              ),
+              onTap: () =>
+                  setState(() => _openInsight = open ? null : insight.type),
               child: Padding(
                 padding: EdgeInsets.all(13.w),
                 child: Row(
@@ -699,7 +700,10 @@ class _MeetingDetailViewState extends State<MeetingDetailView> {
                 SizedBox(width: 7.w),
                 Text(
                   '${detail.transcript.length} ucapan',
-                  style: TextStyle(fontSize: 11.5.sp, color: AppColors.textMuted),
+                  style: TextStyle(
+                    fontSize: 11.5.sp,
+                    color: AppColors.textMuted,
+                  ),
                 ),
                 const Spacer(),
                 Icon(

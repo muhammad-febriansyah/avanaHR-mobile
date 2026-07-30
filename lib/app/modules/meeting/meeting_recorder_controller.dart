@@ -99,12 +99,14 @@ class MeetingRecorderController extends GetxController {
     try {
       await _openSocket();
     } on DioException catch (e) {
-      AppToast.error(ApiClient.errorMessage(e));
-      Get.back();
+      await _abandon(ApiClient.errorMessage(e));
       return;
-    } catch (_) {
-      AppToast.error('Gagal memulai sesi transkripsi.');
-      Get.back();
+    } catch (e) {
+      // Anything that is not the server refusing: the socket itself would not
+      // open. Carry the reason through rather than replacing it with a generic
+      // line — this is the message somebody debugging a recorder that will not
+      // start has to work from.
+      await _abandon('Gagal memulai sesi transkripsi. $e');
       return;
     }
 
@@ -360,10 +362,45 @@ class MeetingRecorderController extends GetxController {
     }
   }
 
-  /// Abandon without summarising — for a recording started by mistake.
+  /// Close a recording that never got going, and say why.
+  ///
+  /// The server opened the meeting before the microphone was touched, so
+  /// walking away without telling it leaves a row stuck at "Merekam" for good.
+  /// Stopping it lets the normal path finish: with no speech captured it is
+  /// marked failed, which is what actually happened.
+  Future<void> _abandon(String message) async {
+    _closing = true;
+    await _teardown();
+
+    try {
+      await _api.stopMeeting(id: meeting.id, elapsedMs: 0);
+    } on DioException {
+      // The recording is already lost; a failed tidy-up is not worth a second
+      // error on top of the one being shown.
+    }
+
+    Get.back(result: false);
+    AppToast.error(message);
+  }
+
+  /// Give up on a recording started by mistake.
+  ///
+  /// Still stopped server-side rather than simply left: anything already
+  /// transcribed has been billed and stored, and a row left in "Merekam"
+  /// never leaves that state on its own.
   Future<void> discard() async {
     _closing = true;
     await _teardown();
+
+    try {
+      await _api.stopMeeting(
+        id: meeting.id,
+        elapsedMs: elapsed.value.inMilliseconds,
+      );
+    } on DioException {
+      // Nothing useful to do here; the recording is over either way.
+    }
+
     Get.back(result: false);
   }
 
