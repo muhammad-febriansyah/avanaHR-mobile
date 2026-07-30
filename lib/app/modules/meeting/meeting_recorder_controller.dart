@@ -89,10 +89,14 @@ class MeetingRecorderController extends GetxController {
     super.onClose();
   }
 
+  /// Get the recording going, or close the meeting the server already opened.
+  ///
+  /// Every failure here has to end in [_abandon]: the row exists before the
+  /// microphone is touched, so any path that just walks away leaves a meeting
+  /// stuck at "Merekam" with nothing able to move it on.
   Future<void> _begin() async {
     if (!await _recorder.hasPermission()) {
-      AppToast.error('Izin mikrofon ditolak. Aktifkan di pengaturan HP.');
-      Get.back();
+      await _abandon('Izin mikrofon ditolak. Aktifkan di pengaturan HP.');
       return;
     }
 
@@ -110,7 +114,14 @@ class MeetingRecorderController extends GetxController {
       return;
     }
 
-    await _startMic();
+    try {
+      await _startMic();
+    } catch (e) {
+      // The socket is up but the microphone would not open — another app holds
+      // it, or the permission was revoked between the check and the call.
+      await _abandon('Mikrofon tidak bisa dibuka. $e');
+      return;
+    }
 
     _startedAt = DateTime.now();
     _ticker = Timer.periodic(const Duration(seconds: 1), (_) => _tick());
