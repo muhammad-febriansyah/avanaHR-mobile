@@ -6,6 +6,8 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:get/get.dart';
 import 'package:get_storage/get_storage.dart';
+import 'package:intl/date_symbol_data_local.dart';
+import 'package:intl/intl.dart';
 import 'package:toastification/toastification.dart';
 
 import 'app/core/theme/app_colors.dart';
@@ -32,6 +34,12 @@ Future<void> main() async {
   await SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
   await dotenv.load(fileName: '.env');
   await GetStorage.init();
+
+  // Month names and day formats for Indonesian. Without this, any DateFormat
+  // asked for the `id` locale throws the moment it formats — which shows up as
+  // a blank screen rather than an error, because it happens inside a build.
+  await initializeDateFormatting('id');
+  Intl.defaultLocale = 'id';
 
   // Apply the last tenant's brand accent before the first frame so the app
   // opens already white-labelled (refreshed on login via AuthService).

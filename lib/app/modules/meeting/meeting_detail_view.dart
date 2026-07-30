@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:get/get.dart';
 import 'package:iconsax/iconsax.dart';
-import 'package:intl/intl.dart';
 import 'package:share_plus/share_plus.dart';
 
 import '../../core/theme/app_colors.dart';
@@ -198,10 +197,8 @@ class _MeetingDetailViewState extends State<MeetingDetailView> {
   String _subtitle(MeetingItem meeting) {
     final parts = <String>[];
 
-    if (meeting.startedAt != null) {
-      parts.add(
-        DateFormat('d MMM yyyy · HH:mm', 'id').format(meeting.startedAt!),
-      );
+    if (meeting.startedLabel.isNotEmpty) {
+      parts.add(meeting.startedLabel);
     }
     if (meeting.durationMinutes > 0) {
       parts.add('${meeting.durationMinutes} menit');

@@ -1,3 +1,5 @@
+import 'package:intl/intl.dart';
+
 // Models for the AI Recorder (Rapat & Transkrip). Mirrors the JSON returned by
 // the `/me/meetings*` endpoints. A meeting is readable only by the person who
 // recorded it, the people listed as attending, or the whole company when it was
@@ -126,6 +128,25 @@ class MeetingItem {
         .toList(),
   );
 
+  /// `30 Jul 2026 · 14:05`, or empty when it never started.
+  ///
+  /// Falls back to a locale-free format rather than throwing: this is rendered
+  /// inside a list build, where an exception takes the whole screen down and
+  /// leaves nothing on it to explain why.
+  String get startedLabel {
+    final at = startedAt;
+    if (at == null) return '';
+
+    try {
+      return DateFormat('d MMM yyyy · HH:mm', 'id').format(at);
+    } catch (_) {
+      String two(int n) => n.toString().padLeft(2, '0');
+
+      return '${two(at.day)}/${two(at.month)}/${at.year} · '
+          '${two(at.hour)}:${two(at.minute)}';
+    }
+  }
+
   bool get isReady => status == 'ready';
   bool get isFailed => status == 'failed';
 
@@ -224,29 +245,25 @@ class MeetingInsight {
     'decision_analysis' => _maps(
       'decisions',
     ).map((d) => _join([d['decision'], d['rationale']], ' — ')).toList(),
-    'project_risk' => _maps('risks')
-        .map(
-          (r) => _join([
-            r['risk'],
-            if (r['severity'] != null) 'risiko ${r['severity']}',
-            r['mitigation'],
-          ], ' · '),
-        )
-        .toList(),
+    'project_risk' =>
+      _maps('risks')
+          .map(
+            (r) => _join([
+              r['risk'],
+              if (r['severity'] != null) 'risiko ${r['severity']}',
+              r['mitigation'],
+            ], ' · '),
+          )
+          .toList(),
     'sentiment' => [
       if (_string('overall').isNotEmpty) 'Sentimen: ${_string('overall')}',
       if (_string('note').isNotEmpty) _string('note'),
       ..._strings('tension_points'),
     ],
-    'follow_up' => _maps('recommendations')
-        .map(
-          (r) => _join([
-            r['action'],
-            r['owner'],
-            r['deadline'],
-          ], ' · '),
-        )
-        .toList(),
+    'follow_up' =>
+      _maps('recommendations')
+          .map((r) => _join([r['action'], r['owner'], r['deadline']], ' · '))
+          .toList(),
     _ => const [],
   };
 
@@ -257,10 +274,11 @@ class MeetingInsight {
       .where((e) => e.isNotEmpty)
       .toList();
 
-  List<Map<String, dynamic>> _maps(String key) => ((payload[key] as List?) ?? [])
-      .whereType<Map>()
-      .map((e) => Map<String, dynamic>.from(e))
-      .toList();
+  List<Map<String, dynamic>> _maps(String key) =>
+      ((payload[key] as List?) ?? [])
+          .whereType<Map>()
+          .map((e) => Map<String, dynamic>.from(e))
+          .toList();
 
   String _join(List<Object?> parts, String separator) => parts
       .map((p) => p?.toString().trim() ?? '')

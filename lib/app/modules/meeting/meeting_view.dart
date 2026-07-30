@@ -319,10 +319,8 @@ class MeetingView extends GetView<MeetingController> {
   String _subtitle(MeetingItem meeting) {
     final parts = <String>[];
 
-    if (meeting.startedAt != null) {
-      parts.add(
-        DateFormat('d MMM yyyy · HH:mm', 'id').format(meeting.startedAt!),
-      );
+    if (meeting.startedLabel.isNotEmpty) {
+      parts.add(meeting.startedLabel);
     }
     if (meeting.durationMinutes > 0) {
       parts.add('${meeting.durationMinutes} menit');
