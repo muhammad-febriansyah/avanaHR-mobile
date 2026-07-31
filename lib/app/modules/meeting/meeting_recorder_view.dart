@@ -10,6 +10,18 @@ import '../../data/models/meeting.dart';
 import 'meeting_recorder_controller.dart';
 import 'widgets/waveform.dart';
 
+/// Tonal fills for the transport controls.
+///
+/// Each state gets a tint plus its own darker ink rather than a solid hue with
+/// white on top: neither the brand amber (#F59E0B) nor the green (#22C55E)
+/// carries white text at a legible contrast, and a second saturated button
+/// beside "Selesai & Ringkas" would fight it for the eye.
+const _pauseFill = Color(0xFFFEF3C7);
+const _pauseInk = Color(0xFFB45309);
+const _resumeFill = Color(0xFFDCFCE7);
+const _resumeInk = Color(0xFF15803D);
+const _discardFill = Color(0xFFFEF2F2);
+
 /// The recording screen: a clock, proof the microphone is live, and the words
 /// as they settle.
 ///
@@ -180,7 +192,9 @@ class MeetingRecorderView extends StatelessWidget {
 
   Widget _body(MeetingRecorderController c) {
     return SingleChildScrollView(
-      padding: EdgeInsets.fromLTRB(18.w, 20.h, 18.w, 8.h),
+      // Room at the foot so the last line of the minutes is not tucked under
+      // the control bar's shadow.
+      padding: EdgeInsets.fromLTRB(18.w, 20.h, 18.w, 18.h),
       child: Column(
         children: [
           Container(
@@ -229,7 +243,16 @@ class MeetingRecorderView extends StatelessWidget {
   /// starts to matter — a progress bar from minute one is just noise.
   Widget _ceilingHint(MeetingRecorderController c) {
     final fraction = c.ceilingFraction;
-    final max = status.maxMinutes ?? 180;
+    final max = status.maxMinutes;
+
+    // No ceiling configured: the token wallet is the only limit, and the server
+    // stops a room that has gone quiet. Nothing to count down to.
+    if (fraction == null || max == null) {
+      return Text(
+        'Berhenti sendiri bila token habis atau ruangan sunyi',
+        style: TextStyle(fontSize: 11.5.sp, color: AppColors.textMuted),
+      );
+    }
 
     if (fraction < 0.6) {
       return Text(
@@ -309,7 +332,7 @@ class MeetingRecorderView extends StatelessWidget {
           Obx(() {
             final text = c.interim.value.isNotEmpty
                 ? c.interim.value
-                : (c.lines.isNotEmpty ? c.lines.last : '');
+                : (c.lines.isNotEmpty ? c.lines.last.text : '');
 
             if (text.isEmpty) return const SizedBox.shrink();
 
@@ -362,6 +385,7 @@ class MeetingRecorderView extends StatelessWidget {
       );
     }
 
+    // Newest first, so the sentence just spoken is never below the fold.
     final recent = c.lines.reversed.take(12).toList();
 
     return Container(
@@ -376,14 +400,8 @@ class MeetingRecorderView extends StatelessWidget {
         children: [
           Row(
             children: [
-              Icon(
-                Iconsax.document_text,
-                size: 15.sp,
-                color: AppColors.primary,
-              ),
-              SizedBox(width: 8.w),
               Text(
-                'Transkrip langsung',
+                'Notulen berjalan',
                 style: TextStyle(
                   fontSize: 13.sp,
                   fontWeight: FontWeight.w700,
@@ -392,96 +410,218 @@ class MeetingRecorderView extends StatelessWidget {
               ),
               const Spacer(),
               Text(
-                '${c.lines.length} kalimat',
+                '${c.lines.length} ucapan',
                 style: TextStyle(fontSize: 11.sp, color: AppColors.textMuted),
               ),
             ],
           ),
-          SizedBox(height: 12.h),
+          SizedBox(height: 14.h),
           for (var i = 0; i < recent.length; i++)
-            Padding(
-              padding: EdgeInsets.only(bottom: 10.h),
-              child: Text(
-                recent[i],
-                style: TextStyle(
-                  fontSize: 13.sp,
-                  height: 1.55,
-                  // The newest line reads full-strength; older ones recede.
-                  color: i == 0 ? AppColors.textPrimary : AppColors.textMuted,
-                  fontWeight: i == 0 ? FontWeight.w600 : FontWeight.w400,
-                ),
-              ),
+            _entry(
+              recent[i],
+              // Reading upwards, a speaker's name is worth repeating only when
+              // the one below them is somebody else.
+              showSpeaker:
+                  i == recent.length - 1 ||
+                  recent[i + 1].speaker != recent[i].speaker,
+              latest: i == 0,
             ),
         ],
       ),
     );
   }
 
-  Widget _controls(MeetingRecorderController c) {
-    return Container(
-      padding: EdgeInsets.fromLTRB(24.w, 14.h, 24.w, 18.h),
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24.r)),
-      ),
-      child: Obx(
-        () => Row(
-          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-          children: [
-            _roundButton(
-              icon: Iconsax.close_circle,
-              background: AppColors.muted,
-              foreground: AppColors.textMuted,
-              size: 52,
-              onTap: c.isStopping.value ? null : () => _confirmDiscard(c),
+  /// One line of the running minutes: time in the margin, words in the column.
+  Widget _entry(
+    TranscriptLine line, {
+    required bool showSpeaker,
+    required bool latest,
+  }) {
+    return Padding(
+      padding: EdgeInsets.only(bottom: 12.h),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 38.w,
+            child: Padding(
+              padding: EdgeInsets.only(top: showSpeaker ? 16.h : 2.h),
+              child: Text(
+                line.timecode,
+                style: TextStyle(
+                  fontSize: 10.5.sp,
+                  color: AppColors.textMuted,
+                  fontFeatures: const [FontFeature.tabularFigures()],
+                ),
+              ),
             ),
-            _roundButton(
-              icon: c.isPaused.value ? Iconsax.play : Iconsax.pause,
-              background: AppColors.primary,
-              foreground: Colors.white,
-              size: 74,
-              onTap: c.isStopping.value ? null : c.togglePause,
+          ),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                if (showSpeaker) ...[
+                  Text(
+                    line.speakerLabel,
+                    style: TextStyle(
+                      fontSize: 11.sp,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.primary,
+                    ),
+                  ),
+                  SizedBox(height: 3.h),
+                ],
+                Text(
+                  line.text,
+                  style: TextStyle(
+                    fontSize: 13.sp,
+                    height: 1.55,
+                    // The newest line reads full-strength; older ones recede.
+                    color: latest ? AppColors.textPrimary : AppColors.textMuted,
+                    fontWeight: latest ? FontWeight.w600 : FontWeight.w400,
+                  ),
+                ),
+              ],
             ),
-            _roundButton(
-              icon: Iconsax.stop,
-              background: AppColors.navy,
-              foreground: Colors.white,
-              size: 52,
-              busy: c.isStopping.value,
-              onTap: c.isStopping.value ? null : c.stop,
-            ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
 
-  Widget _roundButton({
+  /// Every control says what it does.
+  ///
+  /// Three unlabelled circles left people guessing which one ended the meeting
+  /// and which one threw it away — a bad thing to guess at with the recording
+  /// still running. Stop leads because it is the one people came to press;
+  /// discard is a plain word set apart from the two that keep the recording.
+  Widget _controls(MeetingRecorderController c) {
+    return Container(
+      padding: EdgeInsets.fromLTRB(18.w, 16.h, 18.w, 16.h),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24.r)),
+        // Lifts the bar off the transcript scrolling underneath it, so the
+        // controls read as a fixed surface rather than the end of the list.
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.navy.withValues(alpha: 0.07),
+            blurRadius: 20,
+            offset: const Offset(0, -6),
+          ),
+        ],
+      ),
+      child: Obx(() {
+        final paused = c.isPaused.value;
+        final busy = c.isStopping.value;
+
+        return Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Row(
+              children: [
+                Expanded(
+                  child: _actionButton(
+                    icon: paused ? Iconsax.play : Iconsax.pause,
+                    label: paused ? 'Lanjutkan' : 'Jeda',
+                    // Amber holds the recording, green hands it back — the
+                    // button's own colour says which way it will go.
+                    background: paused ? _resumeFill : _pauseFill,
+                    foreground: paused ? _resumeInk : _pauseInk,
+                    onTap: busy
+                        ? null
+                        : () {
+                            HapticFeedback.lightImpact();
+                            c.togglePause();
+                          },
+                  ),
+                ),
+                SizedBox(width: 11.w),
+                Expanded(
+                  flex: 2,
+                  child: _actionButton(
+                    icon: Iconsax.stop,
+                    label: 'Selesai & Ringkas',
+                    background: AppColors.primary,
+                    foreground: Colors.white,
+                    busy: busy,
+                    onTap: busy
+                        ? null
+                        : () {
+                            HapticFeedback.mediumImpact();
+                            c.stop();
+                          },
+                  ),
+                ),
+              ],
+            ),
+            SizedBox(height: 10.h),
+            // Tinted rather than bare: a plain red word under two filled
+            // buttons reads as a caption, not something you can press. Kept
+            // narrow and low-contrast so it stays the last resort.
+            TextButton.icon(
+              onPressed: busy ? null : () => _confirmDiscard(c),
+              style: TextButton.styleFrom(
+                backgroundColor: _discardFill,
+                foregroundColor: AppColors.danger,
+                disabledForegroundColor: AppColors.danger.withValues(
+                  alpha: 0.45,
+                ),
+                minimumSize: Size(0, 44.h),
+                padding: EdgeInsets.symmetric(horizontal: 20.w),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12.r),
+                ),
+              ),
+              icon: Icon(Iconsax.trash, size: 15.sp),
+              label: Text(
+                'Buang rekaman',
+                style: TextStyle(
+                  fontSize: 12.5.sp,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+          ],
+        );
+      }),
+    );
+  }
+
+  Widget _actionButton({
     required IconData icon,
+    required String label,
     required Color background,
     required Color foreground,
-    required double size,
     VoidCallback? onTap,
     bool busy = false,
   }) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        width: size.w,
-        height: size.w,
-        decoration: BoxDecoration(
-          color: onTap == null ? background.withValues(alpha: 0.5) : background,
-          shape: BoxShape.circle,
+    return ElevatedButton.icon(
+      onPressed: onTap,
+      style: ElevatedButton.styleFrom(
+        backgroundColor: background,
+        foregroundColor: foreground,
+        disabledBackgroundColor: background.withValues(alpha: 0.5),
+        disabledForegroundColor: foreground.withValues(alpha: 0.7),
+        padding: EdgeInsets.symmetric(vertical: 15.h),
+        elevation: 0,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(14.r),
         ),
-        child: busy
-            ? Padding(
-                padding: EdgeInsets.all(size.w * 0.32),
-                child: CircularProgressIndicator(
-                  strokeWidth: 2,
-                  valueColor: AlwaysStoppedAnimation(foreground),
-                ),
-              )
-            : Icon(icon, color: foreground, size: (size * 0.42).sp),
+      ),
+      icon: busy
+          ? SizedBox(
+              width: 16.w,
+              height: 16.w,
+              child: CircularProgressIndicator(
+                strokeWidth: 2,
+                valueColor: AlwaysStoppedAnimation(foreground),
+              ),
+            )
+          : Icon(icon, size: 17.sp),
+      label: Text(
+        label,
+        style: TextStyle(fontSize: 13.5.sp, fontWeight: FontWeight.w700),
       ),
     );
   }
@@ -503,14 +643,34 @@ class MeetingRecorderView extends StatelessWidget {
           'tetap diringkas.',
           style: TextStyle(fontSize: 13.sp, height: 1.5),
         ),
+        actionsPadding: EdgeInsets.fromLTRB(16.w, 0, 16.w, 14.h),
         actions: [
           TextButton(
             onPressed: () => Get.back(result: false),
+            style: TextButton.styleFrom(
+              foregroundColor: AppColors.textMuted,
+              minimumSize: Size(0, 44.h),
+            ),
             child: const Text('Batal'),
           ),
-          TextButton(
+          // The destructive choice is the filled one here, not on the screen
+          // behind it: this is the step where the decision is actually made.
+          ElevatedButton(
             onPressed: () => Get.back(result: true),
-            child: Text('Buang', style: TextStyle(color: AppColors.danger)),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.danger,
+              foregroundColor: Colors.white,
+              elevation: 0,
+              minimumSize: Size(0, 44.h),
+              padding: EdgeInsets.symmetric(horizontal: 20.w),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12.r),
+              ),
+            ),
+            child: Text(
+              'Buang',
+              style: TextStyle(fontSize: 13.5.sp, fontWeight: FontWeight.w700),
+            ),
           ),
         ],
       ),
