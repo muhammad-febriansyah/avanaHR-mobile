@@ -24,6 +24,16 @@ class AttendanceToday {
   /// Whether "1 device 1 account" binding is enforced by the tenant.
   final bool deviceBindingEnabled;
 
+  /// Whether a punch must carry a single-use liveness nonce. The server hands
+  /// one out from `/me/attendance/challenge` and rejects a clock without it,
+  /// so this decides whether to fetch one before submitting.
+  final bool requiresLivenessChallenge;
+
+  /// Whether the tenant makes face enrolment a precondition for clocking. When
+  /// off, someone who has not enrolled may still clock — the server skips the
+  /// identity match rather than refusing the punch.
+  final bool requiresFaceEnrollment;
+
   AttendanceToday({
     required this.date,
     required this.nextAction,
@@ -36,6 +46,8 @@ class AttendanceToday {
     this.wfhApprovedToday = false,
     this.faceMode = 'recognition',
     this.deviceBindingEnabled = true,
+    this.requiresLivenessChallenge = false,
+    this.requiresFaceEnrollment = false,
   });
 
   /// A live face must be captured at clock-in (recognition or detection).
@@ -67,6 +79,9 @@ class AttendanceToday {
       wfhApprovedToday: requirements['wfh_approved_today'] == true,
       faceMode: (requirements['face_mode'] as String?) ?? 'recognition',
       deviceBindingEnabled: requirements['device_binding_enabled'] != false,
+      requiresLivenessChallenge:
+          requirements['require_liveness_challenge'] == true,
+      requiresFaceEnrollment: requirements['require_face_enrollment'] == true,
     );
   }
 }

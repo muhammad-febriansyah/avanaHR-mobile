@@ -65,7 +65,15 @@ class AttendanceQueueService extends GetxService {
       final remaining = <Map<String, dynamic>>[];
       for (final entry in _load()) {
         try {
+          // A liveness nonce expires two minutes after it is issued, so a punch
+          // that waited out an outage has to ask for a fresh one now rather
+          // than carry the one it was queued with.
+          final nonce = entry['needs_nonce'] == true
+              ? await _api.attendanceChallenge()
+              : null;
+
           final res = await _api.clock(
+            nonce: nonce,
             type: entry['type'] as String,
             // Older queued entries predate the mode and default to office.
             workMode: entry['work_mode'] as String?,

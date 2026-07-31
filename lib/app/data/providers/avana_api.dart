@@ -197,6 +197,22 @@ class AvanaApi {
   Future<void> readNotification(int id) =>
       _dio.post('/me/notifications/$id/read');
 
+  /// A single-use liveness nonce, valid for two minutes.
+  ///
+  /// Only tenants with "wajib tantangan liveness" on need it, and for them the
+  /// server refuses any clock that arrives without one. Returns null when the
+  /// challenge cannot be issued, so the caller can decide whether to submit
+  /// anyway and let the server have the final word.
+  Future<String?> attendanceChallenge() async {
+    try {
+      final res = await _dio.post('/me/attendance/challenge');
+
+      return res.data['data']?['nonce'] as String?;
+    } catch (_) {
+      return null;
+    }
+  }
+
   // ---- ESS write ----
   Future<Response> clock({
     required String type,
@@ -210,6 +226,7 @@ class AvanaApi {
     bool? isEmulator,
     String? clockedAt,
     String? selfiePath,
+    String? nonce,
   }) async {
     final fields = <String, dynamic>{
       'type': type,
@@ -222,6 +239,7 @@ class AvanaApi {
       if (isRooted != null) 'is_rooted': isRooted,
       if (isEmulator != null) 'is_emulator': isEmulator,
       if (clockedAt != null) 'clocked_at': clockedAt,
+      if (nonce != null) 'nonce': nonce,
     };
 
     // No selfie → plain JSON. With a selfie → multipart so the captured face

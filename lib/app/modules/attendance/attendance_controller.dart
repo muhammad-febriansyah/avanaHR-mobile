@@ -256,6 +256,9 @@ class AttendanceController extends GetxController with WidgetsBindingObserver {
   /// Both clocks are spent for today — there is no action left to offer.
   bool get isDoneToday => today.value?.isDone ?? false;
 
+  /// Whether this tenant makes every punch carry a single-use liveness nonce.
+  bool get needsChallenge => today.value?.requiresLivenessChallenge ?? false;
+
   /// Whether the geofence currently allows clocking; the on-page scanner uses
   /// this to decide whether to run the camera.
   bool get canClockNow =>
@@ -323,21 +326,28 @@ class AttendanceController extends GetxController with WidgetsBindingObserver {
         selfiePath = result['photo'] as String?;
       } else {
         // Not enrolled yet → explain first so the flow is clear, then register.
-        // The just-captured template + frame are reused for this same punch (the
-        // backend blocks a clock with no embedding, so a fall-through would 422).
+        // The just-captured template + frame are reused for this same punch.
         final wantEnroll = await confirmFaceEnroll();
         if (!wantEnroll) {
-          return;
-        }
-        final result = await Get.toNamed(Routes.FACE_ENROLL);
-        if (result is! Map || result['embedding'] is! List) {
-          AppToast.warning('Pendaftaran wajah dibatalkan.');
+          // Whether backing out ends the punch is the tenant's call. With
+          // "wajib daftar wajah" on the server refuses a clock from someone
+          // unenrolled, so there is nothing to submit; with it off it accepts
+          // the punch and simply skips the identity match, and forcing an
+          // enrolment here would be stricter than the policy asks.
+          if (today.value?.requiresFaceEnrollment ?? true) {
+            return;
+          }
+        } else {
+          final result = await Get.toNamed(Routes.FACE_ENROLL);
+          if (result is! Map || result['embedding'] is! List) {
+            AppToast.warning('Pendaftaran wajah dibatalkan.');
 
-          return;
+            return;
+          }
+          markFaceEnrolled();
+          faceEmbedding = List<double>.from(result['embedding'] as List);
+          selfiePath = result['photo'] as String?;
         }
-        markFaceEnrolled();
-        faceEmbedding = List<double>.from(result['embedding'] as List);
-        selfiePath = result['photo'] as String?;
       }
     }
 
@@ -380,6 +390,9 @@ class AttendanceController extends GetxController with WidgetsBindingObserver {
         'is_emulator': isEmulator,
         'clocked_at': DateTime.now().toIso8601String(),
         if (faceEmbedding != null) 'face_embedding': faceEmbedding,
+        // A nonce lives two minutes, so a queued punch cannot carry one: the
+        // queue fetches its own when it finally reaches the server.
+        if (needsChallenge) 'needs_nonce': true,
       };
 
       // No internet → queue it and reflect the action locally.
@@ -389,8 +402,13 @@ class AttendanceController extends GetxController with WidgetsBindingObserver {
         return;
       }
 
+      // Tenants with the liveness challenge on get a single-use nonce per
+      // punch; without it the server rejects the clock outright.
+      final nonce = needsChallenge ? await _api.attendanceChallenge() : null;
+
       try {
         final res = await _api.clock(
+          nonce: nonce,
           type: type,
           workMode: effectiveWorkMode,
           latitude: pos?.latitude,

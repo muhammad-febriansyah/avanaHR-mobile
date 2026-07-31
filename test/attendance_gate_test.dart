@@ -43,6 +43,44 @@ void main() {
     });
   });
 
+  group('AttendanceToday requirements', () {
+    test('reads the tenant policy the punch has to satisfy', () {
+      final today = AttendanceToday.fromJson(
+        {'date': '2026-07-31', 'next_action': 'in'},
+        requirements: {
+          'face_mode': 'detection',
+          'device_binding_enabled': false,
+          'require_face_enrollment': true,
+          'require_liveness_challenge': true,
+          'wfh_approved_today': true,
+        },
+      );
+
+      expect(today.faceMode, 'detection');
+      expect(today.requiresFaceCapture, isTrue);
+      expect(today.usesFaceRecognition, isFalse);
+      expect(today.deviceBindingEnabled, isFalse);
+      expect(today.requiresFaceEnrollment, isTrue);
+      expect(today.requiresLivenessChallenge, isTrue);
+      expect(today.wfhApprovedToday, isTrue);
+    });
+
+    test('leaves the optional gates off when the tenant has not asked', () {
+      final today = AttendanceToday.fromJson(
+        {'date': '2026-07-31', 'next_action': 'in'},
+        requirements: {'face_mode': 'off'},
+      );
+
+      // The defaults decide whether the app asks for a nonce and whether it
+      // makes enrolment a precondition — neither may be assumed on.
+      expect(today.requiresLivenessChallenge, isFalse);
+      expect(today.requiresFaceEnrollment, isFalse);
+      expect(today.requiresFaceCapture, isFalse);
+      // Binding, in contrast, is on unless the tenant turned it off.
+      expect(today.deviceBindingEnabled, isTrue);
+    });
+  });
+
   group('WorkLocations', () {
     test('reads WFA from the scope, not from an empty office list', () {
       const wfa = WorkLocations(
