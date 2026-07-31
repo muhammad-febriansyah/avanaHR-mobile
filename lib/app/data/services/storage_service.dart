@@ -61,7 +61,7 @@ class StorageService extends GetxService {
 
   bool get onboarded => _box.read<bool>(_kOnboarded) ?? false;
 
-  /// Email kept for the "Ingat saya" toggle on the login screen.
+  /// Email kept for the "Ingat email saya" toggle on the login screen.
   String? get rememberedEmail => _box.read<String>(_kRememberEmail);
 
   /// Last date (yyyy-MM-dd) the daily mood popup was auto-shown — so it prompts

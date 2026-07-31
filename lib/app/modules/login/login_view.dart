@@ -278,8 +278,11 @@ class LoginView extends GetView<LoginController> {
                   ),
                 ),
                 SizedBox(width: 8.w),
+                // Says what it does: the toggle keeps the address for the next
+                // sign-in and nothing else. Staying signed in is the token's
+                // job and happens either way.
                 Text(
-                  'Ingat saya',
+                  'Ingat email saya',
                   style: TextStyle(
                     color: AppColors.navy,
                     fontSize: 12.5.sp,
