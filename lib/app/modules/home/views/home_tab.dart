@@ -332,6 +332,7 @@ class HomeTab extends GetView<HomeController> {
           Obx(() {
             final t = controller.today.value;
             final canIn = t?.canClockIn ?? true;
+            final done = t?.isDone ?? false;
             return Row(
               children: [
                 Expanded(
@@ -339,7 +340,11 @@ class HomeTab extends GetView<HomeController> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        canIn ? 'Belum absen masuk' : 'Sedang bekerja',
+                        done
+                            ? 'Absensi hari ini selesai'
+                            : canIn
+                            ? 'Belum absen masuk'
+                            : 'Sedang bekerja',
                         style: TextStyle(
                           fontSize: 11.5.sp,
                           color: AppColors.textMuted,
@@ -359,6 +364,9 @@ class HomeTab extends GetView<HomeController> {
                       backgroundColor: canIn
                           ? AppColors.primary
                           : AppColors.destructive,
+                      disabledBackgroundColor: AppColors.textMuted.withValues(
+                        alpha: 0.3,
+                      ),
                       foregroundColor: Colors.white,
                       elevation: 0,
                       minimumSize: Size(0, 46.h),
@@ -367,15 +375,25 @@ class HomeTab extends GetView<HomeController> {
                         borderRadius: BorderRadius.circular(100.r),
                       ),
                     ),
-                    onPressed: () => Get.find<MainController>().changeTab(
-                      MainController.attendanceTab,
-                    ),
+                    onPressed: done
+                        ? null
+                        : () => Get.find<MainController>().changeTab(
+                            MainController.attendanceTab,
+                          ),
                     icon: Icon(
-                      canIn ? Iconsax.login_1 : Iconsax.logout_1,
+                      done
+                          ? Iconsax.tick_circle
+                          : canIn
+                          ? Iconsax.login_1
+                          : Iconsax.logout_1,
                       size: 18.sp,
                     ),
                     label: Text(
-                      canIn ? 'Masuk' : 'Keluar',
+                      done
+                          ? 'Selesai'
+                          : canIn
+                          ? 'Masuk'
+                          : 'Keluar',
                       style: TextStyle(
                         fontSize: 13.5.sp,
                         fontWeight: FontWeight.w700,

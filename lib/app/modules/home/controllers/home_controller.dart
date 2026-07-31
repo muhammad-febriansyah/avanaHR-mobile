@@ -18,7 +18,16 @@ import '../../../routes/app_pages.dart';
 import '../views/mood_dialog.dart';
 
 /// Result of the home-screen geofence auto-detect.
-enum LocState { loading, inside, outside, denied, gpsOff, noOffice, error }
+enum LocState {
+  loading,
+  inside,
+  outside,
+  anywhere,
+  denied,
+  gpsOff,
+  noOffice,
+  error,
+}
 
 class HomeController extends GetxController with WidgetsBindingObserver {
   final AvanaApi _api = AvanaApi();
@@ -230,6 +239,21 @@ class HomeController extends GetxController with WidgetsBindingObserver {
     }
   }
 
+  /// Re-pull today's attendance and the month's counters.
+  ///
+  /// The attendance tab owns its own copy of the day, so a punch made there
+  /// left this card reading "Belum absen masuk" until the app was backgrounded
+  /// or pulled to refresh. [AttendanceController] calls this after a punch.
+  Future<void> refreshAttendance() async {
+    await Future.wait([_loadToday(), _loadSummary()]);
+  }
+
+  /// Take a punch straight from the attendance screen, for the offline queue:
+  /// the server has not seen it yet, so re-fetching would only undo it here.
+  void adoptToday(AttendanceToday record) {
+    today.value = record;
+  }
+
   Future<void> refreshAll() async {
     isLoading.value = true;
     await Future.wait([
@@ -335,9 +359,12 @@ class HomeController extends GetxController with WidgetsBindingObserver {
   Future<void> detectLocation() async {
     locState.value = LocState.loading;
     try {
-      final locations = await _api.workLocations();
+      final result = await _api.workLocations();
+      final locations = result.items;
       if (locations.isEmpty) {
-        locState.value = LocState.noOffice;
+        locState.value = result.isAnywhere
+            ? LocState.anywhere
+            : LocState.noOffice;
 
         return;
       }
@@ -404,6 +431,14 @@ class HomeController extends GetxController with WidgetsBindingObserver {
 
       nearestOffice.value = nearest.name;
       distanceMeters.value = nearestDistance;
+
+      // WFA: the nearest office is a label, not a fence.
+      if (result.isAnywhere) {
+        locState.value = LocState.anywhere;
+
+        return;
+      }
+
       final within = nearest.radius <= 0 || nearestDistance <= nearest.radius;
       locState.value = within ? LocState.inside : LocState.outside;
     } catch (_) {

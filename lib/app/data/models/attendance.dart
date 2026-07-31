@@ -46,6 +46,10 @@ class AttendanceToday {
 
   bool get canClockIn => nextAction == 'in';
 
+  /// The server reports 'done' once both clocks are recorded; the button must
+  /// stop offering a clock-out the server would reject.
+  bool get isDone => nextAction == 'done';
+
   factory AttendanceToday.fromJson(
     Map<String, dynamic> json, {
     Map<String, dynamic> requirements = const {},

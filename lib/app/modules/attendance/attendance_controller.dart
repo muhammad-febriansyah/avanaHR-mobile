@@ -16,10 +16,23 @@ import '../../data/services/auth_service.dart';
 import '../../data/services/connectivity_service.dart';
 import '../../data/services/device_service.dart';
 import '../../routes/app_pages.dart';
+import '../home/controllers/home_controller.dart';
 import 'widgets/clock_dialogs.dart';
 
 /// Geofence state for the attendance screen's map + clock gate.
-enum GeoState { loading, inside, outside, gpsOff, denied, noOffice, error }
+///
+/// `anywhere` is WFA: a position was resolved and an office may even be named,
+/// but the tenant policy does not hold the employee to any radius.
+enum GeoState {
+  loading,
+  inside,
+  outside,
+  anywhere,
+  gpsOff,
+  denied,
+  noOffice,
+  error,
+}
 
 class AttendanceController extends GetxController with WidgetsBindingObserver {
   final AvanaApi _api = AvanaApi();
@@ -57,10 +70,12 @@ class AttendanceController extends GetxController with WidgetsBindingObserver {
   /// (no office configured / GPS unavailable) — so users are never trapped.
   ///
   /// Working from home is off-site by definition, so the radius must not gate
-  /// it; the server checks the WFH approval instead.
+  /// it; the server checks the WFH approval instead. WFA is the same deal at
+  /// the policy level: the server never measures a radius for those employees.
   bool get canClockByLocation =>
       effectiveWorkMode == 'home' ||
       geoState.value == GeoState.inside ||
+      geoState.value == GeoState.anywhere ||
       geoState.value == GeoState.noOffice ||
       geoState.value == GeoState.gpsOff ||
       geoState.value == GeoState.denied ||
@@ -147,7 +162,8 @@ class AttendanceController extends GetxController with WidgetsBindingObserver {
     geoState.value = GeoState.loading;
     try {
       final locations = await _api.workLocations();
-      final withCoords = locations
+      final isAnywhere = locations.isAnywhere;
+      final withCoords = locations.items
           .where((l) => l.latitude != null && l.longitude != null)
           .toList();
 
@@ -190,7 +206,7 @@ class AttendanceController extends GetxController with WidgetsBindingObserver {
       userLng.value = pos.longitude;
 
       if (withCoords.isEmpty) {
-        geoState.value = GeoState.noOffice;
+        geoState.value = isAnywhere ? GeoState.anywhere : GeoState.noOffice;
 
         return;
       }
@@ -212,6 +228,14 @@ class AttendanceController extends GetxController with WidgetsBindingObserver {
 
       nearest.value = closest;
       distanceMeters.value = closestDistance;
+
+      // WFA: the nearest office is only a label here, never a gate.
+      if (isAnywhere) {
+        geoState.value = GeoState.anywhere;
+
+        return;
+      }
+
       final within =
           (closest!.radius <= 0) || closestDistance <= closest.radius;
       geoState.value = within ? GeoState.inside : GeoState.outside;
@@ -229,9 +253,13 @@ class AttendanceController extends GetxController with WidgetsBindingObserver {
     _box.write(_faceKey, true);
   }
 
+  /// Both clocks are spent for today — there is no action left to offer.
+  bool get isDoneToday => today.value?.isDone ?? false;
+
   /// Whether the geofence currently allows clocking; the on-page scanner uses
   /// this to decide whether to run the camera.
-  bool get canClockNow => canClockByLocation && !isClocking.value;
+  bool get canClockNow =>
+      canClockByLocation && !isClocking.value && !isDoneToday;
 
   /// Full clock action with the built-in navigating face gate. Kept for entry
   /// points that push the standalone camera route.
@@ -250,6 +278,14 @@ class AttendanceController extends GetxController with WidgetsBindingObserver {
     // we never clock out on a new day against yesterday's open record.
     if (_isStaleDay) {
       await load();
+    }
+
+    // Clocked in and out already: a third tap has nothing to submit, and the
+    // server would only answer 422.
+    if (isDoneToday) {
+      AppToast.warning('Absensi hari ini sudah selesai.');
+
+      return;
     }
 
     final type = today.value?.canClockIn ?? true ? 'in' : 'out';
@@ -370,6 +406,7 @@ class AttendanceController extends GetxController with WidgetsBindingObserver {
         final code = res.statusCode ?? 0;
         if (code >= 200 && code < 300) {
           await load();
+          _syncHome();
           showClockResult(
             success: true,
             message: ApiClient.messageFrom(res, 'Absensi berhasil dicatat.'),
@@ -405,9 +442,30 @@ class AttendanceController extends GetxController with WidgetsBindingObserver {
   void _queueOffline(String type, Map<String, dynamic> entry) {
     Get.find<AttendanceQueueService>().enqueue(entry);
     _applyOptimistic(type);
+    // Offline: there is nothing to re-fetch, so hand the home card the same
+    // optimistic record this screen is showing.
+    _syncHome(optimistic: today.value);
     AppToast.info(
       'Tidak ada internet. Absen disimpan & dikirim otomatis saat online.',
     );
+  }
+
+  /// The home tab keeps its own copy of today's attendance and only re-pulls it
+  /// on a new day or a pull-to-refresh. Without this nudge its card still reads
+  /// "Belum absen masuk" right after a punch made on this screen.
+  void _syncHome({AttendanceToday? optimistic}) {
+    if (!Get.isRegistered<HomeController>()) {
+      return;
+    }
+
+    final home = Get.find<HomeController>();
+    if (optimistic != null) {
+      home.adoptToday(optimistic);
+
+      return;
+    }
+
+    home.refreshAttendance();
   }
 
   bool _isNetworkError(DioException e) =>

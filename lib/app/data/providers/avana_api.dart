@@ -322,13 +322,16 @@ class AvanaApi {
   Future<Response> submitMood(String mood) =>
       _dio.post('/me/mood', data: {'mood': mood});
 
-  Future<List<WorkLocationItem>> workLocations() async {
+  Future<WorkLocations> workLocations() async {
     final res = await _dio.get('/me/work-locations');
     final list = (res.data['data'] as List?) ?? [];
 
-    return list
-        .map((e) => WorkLocationItem.fromJson(Map<String, dynamic>.from(e)))
-        .toList();
+    return WorkLocations(
+      items: list
+          .map((e) => WorkLocationItem.fromJson(Map<String, dynamic>.from(e)))
+          .toList(),
+      scope: (res.data['scope'] as String?) ?? 'assigned',
+    );
   }
 
   // ---- Activity feed (Riwayat) ----

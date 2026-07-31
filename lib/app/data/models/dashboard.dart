@@ -28,6 +28,24 @@ class WorkLocationItem {
   );
 }
 
+/// The `/me/work-locations` payload: the offices the caller may clock at, plus
+/// the attendance scope the tenant (or their own override) puts them under.
+///
+/// Under `anywhere` — WFA — the server does not check the radius at all, but it
+/// still sends the offices so the app can name the nearest one. Without the
+/// scope the app would measure that distance and refuse a clock-in the server
+/// would have accepted.
+class WorkLocations {
+  final List<WorkLocationItem> items;
+
+  /// 'assigned' | 'any_branch' | 'anywhere'.
+  final String scope;
+
+  const WorkLocations({required this.items, this.scope = 'assigned'});
+
+  bool get isAnywhere => scope == 'anywhere';
+}
+
 /// Compact home dashboard summary from `/me/dashboard`.
 class DashboardSummary {
   final double leaveAvailable;

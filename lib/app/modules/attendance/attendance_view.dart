@@ -207,13 +207,14 @@ class AttendanceView extends GetView<AttendanceController> {
   Widget _clockButton() {
     return Obx(() {
       final isIn = controller.today.value?.canClockIn ?? true;
+      final done = controller.isDoneToday;
       final busy = controller.isClocking.value;
-      final blocked = !controller.canClockByLocation;
+      final blocked = !done && !controller.canClockByLocation;
       return SizedBox(
         width: double.infinity,
         height: 54.h,
         child: ElevatedButton.icon(
-          onPressed: busy || blocked ? null : controller.clock,
+          onPressed: busy || blocked || done ? null : controller.clock,
           style: ElevatedButton.styleFrom(
             backgroundColor: isIn ? AppColors.primary : AppColors.destructive,
             disabledBackgroundColor: AppColors.textMuted.withValues(alpha: 0.3),
@@ -232,10 +233,19 @@ class AttendanceView extends GetView<AttendanceController> {
                     strokeWidth: 2,
                   ),
                 )
-              : Icon(isIn ? Iconsax.login_1 : Iconsax.logout_1, size: 20.sp),
+              : Icon(
+                  done
+                      ? Iconsax.tick_circle
+                      : isIn
+                      ? Iconsax.login_1
+                      : Iconsax.logout_1,
+                  size: 20.sp,
+                ),
           label: Text(
             busy
                 ? 'Memproses…'
+                : done
+                ? 'Absensi hari ini selesai'
                 : blocked
                 ? 'Di luar radius kantor'
                 : isIn
@@ -278,6 +288,14 @@ class AttendanceView extends GetView<AttendanceController> {
           icon = Iconsax.close_circle;
           title = 'Di luar radius${office != null ? ' · $office' : ''}';
           sub = '$dist m — mendekat untuk absen';
+          break;
+        case GeoState.anywhere:
+          color = AppColors.success;
+          icon = Iconsax.global;
+          title = 'WFA — absen di mana saja';
+          sub = office != null
+              ? 'Radius tidak dicek · terdekat $office ($dist m)'
+              : 'Radius tidak dicek, lokasi tetap direkam';
           break;
         case GeoState.gpsOff:
           color = AppColors.warning;
