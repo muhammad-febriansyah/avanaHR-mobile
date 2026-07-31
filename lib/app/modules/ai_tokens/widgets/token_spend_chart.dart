@@ -16,7 +16,11 @@ final _count = NumberFormat.decimalPattern('id');
 /// plot states the selected bucket, which also keeps the bars themselves free
 /// of a number on every column.
 class TokenSpendChart extends StatefulWidget {
-  const TokenSpendChart({super.key, required this.points, required this.monthly});
+  const TokenSpendChart({
+    super.key,
+    required this.points,
+    required this.monthly,
+  });
 
   final List<AiTokenSpendPoint> points;
 
@@ -72,7 +76,9 @@ class _TokenSpendChartState extends State<TokenSpendChart> {
     }
 
     final point = widget.points[_focus];
-    final peak = widget.points.map((p) => p.tokens).reduce((a, b) => a > b ? a : b);
+    final peak = widget.points
+        .map((p) => p.tokens)
+        .reduce((a, b) => a > b ? a : b);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,

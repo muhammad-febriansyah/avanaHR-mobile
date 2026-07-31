@@ -10,6 +10,7 @@ import '../../core/widgets/app_page.dart';
 import '../../core/widgets/ui.dart';
 import '../../data/models/ai_models.dart';
 import 'ai_tokens_controller.dart';
+import 'pack_pricing.dart';
 import 'widgets/token_spend_chart.dart';
 
 final _count = NumberFormat.decimalPattern('id');
@@ -176,10 +177,7 @@ class AiTokensView extends GetView<AiTokensController> {
                   label,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    fontSize: 10.sp,
-                    color: AppColors.textMuted,
-                  ),
+                  style: TextStyle(fontSize: 10.sp, color: AppColors.textMuted),
                 ),
                 Text(
                   value,
@@ -335,17 +333,11 @@ class AiTokensView extends GetView<AiTokensController> {
               SizedBox(height: 10.h),
               Row(
                 children: [
-                  Expanded(
-                    child: _stat('Hari ini', spend.today),
-                  ),
+                  Expanded(child: _stat('Hari ini', spend.today)),
                   SizedBox(width: 10.w),
-                  Expanded(
-                    child: _stat('7 hari', spend.week),
-                  ),
+                  Expanded(child: _stat('7 hari', spend.week)),
                   SizedBox(width: 10.w),
-                  Expanded(
-                    child: _stat('Bulan ini', spend.month),
-                  ),
+                  Expanded(child: _stat('Bulan ini', spend.month)),
                 ],
               ),
               if (spend.isEmpty) ...[
@@ -467,48 +459,110 @@ class AiTokensView extends GetView<AiTokensController> {
     return RefreshIndicator(
       onRefresh: controller.load,
       color: AppColors.primary,
-      child: Obx(
-        () => controller.packs.isEmpty
-            ? ListView(
-                padding: _tabPadding(context),
-                children: const [
-                  EmptyState(
-                    icon: Iconsax.box,
-                    message: 'Belum ada paket token yang dijual.',
-                  ),
-                ],
-              )
-            : ListView(
-                padding: _tabPadding(context),
-                children: controller.packs.map(_packCard).toList(),
+      child: Obx(() {
+        if (controller.packs.isEmpty) {
+          return ListView(
+            padding: _tabPadding(context),
+            children: const [
+              EmptyState(
+                icon: Iconsax.box,
+                message: 'Belum ada paket token yang dijual.',
               ),
-      ),
+            ],
+          );
+        }
+
+        final ranked = rankPacks(controller.packs);
+
+        return ListView(
+          padding: _tabPadding(context),
+          children: [
+            ...ranked.map(_packCard),
+            SizedBox(height: 4.h),
+            _buyNote(),
+          ],
+        );
+      }),
     );
   }
 
-  Widget _packCard(AiTokenPack pack) {
+  /// What the price does not say: the tokens never expire, and paying is a
+  /// separate step. Both belong under the list, not on every card.
+  Widget _buyNote() {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Icon(Iconsax.shield_tick, size: 14.sp, color: AppColors.textMuted),
+        SizedBox(width: 8.w),
+        Expanded(
+          child: Text(
+            'Token yang Anda beli berlaku selamanya dan tidak hangus tiap '
+            'bulan. Pembayaran diproses lewat halaman pembayaran; token masuk '
+            'setelah pembayaran berhasil.',
+            style: TextStyle(
+              fontSize: 11.sp,
+              color: AppColors.textMuted,
+              height: 1.55,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  /// One line of the price list.
+  ///
+  /// The price leads: it used to sit inside the button label, under a headline
+  /// token count, which left the reader comparing quantities and hunting for
+  /// what each one costs. Rate-per-thousand sits under it so two packs can be
+  /// judged against each other without arithmetic, and only the best rate wears
+  /// a filled button — the rest are outlined, so the list has one recommended
+  /// action rather than five equally loud ones.
+  Widget _packCard(PackValue value) {
+    final pack = value.pack;
+
     return Obx(() {
       final busy = controller.buyingPackId.value != null;
       final thisOne = controller.buyingPackId.value == pack.id;
+      final featured = value.isBestValue;
 
       return Container(
         margin: EdgeInsets.only(bottom: 10.h),
         padding: EdgeInsets.all(16.w),
         decoration: BoxDecoration(
-          color: AppColors.surface,
+          color: featured ? AppColors.primaryLight : AppColors.surface,
           borderRadius: BorderRadius.circular(16.r),
-          border: Border.all(color: AppColors.border),
+          border: Border.all(
+            color: featured ? AppColors.primary : AppColors.border,
+            width: featured ? 1.4 : 1,
+          ),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              pack.name,
-              style: TextStyle(
-                fontSize: 14.sp,
-                fontWeight: FontWeight.w600,
-                color: AppColors.textPrimary,
-              ),
+            if (featured) ...[
+              _badge(Iconsax.medal_star, 'Paling hemat', AppColors.primary),
+              SizedBox(height: 10.h),
+            ],
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    pack.name,
+                    style: TextStyle(
+                      fontSize: 12.5.sp,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.textMuted,
+                    ),
+                  ),
+                ),
+                if (value.hasSavings && !featured)
+                  _badge(
+                    Iconsax.tag,
+                    'Hemat ${value.savingsPercent}%',
+                    AppColors.success,
+                  ),
+              ],
             ),
             SizedBox(height: 4.h),
             Row(
@@ -516,25 +570,64 @@ class AiTokensView extends GetView<AiTokensController> {
               textBaseline: TextBaseline.alphabetic,
               children: [
                 Text(
-                  _count.format(pack.tokenAmount),
+                  formatRupiah(pack.price),
                   style: TextStyle(
-                    fontSize: 20.sp,
+                    fontSize: 22.sp,
                     fontWeight: FontWeight.w700,
-                    color: AppColors.primary,
+                    color: AppColors.textPrimary,
+                    letterSpacing: -0.5,
+                    fontFeatures: const [FontFeature.tabularFigures()],
                   ),
                 ),
+                if (value.hasSavings && featured) ...[
+                  SizedBox(width: 8.w),
+                  _badge(
+                    Iconsax.tag,
+                    'Hemat ${value.savingsPercent}%',
+                    AppColors.success,
+                  ),
+                ],
+              ],
+            ),
+            SizedBox(height: 6.h),
+            Row(
+              children: [
+                Icon(Iconsax.flash_1, size: 13.sp, color: AppColors.primary),
                 SizedBox(width: 5.w),
                 Text(
-                  'token',
+                  '${_count.format(pack.tokenAmount)} token',
                   style: TextStyle(
-                    fontSize: 11.5.sp,
-                    color: AppColors.textMuted,
+                    fontSize: 12.5.sp,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.textPrimary,
+                    fontFeatures: const [FontFeature.tabularFigures()],
                   ),
                 ),
+                if (value.pricePerThousand != null) ...[
+                  Text(
+                    '  ·  ',
+                    style: TextStyle(
+                      fontSize: 12.sp,
+                      color: AppColors.textMuted,
+                    ),
+                  ),
+                  Flexible(
+                    child: Text(
+                      '${formatRupiah(value.pricePerThousand!.round())} / 1.000 token',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontSize: 11.5.sp,
+                        color: AppColors.textMuted,
+                        fontFeatures: const [FontFeature.tabularFigures()],
+                      ),
+                    ),
+                  ),
+                ],
               ],
             ),
             if (pack.description != null && pack.description!.isNotEmpty) ...[
-              SizedBox(height: 6.h),
+              SizedBox(height: 8.h),
               Text(
                 pack.description!,
                 style: TextStyle(
@@ -547,33 +640,103 @@ class AiTokensView extends GetView<AiTokensController> {
             SizedBox(height: 14.h),
             SizedBox(
               width: double.infinity,
-              height: 44.h,
-              child: ElevatedButton(
-                onPressed: busy ? null : () => controller.buy(pack),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.primary,
-                  disabledBackgroundColor: AppColors.primary.withValues(
-                    alpha: 0.5,
-                  ),
-                  elevation: 0,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12.r),
-                  ),
-                ),
-                child: Text(
-                  thisOne ? 'Menyiapkan…' : 'Beli ${formatRupiah(pack.price)}',
-                  style: TextStyle(
-                    fontSize: 13.sp,
-                    fontWeight: FontWeight.w600,
-                    color: Colors.white,
-                  ),
-                ),
-              ),
+              height: 46.h,
+              child: featured
+                  ? ElevatedButton(
+                      onPressed: busy ? null : () => controller.buy(pack),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.primary,
+                        disabledBackgroundColor: AppColors.primary.withValues(
+                          alpha: 0.5,
+                        ),
+                        foregroundColor: Colors.white,
+                        elevation: 0,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12.r),
+                        ),
+                      ),
+                      child: _buyLabel(thisOne, Colors.white),
+                    )
+                  : OutlinedButton(
+                      onPressed: busy ? null : () => controller.buy(pack),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: AppColors.primary,
+                        backgroundColor: AppColors.surface,
+                        side: BorderSide(color: AppColors.primary, width: 1.2),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12.r),
+                        ),
+                      ),
+                      child: _buyLabel(
+                        thisOne,
+                        busy ? AppColors.textMuted : AppColors.primary,
+                      ),
+                    ),
             ),
           ],
         ),
       );
     });
+  }
+
+  Widget _buyLabel(bool preparing, Color tone) {
+    if (!preparing) {
+      return Text(
+        'Beli Paket',
+        style: TextStyle(
+          fontSize: 13.sp,
+          fontWeight: FontWeight.w700,
+          color: tone,
+        ),
+      );
+    }
+
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        SizedBox(
+          width: 15.w,
+          height: 15.w,
+          child: CircularProgressIndicator(strokeWidth: 2, color: tone),
+        ),
+        SizedBox(width: 8.w),
+        Text(
+          'Menyiapkan…',
+          style: TextStyle(
+            fontSize: 13.sp,
+            fontWeight: FontWeight.w700,
+            color: tone,
+          ),
+        ),
+      ],
+    );
+  }
+
+  /// Small pill. Always icon + words: a colour on its own does not say
+  /// "cheapest" to anyone reading it in grayscale.
+  Widget _badge(IconData icon, String label, Color tone) {
+    return Container(
+      padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 4.h),
+      decoration: BoxDecoration(
+        color: tone.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(99.r),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 11.sp, color: tone),
+          SizedBox(width: 4.w),
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 10.5.sp,
+              fontWeight: FontWeight.w700,
+              color: tone,
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   // ── Riwayat ───────────────────────────────────────────────────────────────
@@ -642,7 +805,10 @@ class AiTokensView extends GetView<AiTokensController> {
                   SizedBox(height: 2.h),
                   Text(
                     formatTanggalJam(order.createdAt),
-                    style: TextStyle(fontSize: 10.5.sp, color: AppColors.textMuted),
+                    style: TextStyle(
+                      fontSize: 10.5.sp,
+                      color: AppColors.textMuted,
+                    ),
                   ),
                 ],
               ],
