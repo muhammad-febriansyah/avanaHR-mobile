@@ -16,8 +16,8 @@ import '../../data/models/ess_models.dart';
 import '../../data/services/auth_service.dart';
 import '../../routes/app_pages.dart';
 import 'sosmed_controller.dart';
-import 'sosmed_detail_view.dart';
 import 'sosmed_leaderboard_view.dart';
+import 'widgets/comments_sheet.dart';
 import 'widgets/post_card.dart';
 
 /// The employee wall: category chips, an infinite feed, and a compose button.
@@ -267,8 +267,8 @@ class SosmedView extends GetView<SosmedController> {
       post: post,
       compact: compact,
       onLike: () => controller.toggleLike(post),
-      onComment: () => _openDetail(post, comments: true),
-      onOpen: () => _openDetail(post),
+      onComment: () => _openPost(context, post, composer: true),
+      onOpen: () => _openPost(context, post),
       onMenu: () => _openPostMenu(context, post),
     );
   }
@@ -318,26 +318,93 @@ class SosmedView extends GetView<SosmedController> {
     );
   }
 
-  /// The full post with its thread. Commenting lives there now, so the feed
-  /// stays a scan surface rather than a place to read long threads.
+  /// The post and its thread, raised over the feed.
   ///
-  /// [comments] raises the comment sheet on arrival — tapping the comment
-  /// button should land on the thread, not on the post with the thread still a
-  /// tap away.
-  void _openDetail(SocialPostItem post, {bool comments = false}) {
-    Get.to(
-      () => SosmedDetailView(post: post, openComments: comments),
-    )?.then((_) => controller.load());
+  /// [composer] puts the cursor in the reply box on arrival — tapping the
+  /// comment button should land on the box to type in, not on the first line of
+  /// somebody else's thread.
+  void _openPost(
+    BuildContext context,
+    SocialPostItem post, {
+    bool composer = false,
+  }) {
+    showPostComments(context, post, focusComposer: composer);
   }
 
-  /// Own post: delete it. Someone else's: report it for HR to review.
+  /// Own post: edit or delete it. Someone else's: report it for HR to review.
   void _openPostMenu(BuildContext context, SocialPostItem post) {
     if (post.isMine) {
-      _confirmDelete(context, post);
+      _openOwnPostMenu(context, post);
       return;
     }
 
     _openReport(context, post);
+  }
+
+  /// Editing used to hang off the detail screen's action bar; with the screen
+  /// gone this menu is where an author reaches their own post.
+  void _openOwnPostMenu(BuildContext context, SocialPostItem post) {
+    showAppSheet(
+      context,
+      child: Padding(
+        padding: EdgeInsets.fromLTRB(20.w, 14.h, 20.w, 24.h),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            const SheetHeader('Postingan saya'),
+            SizedBox(height: 6.h),
+            _menuAction(
+              icon: Iconsax.edit_2,
+              label: 'Edit postingan',
+              tone: AppColors.textPrimary,
+              onTap: () {
+                Get.back<void>();
+                showPostEditSheet(context, post);
+              },
+            ),
+            _menuAction(
+              icon: Iconsax.trash,
+              label: 'Hapus postingan',
+              tone: AppColors.destructive,
+              onTap: () {
+                Get.back<void>();
+                _confirmDelete(context, post);
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _menuAction({
+    required IconData icon,
+    required String label,
+    required Color tone,
+    required VoidCallback onTap,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      behavior: HitTestBehavior.opaque,
+      child: Padding(
+        padding: EdgeInsets.symmetric(vertical: 14.h),
+        child: Row(
+          children: [
+            Icon(icon, size: 18.sp, color: tone),
+            SizedBox(width: 12.w),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 13.5.sp,
+                fontWeight: FontWeight.w600,
+                color: tone,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   /// Reporting is the only lever an employee has over someone else's post —
