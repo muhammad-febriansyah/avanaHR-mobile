@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
@@ -18,6 +20,20 @@ class PushService extends GetxService {
       FlutterLocalNotificationsPlugin();
 
   String? _token;
+  bool _fetching = false;
+
+  /// Backoff between token attempts. Google Play services reports a transient
+  /// `SERVICE_NOT_AVAILABLE` / `FCM Registration failed!` whenever it can't
+  /// reach FCM — device offline, throttled, or on a network that blocks
+  /// mtalk.google.com. It usually recovers within minutes, so keep trying
+  /// rather than leaving the app push-less until the next cold start.
+  static const List<Duration> _backoff = [
+    Duration(seconds: 10),
+    Duration(seconds: 30),
+    Duration(minutes: 2),
+    Duration(minutes: 5),
+    Duration(minutes: 15),
+  ];
 
   /// High-importance channel: heads-up banner + sound + vibration. The backend
   /// sends `android.notification.channel_id = avana_high` so background messages
@@ -63,11 +79,50 @@ class PushService extends GetxService {
 
     FirebaseMessaging.onMessage.listen(_showLocal);
 
-    _token = await _fm.getToken();
-    debugPrint(
-      '[FCM] getToken => ${_token ?? "NULL (Google Play services missing?)"}',
-    );
-    await registerToken();
+    await _ensureToken();
+  }
+
+  /// Fetch the token, retrying in the background until FCM answers. Returns as
+  /// soon as the first attempt is done — later attempts run unawaited so a dead
+  /// FCM never delays startup. At most one loop runs at a time.
+  Future<void> _ensureToken() async {
+    if (_token != null || _fetching) return;
+    _fetching = true;
+    try {
+      for (var attempt = 0; ; attempt++) {
+        final token = await _readToken();
+        if (token != null) {
+          _token = token;
+          await registerToken();
+          return;
+        }
+        if (attempt >= _backoff.length) {
+          debugPrint('[FCM] no token after ${attempt + 1} attempts, giving up');
+          return;
+        }
+        await Future<void>.delayed(_backoff[attempt]);
+      }
+    } finally {
+      _fetching = false;
+    }
+  }
+
+  /// `getToken()` throws when FCM registration fails and returns null on a
+  /// device without Google Play services. Both mean "no token yet" — never a
+  /// crash, and never an unhandled async error on the root isolate.
+  Future<String?> _readToken() async {
+    try {
+      final token = await _fm.getToken();
+      if (token == null || token.isEmpty) {
+        debugPrint('[FCM] getToken => NULL (Google Play services missing?)');
+        return null;
+      }
+      debugPrint('[FCM] getToken => $token');
+      return token;
+    } catch (e) {
+      debugPrint('[FCM] getToken FAILED: $e');
+      return null;
+    }
   }
 
   /// Push the current token to the backend for the signed-in device. No-op when
@@ -78,9 +133,12 @@ class PushService extends GetxService {
       return;
     }
 
-    final token = _token ?? await _fm.getToken();
-    if (token == null || token.isEmpty) {
+    final token = _token ??= await _readToken();
+    if (token == null) {
       debugPrint('[FCM] registerToken skipped: no token');
+      // FCM was unreachable at startup; start (or leave running) the retry loop
+      // so logging in doesn't permanently strand this device without push.
+      unawaited(_ensureToken());
       return;
     }
 

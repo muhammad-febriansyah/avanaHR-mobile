@@ -132,7 +132,7 @@ class ScheduleView extends GetView<ScheduleController> {
       icon = Iconsax.coffee;
     } else {
       accent = AppColors.primary;
-      status = '${d.start ?? '--'} – ${d.end ?? '--'}';
+      status = d.hours;
       icon = Iconsax.clock;
     }
 

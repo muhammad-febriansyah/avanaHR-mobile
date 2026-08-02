@@ -11,6 +11,10 @@ class ShiftDay {
   final String? start;
   final String? end;
 
+  /// A night shift ends the next morning, so its end time belongs to the
+  /// following day.
+  final bool crossesMidnight;
+
   const ShiftDay({
     required this.date,
     required this.dayLabel,
@@ -21,7 +25,15 @@ class ShiftDay {
     this.shiftName,
     this.start,
     this.end,
+    this.crossesMidnight = false,
   });
+
+  /// The working hours as a reader should see them: "23:00 – 07:00 (+1)".
+  String get hours {
+    final range = '${start ?? '--'} – ${end ?? '--'}';
+
+    return crossesMidnight ? '$range (+1)' : range;
+  }
 
   factory ShiftDay.fromJson(Map<String, dynamic> j) => ShiftDay(
     date: (j['date'] ?? '').toString(),
@@ -33,5 +45,6 @@ class ShiftDay {
     shiftName: j['shift_name']?.toString(),
     start: j['start']?.toString(),
     end: j['end']?.toString(),
+    crossesMidnight: j['crosses_midnight'] == true,
   );
 }

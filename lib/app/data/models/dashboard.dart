@@ -157,12 +157,31 @@ class TodayShift {
   final String? start;
   final String? end;
 
-  const TodayShift({required this.isOff, this.shiftName, this.start, this.end});
+  /// A night shift ends the next morning, so its end time belongs to the
+  /// following day.
+  final bool crossesMidnight;
+
+  const TodayShift({
+    required this.isOff,
+    this.shiftName,
+    this.start,
+    this.end,
+    this.crossesMidnight = false,
+  });
+
+  /// The working hours as a reader should see them: "23:00 – 07:00 (+1)".
+  String get hours {
+    if (start == null && end == null) return '--';
+    final range = '${start ?? '--'} – ${end ?? '--'}';
+
+    return crossesMidnight ? '$range (+1)' : range;
+  }
 
   factory TodayShift.fromJson(Map<String, dynamic> j) => TodayShift(
     isOff: j['is_off'] == true,
     shiftName: j['shift_name']?.toString(),
     start: j['start']?.toString(),
     end: j['end']?.toString(),
+    crossesMidnight: j['crosses_midnight'] == true,
   );
 }

@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart';
 import 'package:get/get.dart';
 import 'package:record/record.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
@@ -47,7 +48,7 @@ class MeetingRecorderController extends GetxController {
   final isStopping = false.obs;
 
   /// Transcript settled so far, newest last — what the screen scrolls through.
-  final lines = <String>[].obs;
+  final lines = <TranscriptLine>[].obs;
 
   /// The words currently being revised as the speaker talks.
   final interim = ''.obs;
@@ -75,6 +76,7 @@ class MeetingRecorderController extends GetxController {
   final Set<int> _sentOffsets = {};
 
   bool _closing = false;
+  bool _providerErrorShown = false;
 
   @override
   void onInit() {
@@ -84,8 +86,11 @@ class MeetingRecorderController extends GetxController {
 
   @override
   void onClose() {
-    _teardown();
-    _recorder.dispose();
+    // Dispose only once the teardown that still talks to the recorder is done.
+    // Firing both together let `dispose()` win the race, and the microphone
+    // call already queued behind it came back as an unhandled PlatformException
+    // ("Recorder has not yet been created or has already been disposed").
+    _teardown().whenComplete(_recorder.dispose);
     super.onClose();
   }
 
@@ -132,9 +137,13 @@ class MeetingRecorderController extends GetxController {
   Future<void> _openSocket() async {
     final grant = await _api.meetingSttGrant(meeting.id);
 
+    // `bearer`, not `token`: the two subprotocols carry different credentials.
+    // `token` expects the project's own API key, which is exactly what never
+    // leaves the server — handing it the short-lived grant earns a 401. The
+    // grant is a JWT, and `bearer` is the scheme that reads one.
     final channel = WebSocketChannel.connect(
       grant.uri,
-      protocols: ['token', grant.accessToken],
+      protocols: ['bearer', grant.accessToken],
     );
 
     await channel.ready;
@@ -202,8 +211,14 @@ class MeetingRecorderController extends GetxController {
       return;
     }
 
-    final alternatives =
-        (data['channel'] as Map?)?['alternatives'] as List? ?? const [];
+    final channel = data['channel'] as Map?;
+
+    if (channel == null) {
+      _onNonTranscript(data);
+      return;
+    }
+
+    final alternatives = channel['alternatives'] as List? ?? const [];
     if (alternatives.isEmpty) return;
 
     final alternative = Map<String, dynamic>.from(alternatives.first as Map);
@@ -219,25 +234,96 @@ class MeetingRecorderController extends GetxController {
 
     final startMs = (((data['start'] as num?) ?? 0) * 1000).round();
     final durationMs = (((data['duration'] as num?) ?? 0) * 1000).round();
-
-    // Diarization tags each word; the utterance takes the speaker of its first.
     final words = (alternative['words'] as List?) ?? const [];
-    final speaker = words.isEmpty
-        ? 0
-        : ((words.first as Map)['speaker'] as num?)?.toInt() ?? 0;
 
-    if (_sentOffsets.add(startMs)) {
-      _pending.add(
-        PendingSegment(
-          startMs: startMs,
-          endMs: startMs + durationMs,
-          speaker: speaker,
-          text: text,
-        ),
-      );
+    if (words.isEmpty) {
+      _queue(startMs, startMs + durationMs, 0, text);
+      return;
     }
 
-    lines.add(text);
+    // Diarization tags every word, and a settled utterance routinely straddles
+    // a change of speaker — the provider closes one on a pause, not on whose
+    // turn it is. Reading the first word's speaker for the whole line hands the
+    // back half of a hand-over to whoever started it, which is how a meeting of
+    // three people arrives as one. Cut the utterance where the voice changes.
+    var runSpeaker = _speakerOf(words.first);
+    var runStartMs = _timeOf(words.first, 'start', startMs);
+    var runEndMs = _timeOf(words.first, 'end', runStartMs);
+    final spoken = <String>[_wordOf(words.first)];
+
+    for (final entry in words.skip(1)) {
+      final speaker = _speakerOf(entry);
+
+      if (speaker != runSpeaker) {
+        _queue(runStartMs, runEndMs, runSpeaker, spoken.join(' '));
+        runSpeaker = speaker;
+        runStartMs = _timeOf(entry, 'start', runEndMs);
+        spoken.clear();
+      }
+
+      runEndMs = _timeOf(entry, 'end', runEndMs);
+      spoken.add(_wordOf(entry));
+    }
+
+    _queue(runStartMs, runEndMs, runSpeaker, spoken.join(' '));
+  }
+
+  /// Anything the provider sends that is not a transcript.
+  ///
+  /// These used to be dropped where they arrived, which meant a socket that was
+  /// refusing to transcribe looked exactly like a quiet room — the difference
+  /// only surfaced much later, as a meeting that failed for want of any speech.
+  void _onNonTranscript(Map<String, dynamic> data) {
+    final type = (data['type'] ?? '').toString();
+
+    if (type == 'Metadata') return;
+
+    final detail =
+        (data['description'] ?? data['message'] ?? data['error'] ?? type)
+            .toString();
+    debugPrint('[STT] $type: $detail');
+
+    if (type != 'Error' && data['error'] == null) return;
+
+    // Once only: the provider repeats itself, and the person is mid-meeting.
+    if (_providerErrorShown) return;
+    _providerErrorShown = true;
+    AppToast.warning('Transkripsi bermasalah: $detail');
+  }
+
+  int _speakerOf(dynamic word) =>
+      ((word as Map)['speaker'] as num?)?.toInt() ?? 0;
+
+  /// Word timings arrive in seconds; the batch is keyed in milliseconds.
+  int _timeOf(dynamic word, String key, int fallback) {
+    final value = (word as Map)[key];
+
+    return value is num ? (value * 1000).round() : fallback;
+  }
+
+  String _wordOf(dynamic word) {
+    final map = word as Map;
+
+    return (map['punctuated_word'] ?? map['word'] ?? '').toString();
+  }
+
+  /// Hand one attributed run to the batch, and to the screen.
+  void _queue(int startMs, int endMs, int speaker, String text) {
+    final settled = text.trim();
+    if (settled.isEmpty) return;
+
+    final segment = PendingSegment(
+      startMs: startMs,
+      endMs: endMs < startMs ? startMs : endMs,
+      speaker: speaker,
+      text: settled,
+    );
+
+    if (_sentOffsets.add(startMs)) {
+      _pending.add(segment);
+    }
+
+    lines.add(segment.line);
     if (lines.length > 200) lines.removeAt(0);
   }
 
@@ -254,8 +340,11 @@ class MeetingRecorderController extends GetxController {
   /// Hand the settled text and the clock to the server.
   Future<void> _push({bool force = false}) async {
     if (_closing && !force) return;
-    if (_pending.isEmpty && !force) return;
 
+    // Sent even with nothing to say. The heartbeat is the only thing the server
+    // hears while a recording runs — audio goes straight to the provider — so a
+    // beat skipped for want of speech is a wallet unchecked, a ceiling
+    // unenforced, and a handset left face-down on a desk that nothing stops.
     final batch = List<PendingSegment>.from(_pending);
 
     try {
@@ -424,9 +513,11 @@ class MeetingRecorderController extends GetxController {
     await _micSub?.cancel();
     _micSub = null;
 
-    if (await _recorder.isRecording()) {
-      await _recorder.stop();
-    }
+    try {
+      if (await _recorder.isRecording()) {
+        await _recorder.stop();
+      }
+    } catch (_) {}
 
     await _socketSub?.cancel();
     _socketSub = null;
@@ -443,9 +534,15 @@ class MeetingRecorderController extends GetxController {
     return '$h:$m:$s';
   }
 
-  /// How close the recording is to the server's hard ceiling.
-  double get ceilingFraction {
-    final max = status.maxMinutes ?? 180;
+  /// Whether the platform caps a recording's length at all.
+  bool get hasCeiling => (status.maxMinutes ?? 0) > 0;
+
+  /// How close the recording is to the server's hard ceiling, or null when
+  /// there is none to be close to.
+  double? get ceilingFraction {
+    final max = status.maxMinutes;
+    if (max == null || max <= 0) return null;
+
     return (elapsed.value.inSeconds / (max * 60)).clamp(0.0, 1.0);
   }
 }

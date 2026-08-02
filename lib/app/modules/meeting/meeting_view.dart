@@ -21,38 +21,215 @@ class MeetingView extends GetView<MeetingController> {
     return AppPage(
       title: 'AI Recorder',
       subtitle: 'Rekam rapat, dapatkan transkrip & ringkasan',
-      onRefresh: controller.load,
       child: Obx(() {
         if (controller.isLoading.value) return const Loading();
 
-        return ListView(
-          padding: EdgeInsets.fromLTRB(16.w, 16.h, 16.w, 28.h),
+        return Column(
           children: [
-            _recordCard(context),
-            SizedBox(height: 18.h),
-            SectionTitle(
-              'Rapat Terekam',
-              trailing: Text(
-                '${controller.meetings.length}',
-                style: TextStyle(
-                  fontSize: 12.sp,
-                  color: AppColors.textMuted,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
+            _tabs(),
+            Expanded(
+              child: controller.tab.value == 0
+                  ? _recordTab(context)
+                  : _archiveTab(context),
             ),
-            SizedBox(height: 10.h),
-            if (controller.meetings.isEmpty)
-              const EmptyState(
-                icon: Iconsax.microphone_2,
-                message:
-                    'Belum ada rapat yang direkam.\nTekan tombol di atas untuk mulai.',
-              )
-            else
-              ...controller.meetings.map(_tile),
           ],
         );
       }),
+    );
+  }
+
+  /// Two rooms, not one long page: start a recording, or go through the ones
+  /// already made.
+  Widget _tabs() {
+    return Container(
+      decoration: BoxDecoration(
+        border: Border(bottom: BorderSide(color: AppColors.border)),
+      ),
+      child: Row(
+        children: [
+          _tab(index: 0, label: 'Rekam'),
+          _tab(index: 1, label: 'Arsip', count: controller.meetings.length),
+        ],
+      ),
+    );
+  }
+
+  Widget _tab({required int index, required String label, int? count}) {
+    final active = controller.tab.value == index;
+
+    return Expanded(
+      child: GestureDetector(
+        onTap: () => controller.tab.value = index,
+        behavior: HitTestBehavior.opaque,
+        child: Container(
+          padding: EdgeInsets.symmetric(vertical: 14.h),
+          decoration: BoxDecoration(
+            border: Border(
+              bottom: BorderSide(
+                color: active ? AppColors.primary : Colors.transparent,
+                width: 2.5,
+              ),
+            ),
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Text(
+                label,
+                style: TextStyle(
+                  fontSize: 13.5.sp,
+                  fontWeight: active ? FontWeight.w700 : FontWeight.w600,
+                  color: active ? AppColors.primary : AppColors.textMuted,
+                ),
+              ),
+              if (count != null && count > 0) ...[
+                SizedBox(width: 6.w),
+                Text(
+                  '$count',
+                  style: TextStyle(
+                    fontSize: 11.5.sp,
+                    fontWeight: FontWeight.w600,
+                    color: active
+                        ? AppColors.primary.withValues(alpha: 0.7)
+                        : AppColors.textMuted,
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _recordTab(BuildContext context) {
+    return RefreshIndicator(
+      onRefresh: controller.load,
+      color: AppColors.primary,
+      child: ListView(
+        padding: EdgeInsets.fromLTRB(16.w, 18.h, 16.w, 28.h),
+        children: [_recordCard(context)],
+      ),
+    );
+  }
+
+  /// The archive: search the server, narrow by state, then the register itself.
+  Widget _archiveTab(BuildContext context) {
+    return Column(
+      children: [
+        Padding(
+          padding: EdgeInsets.fromLTRB(16.w, 14.h, 16.w, 10.h),
+          child: Column(
+            children: [
+              _searchField(),
+              SizedBox(height: 12.h),
+              _statusFilters(),
+            ],
+          ),
+        ),
+        Expanded(
+          child: RefreshIndicator(
+            onRefresh: controller.load,
+            color: AppColors.primary,
+            child: Obx(() {
+              if (controller.isFiltering.value) return const Loading();
+
+              final visible = controller.visible;
+
+              if (visible.isEmpty) {
+                return ListView(
+                  padding: EdgeInsets.fromLTRB(16.w, 30.h, 16.w, 28.h),
+                  children: [
+                    EmptyState(
+                      icon: Iconsax.document_text,
+                      message: controller.meetings.isEmpty
+                          ? 'Belum ada rapat yang direkam.\nBuka tab Rekam untuk mulai.'
+                          : 'Tidak ada rapat yang cocok dengan\npencarian atau filter ini.',
+                    ),
+                  ],
+                );
+              }
+
+              return ListView.builder(
+                padding: EdgeInsets.fromLTRB(16.w, 0, 16.w, 28.h),
+                itemCount: visible.length,
+                itemBuilder: (_, i) => _tile(visible[i]),
+              );
+            }),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _searchField() {
+    return TextField(
+      onSubmitted: controller.applySearch,
+      textInputAction: TextInputAction.search,
+      style: TextStyle(fontSize: 13.sp),
+      decoration: InputDecoration(
+        hintText: 'Cari judul rapat…',
+        hintStyle: TextStyle(fontSize: 13.sp, color: AppColors.textMuted),
+        prefixIcon: Icon(
+          Iconsax.search_normal_1,
+          size: 17.sp,
+          color: AppColors.textMuted,
+        ),
+        filled: true,
+        fillColor: AppColors.muted,
+        isDense: true,
+        contentPadding: EdgeInsets.symmetric(vertical: 12.h),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12.r),
+          borderSide: BorderSide.none,
+        ),
+      ),
+    );
+  }
+
+  Widget _statusFilters() {
+    return Obx(
+      () => Row(
+        children: [
+          for (final filter in MeetingController.filters) ...[
+            _filterChip(filter.label, filter.key),
+            if (filter != MeetingController.filters.last) SizedBox(width: 8.w),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _filterChip(String label, String? key) {
+    final active = controller.statusFilter.value == key;
+    final count = controller.countOf(key);
+
+    return Expanded(
+      child: GestureDetector(
+        onTap: () => controller.statusFilter.value = key,
+        behavior: HitTestBehavior.opaque,
+        child: Container(
+          padding: EdgeInsets.symmetric(vertical: 8.h),
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            color: active ? AppColors.primary : Colors.transparent,
+            borderRadius: BorderRadius.circular(9.r),
+            border: Border.all(
+              color: active ? AppColors.primary : AppColors.border,
+            ),
+          ),
+          child: Text(
+            count > 0 ? '$label $count' : label,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              fontSize: 11.5.sp,
+              fontWeight: FontWeight.w600,
+              color: active ? Colors.white : AppColors.textMuted,
+            ),
+          ),
+        ),
+      ),
     );
   }
 
@@ -80,60 +257,39 @@ class MeetingView extends GetView<MeetingController> {
       );
     }
 
+    // A blank page waiting to be written on, rather than a promotional tile:
+    // the thing this feature produces is a set of minutes, and the screen may
+    // as well say so before a word has been spoken.
     return Container(
-      padding: EdgeInsets.all(18.w),
+      padding: EdgeInsets.fromLTRB(18.w, 20.h, 18.w, 18.h),
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [AppColors.primary, AppColors.primaryHover],
-        ),
+        color: AppColors.surface,
         borderRadius: BorderRadius.circular(20.r),
+        border: Border.all(color: AppColors.border),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: [
-              Container(
-                padding: EdgeInsets.all(11.w),
-                decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.18),
-                  borderRadius: BorderRadius.circular(14.r),
-                ),
-                child: Icon(
-                  Iconsax.microphone_2,
-                  color: Colors.white,
-                  size: 20.sp,
-                ),
-              ),
-              SizedBox(width: 13.w),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Rekam Rapat',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 15.sp,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                    SizedBox(height: 2.h),
-                    Text(
-                      'Transkrip otomatis per pembicara',
-                      style: TextStyle(
-                        color: Colors.white.withValues(alpha: 0.85),
-                        fontSize: 12.sp,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
+          Text(
+            'Notulen rapat berikutnya',
+            style: TextStyle(
+              fontSize: 16.sp,
+              fontWeight: FontWeight.w700,
+              color: AppColors.navy,
+              letterSpacing: -0.2,
+            ),
           ),
-          SizedBox(height: 16.h),
+          SizedBox(height: 5.h),
+          Text(
+            'Letakkan ponsel di tengah meja. Setiap ucapan dicatat lengkap '
+            'dengan waktu dan pembicaranya, lalu diringkas begitu rapat usai.',
+            style: TextStyle(
+              fontSize: 12.5.sp,
+              height: 1.55,
+              color: AppColors.textMuted,
+            ),
+          ),
+          SizedBox(height: 18.h),
           SizedBox(
             width: double.infinity,
             child: Obx(
@@ -142,26 +298,32 @@ class MeetingView extends GetView<MeetingController> {
                     ? null
                     : () => _startSheet(context),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.white,
-                  foregroundColor: AppColors.primary,
-                  padding: EdgeInsets.symmetric(vertical: 13.h),
+                  backgroundColor: AppColors.primary,
+                  foregroundColor: Colors.white,
+                  disabledBackgroundColor: AppColors.primary.withValues(
+                    alpha: 0.6,
+                  ),
+                  disabledForegroundColor: Colors.white70,
+                  padding: EdgeInsets.symmetric(vertical: 15.h),
                   elevation: 0,
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(13.r),
+                    borderRadius: BorderRadius.circular(14.r),
                   ),
                 ),
                 icon: controller.isStarting.value
                     ? SizedBox(
-                        width: 15.w,
-                        height: 15.w,
-                        child: CircularProgressIndicator(
+                        width: 16.w,
+                        height: 16.w,
+                        child: const CircularProgressIndicator(
                           strokeWidth: 2,
-                          valueColor: AlwaysStoppedAnimation(AppColors.primary),
+                          valueColor: AlwaysStoppedAnimation(Colors.white),
                         ),
                       )
                     : Icon(Iconsax.record_circle, size: 18.sp),
                 label: Text(
-                  'Mulai Rekam',
+                  controller.isStarting.value
+                      ? 'Menyiapkan…'
+                      : 'Mulai Merekam Rapat',
                   style: TextStyle(
                     fontWeight: FontWeight.w700,
                     fontSize: 14.sp,
@@ -171,13 +333,14 @@ class MeetingView extends GetView<MeetingController> {
             ),
           ),
           if (status.tokenCostPerMinute != null) ...[
-            SizedBox(height: 10.h),
+            SizedBox(height: 12.h),
             Text(
-              '± ${NumberFormat.decimalPattern('id').format(status.tokenCostPerMinute)} token / menit'
-              '${status.maxMinutes != null ? ' · maksimal ${status.maxMinutes} menit' : ''}',
+              '± ${NumberFormat.decimalPattern('id').format(status.tokenCostPerMinute)} token per menit bicara'
+              '${status.maxMinutes != null ? ' · batas ${status.maxMinutes} menit' : ' · berhenti sendiri bila token habis atau ruangan sunyi'}',
               style: TextStyle(
-                color: Colors.white.withValues(alpha: 0.8),
                 fontSize: 11.sp,
+                height: 1.45,
+                color: AppColors.textMuted,
               ),
             ),
           ],
@@ -240,77 +403,71 @@ class MeetingView extends GetView<MeetingController> {
       _ => AppColors.success,
     };
 
-    return Padding(
-      padding: EdgeInsets.only(bottom: 10.h),
-      child: GestureDetector(
-        onTap: () => Get.to(() => MeetingDetailView(meetingId: meeting.id)),
-        child: Container(
-          padding: EdgeInsets.all(15.w),
-          decoration: softCard(),
-          child: Row(
-            children: [
-              Container(
-                padding: EdgeInsets.all(11.w),
-                decoration: BoxDecoration(
-                  color: tone.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(13.r),
-                ),
-                child: Icon(
-                  meeting.isWorking
-                      ? Iconsax.clock
-                      : (meeting.isFailed
-                            ? Iconsax.warning_2
-                            : Iconsax.document_text),
-                  color: tone,
-                  size: 17.sp,
-                ),
-              ),
-              SizedBox(width: 13.w),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      meeting.title,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        fontWeight: FontWeight.w700,
-                        fontSize: 13.5.sp,
-                        color: AppColors.navy,
-                      ),
-                    ),
-                    SizedBox(height: 3.h),
-                    Text(
-                      _subtitle(meeting),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        fontSize: 11.5.sp,
-                        color: AppColors.textMuted,
-                      ),
-                    ),
-                  ],
+    // An entry in a register rather than a card: date in the margin, title on
+    // the line, and the state said in words at the end of it.
+    return GestureDetector(
+      onTap: () => Get.to(() => MeetingDetailView(meetingId: meeting.id)),
+      behavior: HitTestBehavior.opaque,
+      child: Container(
+        padding: EdgeInsets.symmetric(vertical: 14.h),
+        decoration: BoxDecoration(
+          border: Border(bottom: BorderSide(color: AppColors.border)),
+        ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            SizedBox(
+              width: 46.w,
+              child: Text(
+                meeting.dayLabel,
+                style: TextStyle(
+                  fontSize: 11.sp,
+                  height: 1.35,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.textMuted,
                 ),
               ),
-              SizedBox(width: 8.w),
-              Container(
-                padding: EdgeInsets.symmetric(horizontal: 9.w, vertical: 4.h),
-                decoration: BoxDecoration(
-                  color: tone.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(999),
-                ),
-                child: Text(
-                  meeting.statusLabel,
-                  style: TextStyle(
-                    fontSize: 10.5.sp,
-                    fontWeight: FontWeight.w700,
-                    color: tone,
+            ),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    meeting.title,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontWeight: FontWeight.w700,
+                      fontSize: 13.5.sp,
+                      color: AppColors.navy,
+                    ),
                   ),
+                  SizedBox(height: 3.h),
+                  Text(
+                    _subtitle(meeting),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontSize: 11.5.sp,
+                      color: AppColors.textMuted,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            SizedBox(width: 10.w),
+            Padding(
+              padding: EdgeInsets.only(top: 1.h),
+              child: Text(
+                meeting.statusLabel,
+                style: TextStyle(
+                  fontSize: 11.sp,
+                  fontWeight: FontWeight.w700,
+                  color: tone,
                 ),
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );

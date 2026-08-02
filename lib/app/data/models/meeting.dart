@@ -57,7 +57,9 @@ class MeetingSttGrant {
   final int expiresIn;
   final String wsUrl;
   final Map<String, String> params;
-  final int maxMinutes;
+
+  /// Null when the platform sets no ceiling — the token wallet is the brake.
+  final int? maxMinutes;
 
   /// How much audio the server bills in one go, so the phone can pace its
   /// heartbeat to match.
@@ -79,12 +81,24 @@ class MeetingSttGrant {
     params: ((j['params'] as Map?) ?? {}).map(
       (k, v) => MapEntry(k.toString(), v.toString()),
     ),
-    maxMinutes: (j['max_minutes'] as num?)?.toInt() ?? 180,
+    maxMinutes: (j['max_minutes'] as num?)?.toInt(),
     blockMs: (j['block_ms'] as num?)?.toInt() ?? 15000,
   );
 
   /// The listening socket, with the model and language the server chose.
-  Uri get uri => Uri.parse(wsUrl).replace(queryParameters: params);
+  ///
+  /// The port is pinned because Dart registers no default for `wss`: on a URL
+  /// that does not spell one out, `Uri.port` answers 0. `dart:io` rebuilds the
+  /// upgrade request as `Uri(scheme: 'https', port: uri.port, …)`, which turns
+  /// that "unknown" into a literal `https://host:0/…` and dials port zero.
+  Uri get uri {
+    final base = Uri.parse(wsUrl);
+
+    return base.replace(
+      queryParameters: params,
+      port: base.hasPort ? base.port : (base.isScheme('wss') ? 443 : 80),
+    );
+  }
 }
 
 /// One recorded meeting as the list shows it.
@@ -144,6 +158,23 @@ class MeetingItem {
 
       return '${two(at.day)}/${two(at.month)}/${at.year} · '
           '${two(at.hour)}:${two(at.minute)}';
+    }
+  }
+
+  /// Day and month over two short lines, for the margin of the register.
+  ///
+  /// Same defensive shape as [startedLabel]: a locale that has not finished
+  /// loading throws, and this is read inside a list build.
+  String get dayLabel {
+    final at = startedAt;
+    if (at == null) return '—';
+
+    try {
+      return DateFormat('d MMM\nHH:mm', 'id').format(at);
+    } catch (_) {
+      String two(int n) => n.toString().padLeft(2, '0');
+
+      return '${two(at.day)}/${two(at.month)}\n${two(at.hour)}:${two(at.minute)}';
     }
   }
 
@@ -406,4 +437,37 @@ class PendingSegment {
     'speaker': speaker,
     'text': text,
   };
+
+  /// The same run, as the live transcript shows it while recording.
+  TranscriptLine get line =>
+      TranscriptLine(atMs: startMs, speaker: speaker, text: text);
+}
+
+/// One settled run of speech on the recording screen.
+///
+/// Carries who and when, not just what: the recorder now cuts an utterance
+/// where the voice changes, and a column of bare sentences would throw that
+/// away right where it is most useful — while the meeting is still happening.
+class TranscriptLine {
+  final int atMs;
+  final int speaker;
+  final String text;
+
+  const TranscriptLine({
+    required this.atMs,
+    required this.speaker,
+    required this.text,
+  });
+
+  /// `MM:SS` from the top of the recording.
+  String get timecode {
+    final elapsed = Duration(milliseconds: atMs);
+    final minutes = elapsed.inMinutes.toString().padLeft(2, '0');
+    final seconds = (elapsed.inSeconds % 60).toString().padLeft(2, '0');
+
+    return '$minutes:$seconds';
+  }
+
+  /// Names are only put to speakers after the meeting, by the summariser.
+  String get speakerLabel => 'Pembicara ${speaker + 1}';
 }

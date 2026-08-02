@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
@@ -70,7 +72,12 @@ Future<void> main() async {
   }
   Get.put(PushService(), permanent: true);
   if (firebaseReady) {
-    Get.find<PushService>().init();
+    // Fire-and-forget: push setup must never block or crash startup.
+    unawaited(
+      Get.find<PushService>().init().catchError((Object e) {
+        debugPrint('[FCM] init FAILED: $e');
+      }),
+    );
   }
 
   runApp(const AvanaApp());

@@ -229,7 +229,7 @@ class MssMemberView extends GetView<MssMemberController> {
       icon = Iconsax.clock;
       color = const Color(0xFF0D9488);
       title = shift.shiftName ?? 'Shift';
-      sub = '${shift.start ?? '--'} – ${shift.end ?? '--'}';
+      sub = shift.hours;
     }
 
     return Container(

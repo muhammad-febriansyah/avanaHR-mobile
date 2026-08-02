@@ -22,12 +22,42 @@ const _resumeFill = Color(0xFFDCFCE7);
 const _resumeInk = Color(0xFF15803D);
 const _discardFill = Color(0xFFFEF2F2);
 
-/// The recording screen: a clock, proof the microphone is live, and the words
-/// as they settle.
+/// One voice, one colour.
+///
+/// Diarization hands back a speaker number, never a name — "Pembicara 2" is all
+/// anybody has until the summariser puts names to voices after the meeting. A
+/// tint carries that distinction better than the label does: it survives being
+/// read at arm's length across a table.
+class _SpeakerTone {
+  /// Bubble fill — pale enough that body text keeps its contrast on top.
+  final Color fill;
+
+  /// Name, badge and the newest bubble's outline.
+  final Color ink;
+
+  const _SpeakerTone(this.fill, this.ink);
+}
+
+/// Six hues, then it wraps. A meeting with a seventh distinct voice is rarer
+/// than one where two of the six are mistaken for each other.
+const _speakerTones = <_SpeakerTone>[
+  _SpeakerTone(Color(0xFFEEF2FF), Color(0xFF4338CA)), // indigo
+  _SpeakerTone(Color(0xFFECFDF5), Color(0xFF047857)), // emerald
+  _SpeakerTone(Color(0xFFFFF7ED), Color(0xFFC2410C)), // orange
+  _SpeakerTone(Color(0xFFFDF2F8), Color(0xFFBE185D)), // pink
+  _SpeakerTone(Color(0xFFF5F3FF), Color(0xFF6D28D9)), // violet
+  _SpeakerTone(Color(0xFFECFEFF), Color(0xFF0E7490)), // cyan
+];
+
+_SpeakerTone _toneFor(int speaker) =>
+    _speakerTones[speaker.abs() % _speakerTones.length];
+
+/// The recording screen: a clock, and proof the microphone is live.
 ///
 /// Deliberately close to a single column of one idea each — somebody glancing
 /// at a phone on a meeting table should read "it is recording, it has been N
-/// minutes, it heard that last sentence" without focusing.
+/// minutes, it is hearing us" without focusing. No transcript here on purpose;
+/// see [_body].
 class MeetingRecorderView extends StatelessWidget {
   final MeetingItem meeting;
   final MeetingRecorderStatus status;
@@ -220,7 +250,7 @@ class MeetingRecorderView extends StatelessWidget {
                 ),
                 SizedBox(height: 6.h),
                 Obx(() => _ceilingHint(c)),
-                SizedBox(height: 18.h),
+                SizedBox(height: 20.h),
                 Obx(
                   () => Waveform(
                     levels: c.levels.toList(),
@@ -289,7 +319,11 @@ class MeetingRecorderView extends StatelessWidget {
     );
   }
 
-  /// "AI sedang mendengarkan", plus the sentence currently being revised.
+  /// One line on what the microphone is doing.
+  ///
+  /// The half-heard sentence used to be quoted here as well as in the minutes
+  /// below; one copy is enough, and the minutes are the copy with the timecode
+  /// and the speaker attached.
   Widget _listeningCard(MeetingRecorderController c) {
     return Container(
       width: double.infinity,
@@ -298,124 +332,75 @@ class MeetingRecorderView extends StatelessWidget {
         color: AppColors.primaryLight,
         borderRadius: BorderRadius.circular(16.r),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      child: Row(
         children: [
-          Row(
-            children: [
-              Container(
-                padding: EdgeInsets.all(8.w),
-                decoration: BoxDecoration(
-                  color: AppColors.primary,
-                  borderRadius: BorderRadius.circular(10.r),
-                ),
-                child: Icon(Iconsax.magicpen, size: 15.sp, color: Colors.white),
-              ),
-              SizedBox(width: 11.w),
-              Expanded(
-                child: Obx(
-                  () => Text(
-                    c.isPaused.value
-                        ? 'Dijeda — mikrofon tidak aktif'
-                        : 'AI sedang mendengarkan dan menyiapkan ringkasan…',
-                    style: TextStyle(
-                      fontSize: 12.5.sp,
-                      height: 1.35,
-                      color: AppColors.navy,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ),
-              ),
-            ],
+          Container(
+            padding: EdgeInsets.all(8.w),
+            decoration: BoxDecoration(
+              color: AppColors.primary,
+              borderRadius: BorderRadius.circular(10.r),
+            ),
+            child: Icon(Iconsax.magicpen, size: 15.sp, color: Colors.white),
           ),
-          Obx(() {
-            final text = c.interim.value.isNotEmpty
-                ? c.interim.value
-                : (c.lines.isNotEmpty ? c.lines.last.text : '');
-
-            if (text.isEmpty) return const SizedBox.shrink();
-
-            return Padding(
-              padding: EdgeInsets.only(top: 12.h),
-              child: Container(
-                width: double.infinity,
-                padding: EdgeInsets.all(12.w),
-                decoration: BoxDecoration(
-                  color: AppColors.surface.withValues(alpha: 0.75),
-                  borderRadius: BorderRadius.circular(12.r),
-                ),
-                child: Text(
-                  '“$text”',
-                  style: TextStyle(
-                    fontSize: 12.5.sp,
-                    height: 1.5,
-                    fontStyle: FontStyle.italic,
-                    color: AppColors.textMuted,
-                  ),
+          SizedBox(width: 11.w),
+          Expanded(
+            child: Obx(
+              () => Text(
+                c.isPaused.value
+                    ? 'Dijeda — mikrofon tidak aktif'
+                    : 'AI sedang mendengarkan dan menyiapkan ringkasan…',
+                style: TextStyle(
+                  fontSize: 12.5.sp,
+                  height: 1.35,
+                  color: AppColors.navy,
+                  fontWeight: FontWeight.w600,
                 ),
               ),
-            );
-          }),
+            ),
+          ),
         ],
       ),
     );
   }
 
-  /// Everything settled so far, newest first so the latest is never off-screen.
+  /// The minutes as they arrive, read as a conversation rather than a log.
+  ///
+  /// Newest first, so the sentence just spoken is never below the fold. Each
+  /// voice keeps one colour for the whole meeting, which is what makes a
+  /// three-way conversation legible at a glance — the eye follows the tint, not
+  /// the repeated "Pembicara 2".
   Widget _transcript(MeetingRecorderController c) {
-    if (c.lines.isEmpty) {
-      return Container(
-        width: double.infinity,
-        padding: EdgeInsets.symmetric(vertical: 26.h, horizontal: 18.w),
-        decoration: BoxDecoration(
-          color: AppColors.surface,
-          borderRadius: BorderRadius.circular(18.r),
-        ),
-        child: Column(
-          children: [
-            Icon(Iconsax.microphone_2, size: 22.sp, color: AppColors.textMuted),
-            SizedBox(height: 10.h),
-            Text(
-              'Menunggu suara pertama…',
-              style: TextStyle(fontSize: 12.5.sp, color: AppColors.textMuted),
-            ),
-          ],
-        ),
-      );
+    final interim = c.interim.value;
+
+    if (c.lines.isEmpty && interim.isEmpty) {
+      return _waitingForSound(c);
     }
 
-    // Newest first, so the sentence just spoken is never below the fold.
     final recent = c.lines.reversed.take(12).toList();
 
     return Container(
       width: double.infinity,
-      padding: EdgeInsets.all(16.w),
+      padding: EdgeInsets.fromLTRB(16.w, 16.h, 16.w, 6.h),
       decoration: BoxDecoration(
         color: AppColors.surface,
-        borderRadius: BorderRadius.circular(18.r),
+        borderRadius: BorderRadius.circular(20.r),
+        border: Border.all(color: AppColors.border.withValues(alpha: 0.7)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: [
-              Text(
-                'Notulen berjalan',
-                style: TextStyle(
-                  fontSize: 13.sp,
-                  fontWeight: FontWeight.w700,
-                  color: AppColors.navy,
-                ),
-              ),
-              const Spacer(),
-              Text(
-                '${c.lines.length} ucapan',
-                style: TextStyle(fontSize: 11.sp, color: AppColors.textMuted),
-              ),
-            ],
-          ),
+          _transcriptHeader(c),
+          SizedBox(height: 10.h),
+          // The caveat belongs on the panel, not in a support call afterwards:
+          // live speech-to-text mishears names and cuts sentences where the
+          // speaker drew breath, and people who do not expect that read the
+          // rough draft as the finished minutes.
+          _draftNotice(),
           SizedBox(height: 14.h),
+          if (interim.isNotEmpty) ...[
+            _interimBubble(interim),
+            SizedBox(height: 12.h),
+          ],
           for (var i = 0; i < recent.length; i++)
             _entry(
               recent[i],
@@ -431,60 +416,297 @@ class MeetingRecorderView extends StatelessWidget {
     );
   }
 
-  /// One line of the running minutes: time in the margin, words in the column.
+  Widget _transcriptHeader(MeetingRecorderController c) {
+    final live = !c.isPaused.value;
+
+    return Row(
+      children: [
+        _Blink(
+          active: live,
+          child: Container(
+            width: 7.w,
+            height: 7.w,
+            decoration: BoxDecoration(
+              color: live ? AppColors.success : AppColors.textMuted,
+              shape: BoxShape.circle,
+            ),
+          ),
+        ),
+        SizedBox(width: 8.w),
+        Text(
+          'Notulen langsung',
+          style: TextStyle(
+            fontSize: 13.5.sp,
+            fontWeight: FontWeight.w700,
+            color: AppColors.navy,
+            letterSpacing: -0.2,
+          ),
+        ),
+        const Spacer(),
+        Container(
+          padding: EdgeInsets.symmetric(horizontal: 9.w, vertical: 4.h),
+          decoration: BoxDecoration(
+            color: AppColors.muted,
+            borderRadius: BorderRadius.circular(999),
+          ),
+          child: Text(
+            '${c.lines.length} ucapan',
+            style: TextStyle(
+              fontSize: 10.5.sp,
+              fontWeight: FontWeight.w600,
+              color: AppColors.textMuted,
+              fontFeatures: const [FontFeature.tabularFigures()],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  /// Says out loud that this is a rough draft, so nobody judges the recording
+  /// by a mistyped name.
+  Widget _draftNotice() {
+    return Container(
+      width: double.infinity,
+      padding: EdgeInsets.symmetric(horizontal: 11.w, vertical: 9.h),
+      decoration: BoxDecoration(
+        color: const Color(0xFFFFFBEB),
+        borderRadius: BorderRadius.circular(11.r),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(Iconsax.info_circle, size: 13.sp, color: const Color(0xFFB45309)),
+          SizedBox(width: 7.w),
+          Expanded(
+            child: Text(
+              'Teks kasar dari mesin. Ejaan dan pemenggalan dirapikan AI saat '
+              'ringkasan dibuat.',
+              style: TextStyle(
+                fontSize: 10.5.sp,
+                height: 1.4,
+                color: const Color(0xFF92400E),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// The sentence still being revised: no timecode and no speaker yet, because
+  /// neither is settled until the provider closes the utterance.
+  Widget _interimBubble(String text) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        SizedBox(width: 32.w, child: const _TypingDots()),
+        Expanded(
+          child: Container(
+            padding: EdgeInsets.symmetric(horizontal: 13.w, vertical: 10.h),
+            decoration: BoxDecoration(
+              color: AppColors.primaryLight,
+              borderRadius: BorderRadius.only(
+                topLeft: Radius.circular(4.r),
+                topRight: Radius.circular(14.r),
+                bottomLeft: Radius.circular(14.r),
+                bottomRight: Radius.circular(14.r),
+              ),
+            ),
+            child: Text(
+              text,
+              style: TextStyle(
+                fontSize: 12.5.sp,
+                height: 1.45,
+                fontStyle: FontStyle.italic,
+                color: AppColors.textMuted,
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _waitingForSound(MeetingRecorderController c) {
+    return Container(
+      width: double.infinity,
+      padding: EdgeInsets.symmetric(vertical: 30.h, horizontal: 18.w),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(20.r),
+        border: Border.all(color: AppColors.border.withValues(alpha: 0.7)),
+      ),
+      child: Column(
+        children: [
+          Container(
+            padding: EdgeInsets.all(13.w),
+            decoration: BoxDecoration(
+              color: AppColors.muted,
+              shape: BoxShape.circle,
+            ),
+            child: Icon(
+              Iconsax.microphone_2,
+              size: 20.sp,
+              color: AppColors.textMuted,
+            ),
+          ),
+          SizedBox(height: 12.h),
+          Text(
+            c.isPaused.value ? 'Rekaman dijeda' : 'Menunggu suara pertama…',
+            style: TextStyle(
+              fontSize: 13.sp,
+              fontWeight: FontWeight.w600,
+              color: AppColors.navy,
+            ),
+          ),
+          SizedBox(height: 4.h),
+          Text(
+            'Ucapan akan muncul di sini begitu ada yang berbicara.',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontSize: 11.5.sp,
+              height: 1.4,
+              color: AppColors.textMuted,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// One turn of the conversation: whose voice it was, and when.
+  ///
+  /// The left gutter carries the speaker's badge on the first line of a turn
+  /// and the timecode on every line after it — the same 32dp column doing two
+  /// jobs, so the words keep a straight left edge either way.
   Widget _entry(
     TranscriptLine line, {
     required bool showSpeaker,
     required bool latest,
   }) {
+    final tone = _toneFor(line.speaker);
+
     return Padding(
-      padding: EdgeInsets.only(bottom: 12.h),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          SizedBox(
-            width: 38.w,
-            child: Padding(
-              padding: EdgeInsets.only(top: showSpeaker ? 16.h : 2.h),
-              child: Text(
-                line.timecode,
-                style: TextStyle(
-                  fontSize: 10.5.sp,
-                  color: AppColors.textMuted,
-                  fontFeatures: const [FontFeature.tabularFigures()],
-                ),
-              ),
+      // Keyed so a new line at the top does not re-run the entrance animation
+      // on every line beneath it.
+      key: ValueKey('${line.atMs}-${line.speaker}'),
+      padding: EdgeInsets.only(bottom: 10.h),
+      child: _FadeInOnce(
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            SizedBox(
+              width: 32.w,
+              child: showSpeaker
+                  ? _speakerBadge(line, tone)
+                  : Padding(
+                      padding: EdgeInsets.only(top: 11.h),
+                      child: Text(
+                        line.timecode,
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          fontSize: 9.5.sp,
+                          color: AppColors.textMuted.withValues(alpha: 0.8),
+                          fontFeatures: const [FontFeature.tabularFigures()],
+                        ),
+                      ),
+                    ),
             ),
-          ),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                if (showSpeaker) ...[
-                  Text(
-                    line.speakerLabel,
-                    style: TextStyle(
-                      fontSize: 11.sp,
-                      fontWeight: FontWeight.w700,
-                      color: AppColors.primary,
+            SizedBox(width: 9.w),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  if (showSpeaker) ...[
+                    Row(
+                      children: [
+                        Text(
+                          line.speakerLabel,
+                          style: TextStyle(
+                            fontSize: 11.sp,
+                            fontWeight: FontWeight.w700,
+                            color: tone.ink,
+                          ),
+                        ),
+                        SizedBox(width: 6.w),
+                        Text(
+                          line.timecode,
+                          style: TextStyle(
+                            fontSize: 9.5.sp,
+                            color: AppColors.textMuted,
+                            fontFeatures: const [FontFeature.tabularFigures()],
+                          ),
+                        ),
+                      ],
+                    ),
+                    SizedBox(height: 5.h),
+                  ],
+                  Container(
+                    padding: EdgeInsets.symmetric(
+                      horizontal: 13.w,
+                      vertical: 10.h,
+                    ),
+                    decoration: BoxDecoration(
+                      color: tone.fill,
+                      borderRadius: BorderRadius.only(
+                        // Square shoulder on the first bubble of a turn: it
+                        // points back at the badge that names the speaker.
+                        topLeft: Radius.circular(showSpeaker ? 4.r : 14.r),
+                        topRight: Radius.circular(14.r),
+                        bottomLeft: Radius.circular(14.r),
+                        bottomRight: Radius.circular(14.r),
+                      ),
+                      border: latest
+                          ? Border.all(
+                              color: tone.ink.withValues(alpha: 0.35),
+                              width: 1.2,
+                            )
+                          : null,
+                    ),
+                    child: Text(
+                      line.text,
+                      style: TextStyle(
+                        fontSize: 13.sp,
+                        height: 1.5,
+                        // The newest line reads full-strength; older ones
+                        // recede so the eye lands on what was just said.
+                        color: latest
+                            ? AppColors.textPrimary
+                            : AppColors.textPrimary.withValues(alpha: 0.72),
+                        fontWeight: latest ? FontWeight.w600 : FontWeight.w400,
+                      ),
                     ),
                   ),
-                  SizedBox(height: 3.h),
                 ],
-                Text(
-                  line.text,
-                  style: TextStyle(
-                    fontSize: 13.sp,
-                    height: 1.55,
-                    // The newest line reads full-strength; older ones recede.
-                    color: latest ? AppColors.textPrimary : AppColors.textMuted,
-                    fontWeight: latest ? FontWeight.w600 : FontWeight.w400,
-                  ),
-                ),
-              ],
+              ),
             ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _speakerBadge(TranscriptLine line, _SpeakerTone tone) {
+    return Padding(
+      padding: EdgeInsets.only(top: 14.h),
+      child: Container(
+        width: 28.w,
+        height: 28.w,
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          color: tone.fill,
+          shape: BoxShape.circle,
+          border: Border.all(color: tone.ink.withValues(alpha: 0.25)),
+        ),
+        child: Text(
+          '${line.speaker + 1}',
+          style: TextStyle(
+            fontSize: 11.sp,
+            fontWeight: FontWeight.w800,
+            color: tone.ink,
           ),
-        ],
+        ),
       ),
     );
   }
@@ -677,6 +899,113 @@ class MeetingRecorderView extends StatelessWidget {
     );
 
     if (confirmed == true) await c.discard();
+  }
+}
+
+/// A line slides in once, when it first arrives, and then holds still.
+///
+/// The list is rebuilt on every settled utterance, so an animation tied to
+/// build would re-run down the whole column each time somebody speaks. Keeping
+/// the controller in State — and keying each row by its offset — means the
+/// motion belongs to the line, not to the rebuild.
+class _FadeInOnce extends StatefulWidget {
+  final Widget child;
+
+  const _FadeInOnce({required this.child});
+
+  @override
+  State<_FadeInOnce> createState() => _FadeInOnceState();
+}
+
+class _FadeInOnceState extends State<_FadeInOnce>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 260),
+  )..forward();
+
+  late final Animation<double> _curve = CurvedAnimation(
+    parent: _controller,
+    curve: Curves.easeOutCubic,
+  );
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return FadeTransition(
+      opacity: _curve,
+      child: SlideTransition(
+        // From just above: a new line pushes the older ones down, which is the
+        // direction the list actually grows.
+        position: Tween(
+          begin: const Offset(0, -0.12),
+          end: Offset.zero,
+        ).animate(_curve),
+        child: widget.child,
+      ),
+    );
+  }
+}
+
+/// Three dots keeping time while the provider is still revising a sentence.
+class _TypingDots extends StatefulWidget {
+  const _TypingDots();
+
+  @override
+  State<_TypingDots> createState() => _TypingDotsState();
+}
+
+class _TypingDotsState extends State<_TypingDots>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 1100),
+  )..repeat();
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: EdgeInsets.only(top: 15.h),
+      child: AnimatedBuilder(
+        animation: _controller,
+        builder: (context, _) {
+          return Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: List.generate(3, (i) {
+              // Each dot runs a third of a cycle behind the one before it.
+              final phase = (_controller.value - i * 0.18) % 1.0;
+              final lift = phase < 0.5 ? phase * 2 : (1 - phase) * 2;
+
+              return Padding(
+                padding: EdgeInsets.symmetric(horizontal: 1.5.w),
+                child: Opacity(
+                  opacity: 0.35 + lift * 0.65,
+                  child: Container(
+                    width: 4.5.w,
+                    height: 4.5.w,
+                    decoration: BoxDecoration(
+                      color: AppColors.primary,
+                      shape: BoxShape.circle,
+                    ),
+                  ),
+                ),
+              );
+            }),
+          );
+        },
+      ),
+    );
   }
 }
 

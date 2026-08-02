@@ -442,9 +442,14 @@ class HomeTab extends GetView<HomeController> {
   Widget _shiftBadge() {
     return Obx(() {
       final shift = controller.summary.value?.todayShift;
+      // On a rotation the name alone does not answer "what time do I start
+      // today", so the hours ride along with it.
+      final hours = shift != null && shift.isOff == false && shift.start != null
+          ? ' · ${shift.hours}'
+          : '';
       final label = shift?.isOff == true
           ? 'HARI LIBUR'
-          : (shift?.shiftName?.toUpperCase() ?? 'SHIFT UMUM');
+          : '${shift?.shiftName?.toUpperCase() ?? 'SHIFT UMUM'}$hours';
       final color = shift?.isOff == true
           ? AppColors.warning
           : AppColors.success;

@@ -19,6 +19,44 @@ class MeetingController extends GetxController {
 
   final search = ''.obs;
 
+  /// Which tab is showing: 0 starts a recording, 1 reads the old ones.
+  ///
+  /// Split rather than stacked because the two have nothing to say to each
+  /// other: somebody about to record wants one button, somebody looking for
+  /// last Tuesday's meeting wants the whole screen to be a list.
+  final tab = 0.obs;
+
+  /// The status the archive is narrowed to, or null for everything.
+  final statusFilter = RxnString();
+
+  /// A search round-trip, which must not blank the tabs the way [isLoading] does.
+  final isFiltering = false.obs;
+
+  /// Archive filters, in the order they are offered.
+  static const filters = <({String label, String? key})>[
+    (label: 'Semua', key: null),
+    (label: 'Siap', key: 'ready'),
+    (label: 'Diproses', key: 'processing'),
+    (label: 'Gagal', key: 'failed'),
+  ];
+
+  /// Recording and processing are one thing to somebody scanning a list: the
+  /// meeting is not readable yet.
+  bool matches(MeetingItem meeting, String? key) => switch (key) {
+    null => true,
+    'processing' => meeting.isWorking,
+    _ => meeting.status == key,
+  };
+
+  /// What the archive shows, once the status filter has had its say. Search is
+  /// left to the server so a title that has scrolled off the page is still
+  /// findable.
+  List<MeetingItem> get visible =>
+      meetings.where((meeting) => matches(meeting, statusFilter.value)).toList();
+
+  int countOf(String? key) =>
+      meetings.where((meeting) => matches(meeting, key)).length;
+
   @override
   void onInit() {
     super.onInit();
@@ -44,9 +82,17 @@ class MeetingController extends GetxController {
   }
 
   Future<void> applySearch(String value) async {
-    search.value = value;
-    isLoading.value = true;
-    await load();
+    final term = value.trim();
+    if (term == search.value) return;
+
+    search.value = term;
+    isFiltering.value = true;
+
+    try {
+      await load();
+    } finally {
+      isFiltering.value = false;
+    }
   }
 
   /// Open a recording on the server, then hand over to the recorder screen.
