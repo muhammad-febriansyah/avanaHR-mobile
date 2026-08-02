@@ -12,11 +12,13 @@ import '../../../core/utils/formats.dart';
 import '../../../core/widgets/app_page.dart';
 import '../../../core/widgets/app_sheet.dart';
 import '../../../core/widgets/tenant_brand_row.dart';
+import '../../../data/models/attendance.dart';
 import '../../../data/models/dashboard.dart';
 import '../../../data/models/ess_models.dart';
 import '../../../data/models/user.dart';
 import '../../../data/providers/avana_api.dart';
 import '../../../routes/app_pages.dart';
+import '../../attendance/attendance_controller.dart';
 import '../../main/main_controller.dart';
 import '../controllers/home_controller.dart';
 
@@ -1144,6 +1146,10 @@ class HomeTab extends GetView<HomeController> {
 }
 
 /// Live ticking clock (hh:mm:ss AM/PM) for the attendance hero card.
+///
+/// It reads the company's clock, not the phone's: an employee travelling with
+/// a phone still set to WIB should see the hour their WITA office is keeping,
+/// with the zone named so there is no doubt which.
 class _LiveClock extends StatefulWidget {
   const _LiveClock();
 
@@ -1169,27 +1175,36 @@ class _LiveClockState extends State<_LiveClock> {
     super.dispose();
   }
 
-  String get _text {
-    final h24 = _now.hour;
+  String _text(AttendanceToday? today) {
+    final now = today?.nowOnTenantClock() ?? _now;
+    final h24 = now.hour;
     final h = (h24 % 12 == 0 ? 12 : h24 % 12).toString().padLeft(2, '0');
-    final m = _now.minute.toString().padLeft(2, '0');
-    final s = _now.second.toString().padLeft(2, '0');
+    final m = now.minute.toString().padLeft(2, '0');
+    final s = now.second.toString().padLeft(2, '0');
     final ap = h24 < 12 ? 'AM' : 'PM';
-    return '$h:$m:$s $ap';
+    final zone = today?.timezoneLabel ?? '';
+
+    return zone.isEmpty ? '$h:$m:$s $ap' : '$h:$m:$s $ap $zone';
   }
 
   @override
   Widget build(BuildContext context) {
-    return Text(
-      _text,
-      style: TextStyle(
-        fontSize: 22.sp,
-        fontWeight: FontWeight.w800,
-        color: AppColors.navy,
-        letterSpacing: -0.5,
-        fontFeatures: const [FontFeature.tabularFigures()],
-      ),
-    );
+    return Obx(() {
+      final today = Get.isRegistered<AttendanceController>()
+          ? Get.find<AttendanceController>().today.value
+          : null;
+
+      return Text(
+        _text(today),
+        style: TextStyle(
+          fontSize: 22.sp,
+          fontWeight: FontWeight.w800,
+          color: AppColors.navy,
+          letterSpacing: -0.5,
+          fontFeatures: const [FontFeature.tabularFigures()],
+        ),
+      );
+    });
   }
 }
 

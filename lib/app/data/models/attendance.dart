@@ -34,6 +34,12 @@ class AttendanceToday {
   /// identity match rather than refusing the punch.
   final bool requiresFaceEnrollment;
 
+  /// The wall clock the tenant works to (IANA name), and its Indonesian
+  /// label. Times in the response are already read on this clock; the label
+  /// is what the screen puts next to them so "08:00" says which 08:00.
+  final String timezone;
+  final String timezoneLabel;
+
   AttendanceToday({
     required this.date,
     required this.nextAction,
@@ -48,7 +54,23 @@ class AttendanceToday {
     this.deviceBindingEnabled = true,
     this.requiresLivenessChallenge = false,
     this.requiresFaceEnrollment = false,
+    this.timezone = 'Asia/Jakarta',
+    this.timezoneLabel = 'WIB',
   });
+
+  /// Indonesia keeps no daylight saving, so each zone is a fixed offset and
+  /// the app can read the tenant's wall clock without a timezone database.
+  int get _tenantOffsetHours => switch (timezone) {
+    'Asia/Makassar' => 8,
+    'Asia/Jayapura' => 9,
+    _ => 7,
+  };
+
+  /// Now, on the tenant's wall clock rather than the phone's. A phone set to
+  /// WIB inside a WITA company must not show — or optimistically record — an
+  /// hour that the office never saw.
+  DateTime nowOnTenantClock() =>
+      DateTime.now().toUtc().add(Duration(hours: _tenantOffsetHours));
 
   /// A live face must be captured at clock-in (recognition or detection).
   bool get requiresFaceCapture => faceMode != 'off';
@@ -82,6 +104,8 @@ class AttendanceToday {
       requiresLivenessChallenge:
           requirements['require_liveness_challenge'] == true,
       requiresFaceEnrollment: requirements['require_face_enrollment'] == true,
+      timezone: (requirements['timezone'] as String?) ?? 'Asia/Jakarta',
+      timezoneLabel: (requirements['timezone_label'] as String?) ?? 'WIB',
     );
   }
 }

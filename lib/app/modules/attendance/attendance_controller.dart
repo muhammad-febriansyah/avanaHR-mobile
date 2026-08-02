@@ -388,7 +388,9 @@ class AttendanceController extends GetxController with WidgetsBindingObserver {
         'is_mock_location': pos?.isMocked ?? false,
         'is_rooted': isRooted,
         'is_emulator': isEmulator,
-        'clocked_at': DateTime.now().toIso8601String(),
+        // UTC, so the server reads one unambiguous instant no matter what
+        // zone the phone is set to.
+        'clocked_at': DateTime.now().toUtc().toIso8601String(),
         if (faceEmbedding != null) 'face_embedding': faceEmbedding,
         // A nonce lives two minutes, so a queued punch cannot carry one: the
         // queue fetches its own when it finally reaches the server.
@@ -516,7 +518,9 @@ class AttendanceController extends GetxController with WidgetsBindingObserver {
 
   /// Reflect a queued clock action in today's status immediately.
   void _applyOptimistic(String type) {
-    final now = DateTime.now();
+    // The office's clock, not the phone's — otherwise the time shown now
+    // disagrees with the one the server sends back.
+    final now = today.value?.nowOnTenantClock() ?? DateTime.now();
     final hm =
         '${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}';
     final t = today.value;
