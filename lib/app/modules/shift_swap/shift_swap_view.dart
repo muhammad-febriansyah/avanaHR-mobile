@@ -77,7 +77,9 @@ class ShiftSwapView extends GetView<ShiftSwapController> {
                                 ),
                                 SizedBox(height: 2.h),
                                 Text(
-                                  s.date,
+                                  s.tradeLabel == null
+                                      ? s.date
+                                      : '${s.date} · ${s.tradeLabel}',
                                   style: TextStyle(
                                     color: AppColors.textMuted,
                                     fontSize: 12.sp,

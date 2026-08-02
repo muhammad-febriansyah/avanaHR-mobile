@@ -978,6 +978,8 @@ class ShiftSwapItem {
   final String? requester;
   final String? target;
   final String direction;
+  final String? requesterShift;
+  final String? targetShift;
   final String? reason;
   final String status;
 
@@ -988,8 +990,19 @@ class ShiftSwapItem {
     required this.status,
     this.requester,
     this.target,
+    this.requesterShift,
+    this.targetShift,
     this.reason,
   });
+
+  /// The trade read from this employee's side: the shift they give up, then
+  /// the one they take on.
+  String? get tradeLabel {
+    final mine = direction == 'outgoing' ? requesterShift : targetShift;
+    final theirs = direction == 'outgoing' ? targetShift : requesterShift;
+    if (mine == null || theirs == null) return null;
+    return '$mine → $theirs';
+  }
 
   factory ShiftSwapItem.fromJson(Map<String, dynamic> j) => ShiftSwapItem(
     id: j['id'],
@@ -997,6 +1010,8 @@ class ShiftSwapItem {
     requester: j['requester'],
     target: j['target'],
     direction: j['direction'] ?? 'outgoing',
+    requesterShift: j['requester_shift'],
+    targetShift: j['target_shift'],
     reason: j['reason'],
     status: j['status'] ?? '',
   );
