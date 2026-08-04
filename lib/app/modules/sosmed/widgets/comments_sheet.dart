@@ -749,38 +749,52 @@ void showPostEditSheet(
         ),
       ),
       SizedBox(height: 14.h),
-      Obx(
-        () => Wrap(
-          spacing: 8.w,
-          runSpacing: 8.h,
-          children: controller.categories.map((category) {
-            final selected = categoryId.value == category.id;
-            final accent = hexColor(category.color);
+      // No categories loaded: leave the row out entirely rather than open a gap
+      // above the text field.
+      Obx(() {
+        if (controller.categories.isEmpty) {
+          return const SizedBox.shrink();
+        }
 
-            return GestureDetector(
-              onTap: () => categoryId.value = selected ? null : category.id,
-              child: Container(
-                padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 8.h),
-                decoration: BoxDecoration(
-                  color: selected
-                      ? accent.withValues(alpha: 0.12)
-                      : AppColors.muted,
-                  borderRadius: BorderRadius.circular(10.r),
-                ),
-                child: Text(
-                  category.name,
-                  style: TextStyle(
-                    fontSize: 12.sp,
-                    fontWeight: FontWeight.w600,
-                    color: selected ? accent : AppColors.textMuted,
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Wrap(
+              spacing: 8.w,
+              runSpacing: 8.h,
+              children: controller.categories.map((category) {
+                final selected = categoryId.value == category.id;
+                final accent = hexColor(category.color);
+
+                return GestureDetector(
+                  onTap: () => categoryId.value = selected ? null : category.id,
+                  child: Container(
+                    padding: EdgeInsets.symmetric(
+                      horizontal: 12.w,
+                      vertical: 8.h,
+                    ),
+                    decoration: BoxDecoration(
+                      color: selected
+                          ? accent.withValues(alpha: 0.12)
+                          : AppColors.muted,
+                      borderRadius: BorderRadius.circular(10.r),
+                    ),
+                    child: Text(
+                      category.name,
+                      style: TextStyle(
+                        fontSize: 12.sp,
+                        fontWeight: FontWeight.w600,
+                        color: selected ? accent : AppColors.textMuted,
+                      ),
+                    ),
                   ),
-                ),
-              ),
-            );
-          }).toList(),
-        ),
-      ),
-      SizedBox(height: 14.h),
+                );
+              }).toList(),
+            ),
+            SizedBox(height: 14.h),
+          ],
+        );
+      }),
       TextField(
         controller: bodyC,
         maxLines: 5,

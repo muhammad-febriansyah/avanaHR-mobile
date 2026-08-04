@@ -67,7 +67,33 @@ class SosmedView extends GetView<SosmedController> {
                 SizedBox(height: 12.h),
                 _toolbar(),
                 SizedBox(height: 14.h),
-                if (controller.posts.isEmpty)
+                if (controller.feedError.value != null)
+                  Padding(
+                    padding: EdgeInsets.only(top: 60.h),
+                    child: Column(
+                      children: [
+                        EmptyState(
+                          icon: Iconsax.cloud_cross,
+                          message: controller.feedError.value!,
+                        ),
+                        TextButton.icon(
+                          onPressed: controller.load,
+                          icon: Icon(Iconsax.refresh, size: 16.sp),
+                          label: Text(
+                            'Coba lagi',
+                            style: TextStyle(
+                              fontSize: 13.sp,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          style: TextButton.styleFrom(
+                            foregroundColor: AppColors.primary,
+                          ),
+                        ),
+                      ],
+                    ),
+                  )
+                else if (controller.posts.isEmpty)
                   Padding(
                     padding: EdgeInsets.only(top: 60.h),
                     child: const EmptyState(
@@ -500,6 +526,36 @@ class SosmedView extends GetView<SosmedController> {
     );
   }
 
+  /// A line of explanation where the category chips would have been. Amber
+  /// rather than red: nothing is blocked, the post still sends.
+  Widget _categoryNote(String message) {
+    return Container(
+      width: double.infinity,
+      padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 10.h),
+      decoration: BoxDecoration(
+        color: AppColors.warning.withValues(alpha: 0.10),
+        borderRadius: BorderRadius.circular(10.r),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(Iconsax.info_circle, size: 15.sp, color: AppColors.warning),
+          SizedBox(width: 8.w),
+          Expanded(
+            child: Text(
+              message,
+              style: TextStyle(
+                fontSize: 12.sp,
+                height: 1.45,
+                color: AppColors.textPrimary.withValues(alpha: 0.75),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   /// Compose sheet: category chip, text (max 500), optional photo.
   void _openCompose(BuildContext context) {
     final bodyC = TextEditingController();
@@ -517,51 +573,77 @@ class SosmedView extends GetView<SosmedController> {
         const SheetHeader('Buat Postingan'),
         SizedBox(height: 16.h),
 
-        Text(
-          'Kategori',
-          style: TextStyle(
-            fontSize: 13.sp,
-            fontWeight: FontWeight.w600,
-            color: AppColors.textPrimary,
-          ),
-        ),
-        SizedBox(height: 8.h),
-        Obx(
-          () => Wrap(
-            spacing: 8.w,
-            runSpacing: 8.h,
-            children: controller.categories.map((category) {
-              final selected = categoryId.value == category.id;
-              final accent = _hexColor(category.color);
-
-              return GestureDetector(
-                onTap: () => categoryId.value = selected ? null : category.id,
-                child: Container(
-                  padding: EdgeInsets.symmetric(
-                    horizontal: 12.w,
-                    vertical: 8.h,
-                  ),
-                  decoration: BoxDecoration(
-                    color: selected
-                        ? accent.withValues(alpha: 0.12)
-                        : AppColors.muted,
-                    borderRadius: BorderRadius.circular(10.r),
-                  ),
-                  child: Text(
-                    category.name,
-                    style: TextStyle(
-                      fontSize: 12.sp,
-                      fontWeight: FontWeight.w600,
-                      color: selected ? accent : AppColors.textMuted,
-                    ),
-                  ),
+        // An empty category list is a real state, not a glitch, and so is one
+        // that failed to arrive. Both say so in words: a heading floating above
+        // nothing reads as a field that broke.
+        Obx(() {
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Kategori',
+                style: TextStyle(
+                  fontSize: 13.sp,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.textPrimary,
                 ),
-              );
-            }).toList(),
-          ),
-        ),
+              ),
+              SizedBox(height: 8.h),
+              if (controller.loadingCategories.value)
+                Text(
+                  'Memuat kategori…',
+                  style: TextStyle(fontSize: 12.sp, color: AppColors.textMuted),
+                )
+              else if (controller.categoriesFailed.value)
+                _categoryNote(
+                  'Daftar kategori gagal dimuat. Postingan tetap bisa dikirim '
+                  'tanpa kategori.',
+                )
+              else if (controller.categories.isEmpty)
+                _categoryNote(
+                  'Belum ada kategori di perusahaan ini. Postingan tetap bisa '
+                  'dikirim tanpa kategori — minta admin HR menambahkannya '
+                  'kalau dibutuhkan.',
+                )
+              else
+                Wrap(
+                  spacing: 8.w,
+                  runSpacing: 8.h,
+                  children: controller.categories.map((category) {
+                    final selected = categoryId.value == category.id;
+                    final accent = _hexColor(category.color);
 
-        SizedBox(height: 16.h),
+                    return GestureDetector(
+                      onTap: () =>
+                          categoryId.value = selected ? null : category.id,
+                      child: Container(
+                        padding: EdgeInsets.symmetric(
+                          horizontal: 12.w,
+                          vertical: 8.h,
+                        ),
+                        decoration: BoxDecoration(
+                          color: selected
+                              ? accent.withValues(alpha: 0.12)
+                              : AppColors.muted,
+                          borderRadius: BorderRadius.circular(10.r),
+                        ),
+                        child: Text(
+                          category.name,
+                          style: TextStyle(
+                            fontSize: 12.sp,
+                            fontWeight: FontWeight.w600,
+                            color: selected ? accent : AppColors.textMuted,
+                          ),
+                        ),
+                      ),
+                    );
+                  }).toList(),
+                ),
+              SizedBox(height: 16.h),
+            ],
+          );
+        }),
+
         TextField(
           controller: bodyC,
           maxLines: 5,

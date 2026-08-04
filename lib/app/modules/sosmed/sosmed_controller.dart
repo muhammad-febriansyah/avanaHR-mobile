@@ -18,6 +18,7 @@ class SosmedController extends GetxController {
   final isLoading = true.obs;
   final isLoadingMore = false.obs;
   final submitting = false.obs;
+  final loadingCategories = false.obs;
 
   final posts = <SocialPostItem>[].obs;
   final categories = <SocialCategoryItem>[].obs;
@@ -25,6 +26,12 @@ class SosmedController extends GetxController {
 
   /// null = "Semua"; otherwise the category being filtered on.
   final activeCategory = Rxn<int>();
+
+  /// Why the last fetch failed, when it did. An empty wall and a wall that
+  /// could not be loaded look identical otherwise, and telling somebody to be
+  /// the first to post is the wrong thing to say when the server is down.
+  final feedError = RxnString();
+  final categoriesFailed = false.obs;
 
   /// How many cards sit side by side, one or two. Remembered across launches —
   /// a layout preference set once should not reset on every open.
@@ -73,26 +80,53 @@ class SosmedController extends GetxController {
     _page = 1;
     _hasMore = true;
 
-    try {
-      final results = await Future.wait([
-        _api.socialCategories(),
-        _api.socialFeed(
-          page: 1,
-          categoryId: activeCategory.value,
-          sort: sort.value,
-        ),
-      ]);
-
-      categories.assignAll(results[0] as List<SocialCategoryItem>);
-
-      final feed = results[1] as Paged<SocialPostItem>;
-      posts.assignAll(feed.items);
-      _hasMore = feed.hasMore;
-    } catch (_) {
-      posts.clear();
-    }
+    // Each half keeps its own failure. Fetched together, one bad response used
+    // to empty both, so a feed that would not load also left the composer with
+    // no categories to pick from.
+    await Future.wait([_loadCategories(), _loadFeed()]);
 
     isLoading.value = false;
+  }
+
+  /// The category list only changes when HR edits it, so it is fetched once and
+  /// then left alone — except while it is empty, which is also what a failed
+  /// fetch looks like, and is worth another try.
+  Future<void> _loadCategories() async {
+    if (categories.isNotEmpty) {
+      return;
+    }
+
+    loadingCategories.value = true;
+
+    try {
+      categories.assignAll(await _api.socialCategories());
+      categoriesFailed.value = false;
+    } catch (_) {
+      categories.clear();
+      categoriesFailed.value = true;
+    }
+
+    loadingCategories.value = false;
+  }
+
+  Future<void> _loadFeed() async {
+    try {
+      final feed = await _api.socialFeed(
+        page: 1,
+        categoryId: activeCategory.value,
+        sort: sort.value,
+      );
+
+      posts.assignAll(feed.items);
+      _hasMore = feed.hasMore;
+      feedError.value = null;
+    } on DioException catch (e) {
+      posts.clear();
+      feedError.value = ApiClient.errorMessage(e);
+    } catch (_) {
+      posts.clear();
+      feedError.value = 'Postingan gagal dimuat.';
+    }
   }
 
   /// Next page, appended. No-op while one is already in flight or at the end.
