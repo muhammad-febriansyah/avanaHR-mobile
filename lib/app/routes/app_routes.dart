@@ -6,6 +6,7 @@ abstract class Routes {
   static const ONBOARDING = _Paths.ONBOARDING;
   static const LOGIN = _Paths.LOGIN;
   static const TWO_FACTOR = _Paths.TWO_FACTOR;
+  static const TWO_FACTOR_SETUP = _Paths.TWO_FACTOR_SETUP;
   static const MAIN = _Paths.MAIN;
   static const HOME = _Paths.HOME;
   static const PROFILE = _Paths.PROFILE;
@@ -49,6 +50,7 @@ abstract class _Paths {
   static const ONBOARDING = '/onboarding';
   static const LOGIN = '/login';
   static const TWO_FACTOR = '/two-factor';
+  static const TWO_FACTOR_SETUP = '/two-factor/setup';
   static const MAIN = '/main';
   static const HOME = '/home';
   static const PROFILE = '/profile';

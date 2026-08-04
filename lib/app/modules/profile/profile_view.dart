@@ -11,6 +11,7 @@ import '../../core/widgets/app_page.dart';
 import '../../core/widgets/app_sheet.dart';
 import '../../core/widgets/form_fields.dart';
 import '../../core/widgets/ui.dart';
+import '../../routes/app_pages.dart';
 import '../../data/models/profile.dart';
 import 'profile_controller.dart';
 
@@ -46,6 +47,7 @@ class ProfileView extends GetView<ProfileController> {
             _header(p),
             SizedBox(height: 16.h),
             _actions(p),
+            _twoFactorRow(),
             SizedBox(height: 18.h),
             _section('Pekerjaan', Iconsax.briefcase, [
               InfoRow('Departemen', p.employment?.department),
@@ -339,6 +341,19 @@ class ProfileView extends GetView<ProfileController> {
           ),
         ),
       ],
+    );
+  }
+
+  /// Two-factor needs a QR, a code field and the recovery codes, which is more
+  /// than a sheet should hold — it gets a page of its own.
+  Widget _twoFactorRow() {
+    return Padding(
+      padding: EdgeInsets.only(top: 12.h),
+      child: _actionButton(
+        'Verifikasi Dua Langkah',
+        Iconsax.shield_tick,
+        () => Get.toNamed(Routes.TWO_FACTOR_SETUP),
+      ),
     );
   }
 

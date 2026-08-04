@@ -15,6 +15,7 @@ import '../models/onboarding_slide.dart';
 import '../models/payslip.dart';
 import '../models/profile.dart';
 import '../models/schedule.dart';
+import '../models/two_factor_status.dart';
 import '../models/user.dart';
 import 'api_client.dart';
 
@@ -149,6 +150,63 @@ class AvanaApi {
       },
     );
     return res.data['access_token'] as String?;
+  }
+
+  // ---- Two-factor management ----
+  //
+  // Every one of these answers with the same status shape, so the caller always
+  // learns where the account stands without a second round trip.
+
+  Future<TwoFactorStatus> twoFactorStatus() =>
+      _twoFactor(() => _dio.get('/me/security/two-factor'));
+
+  /// Mint the secret. The account is not protected until [confirmTwoFactor].
+  Future<TwoFactorStatus> enableTwoFactor(String currentPassword) => _twoFactor(
+    () => _dio.post(
+      '/me/security/two-factor',
+      data: {'current_password': currentPassword},
+    ),
+  );
+
+  Future<TwoFactorStatus> confirmTwoFactor(String code) => _twoFactor(
+    () => _dio.post('/me/security/two-factor/confirm', data: {'code': code}),
+  );
+
+  Future<TwoFactorStatus> disableTwoFactor(String currentPassword) =>
+      _twoFactor(
+        () => _dio.delete(
+          '/me/security/two-factor',
+          data: {'current_password': currentPassword},
+        ),
+      );
+
+  Future<TwoFactorStatus> regenerateRecoveryCodes(String currentPassword) =>
+      _twoFactor(
+        () => _dio.post(
+          '/me/security/two-factor/recovery-codes',
+          data: {'current_password': currentPassword},
+        ),
+      );
+
+  /// Run a two-factor call and read the status off it.
+  ///
+  /// The client treats anything under 500 as a response, so a 422 arrives here
+  /// rather than as a throw — it is turned into one so callers have a single
+  /// failure path.
+  Future<TwoFactorStatus> _twoFactor(Future<Response> Function() call) async {
+    final res = await call();
+
+    if (res.statusCode != 200 || res.data is! Map) {
+      throw DioException.badResponse(
+        statusCode: res.statusCode ?? 0,
+        requestOptions: res.requestOptions,
+        response: res,
+      );
+    }
+
+    return TwoFactorStatus.fromJson(
+      Map<String, dynamic>.from(res.data['data']),
+    );
   }
 
   Future<AttendanceToday> attendanceToday() async {

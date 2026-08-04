@@ -62,6 +62,8 @@ import '../modules/home/views/home_view.dart';
 import '../modules/login/login_binding.dart';
 import '../modules/login/login_view.dart';
 import '../modules/two_factor/two_factor_binding.dart';
+import '../modules/two_factor_setup/two_factor_setup_binding.dart';
+import '../modules/two_factor_setup/two_factor_setup_view.dart';
 import '../modules/two_factor/two_factor_view.dart';
 import '../modules/main/main_binding.dart';
 import '../modules/main/main_view.dart';
@@ -93,6 +95,11 @@ class AppPages {
       name: _Paths.TWO_FACTOR,
       page: () => const TwoFactorView(),
       binding: TwoFactorBinding(),
+    ),
+    GetPage(
+      name: _Paths.TWO_FACTOR_SETUP,
+      page: () => const TwoFactorSetupView(),
+      binding: TwoFactorSetupBinding(),
     ),
     GetPage(
       name: _Paths.MAIN,
