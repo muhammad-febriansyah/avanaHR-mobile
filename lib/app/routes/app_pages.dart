@@ -61,6 +61,8 @@ import '../modules/wfh/wfh_view.dart';
 import '../modules/home/views/home_view.dart';
 import '../modules/login/login_binding.dart';
 import '../modules/login/login_view.dart';
+import '../modules/two_factor/two_factor_binding.dart';
+import '../modules/two_factor/two_factor_view.dart';
 import '../modules/main/main_binding.dart';
 import '../modules/main/main_view.dart';
 import '../modules/notification/notification_binding.dart';
@@ -86,6 +88,11 @@ class AppPages {
       name: _Paths.LOGIN,
       page: () => const LoginView(),
       binding: LoginBinding(),
+    ),
+    GetPage(
+      name: _Paths.TWO_FACTOR,
+      page: () => const TwoFactorView(),
+      binding: TwoFactorBinding(),
     ),
     GetPage(
       name: _Paths.MAIN,

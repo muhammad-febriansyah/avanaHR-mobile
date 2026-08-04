@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart';
 import 'package:get/get.dart' hide Response, FormData, MultipartFile;
 
 import '../../core/config/env.dart';
@@ -76,6 +77,23 @@ class ApiClient extends GetxService {
 
           handler.next(response);
         },
+        onError: (error, handler) {
+          // What the toast no longer says out loud. The employee gets plain
+          // words; the status and body land here, where they are of use.
+          if (kDebugMode) {
+            final response = error.response;
+            debugPrint(
+              '[api] ${error.requestOptions.method} '
+              '${error.requestOptions.path} '
+              '→ ${response?.statusCode ?? error.type.name}',
+            );
+            if (response?.data != null) {
+              debugPrint('[api] body: ${response!.data}');
+            }
+          }
+
+          handler.next(error);
+        },
       ),
     );
   }
@@ -91,6 +109,14 @@ class ApiClient extends GetxService {
     if (request.path.contains('/auth/login') ||
         request.path.contains('/auth/refresh')) {
       return (null, true);
+    }
+
+    // The two-factor exchange runs before there is a session at all, so a 401
+    // there is a spent challenge, not a lapsed token: nothing to renew and no
+    // session to end. The screen that asked reads the status and sends the user
+    // back to sign in itself.
+    if (request.path.contains('/auth/two-factor')) {
+      return (null, false);
     }
 
     if (request.extra[_retriedKey] == true) {
@@ -115,6 +141,14 @@ class ApiClient extends GetxService {
 
     request.extra[_retriedKey] = true;
     request.headers.remove('Authorization');
+
+    // An upload's body is a stream that can only be read once, and the first
+    // attempt already drained it. Without a fresh copy the retry throws instead
+    // of sending, so every photo posted on a lapsed token failed here.
+    final body = request.data;
+    if (body is FormData) {
+      request.data = body.clone();
+    }
 
     try {
       return (await dio.fetch(request), false);
@@ -189,8 +223,27 @@ class ApiClient extends GetxService {
       case DioExceptionType.sendTimeout:
       case DioExceptionType.receiveTimeout:
         return 'Koneksi internet buruk atau tidak ada. Periksa jaringan lalu coba lagi.';
+      case DioExceptionType.badResponse:
+        final status = e.response?.statusCode;
+
+        // The server answered, so blaming the connection would send people off
+        // to check a network that is working fine. Say whose side broke and
+        // nothing more: a status code means nothing to the employee holding the
+        // phone, and it is already in the debug log for whoever fixes it.
+        if (status != null && status >= 500) {
+          return messageFrom(
+            e.response,
+            'Sistem sedang bermasalah. Ini bukan dari jaringan kamu — coba '
+            'lagi beberapa saat.',
+          );
+        }
+
+        return messageFrom(e.response, 'Permintaan tidak bisa diproses.');
       default:
-        return messageFrom(e.response, 'Gagal terhubung ke server.');
+        return messageFrom(
+          e.response,
+          'Gagal menghubungi server. Coba lagi sebentar.',
+        );
     }
   }
 }

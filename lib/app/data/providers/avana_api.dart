@@ -47,6 +47,21 @@ class AvanaApi {
     data: {'email': email, 'password': password, ...?device},
   );
 
+  /// Second half of a login for an account carrying two-factor. The device
+  /// details are not resent: the server kept them with the challenge.
+  Future<Response> twoFactor(
+    String challengeToken, {
+    String? code,
+    String? recoveryCode,
+  }) => _dio.post(
+    '/auth/two-factor',
+    data: {
+      'challenge_token': challengeToken,
+      if (code != null) 'code': code,
+      if (recoveryCode != null) 'recovery_code': recoveryCode,
+    },
+  );
+
   Future<AppUser> me() async {
     final res = await _dio.get('/auth/me');
     final data = res.data is Map ? (res.data as Map)['data'] : null;

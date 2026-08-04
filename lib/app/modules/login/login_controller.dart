@@ -34,19 +34,30 @@ class LoginController extends GetxController {
     }
 
     isLoading.value = true;
-    final error = await _auth.login(emailC.text.trim(), passwordC.text);
+    final result = await _auth.login(emailC.text.trim(), passwordC.text);
     isLoading.value = false;
 
-    if (error == null) {
-      if (rememberMe.value) {
-        await _storage.saveRememberedEmail(emailC.text.trim());
-      } else {
-        await _storage.clearRememberedEmail();
-      }
-      Get.offAllNamed(Routes.MAIN);
-    } else {
-      AppToast.error(error);
+    if (result.error != null) {
+      AppToast.error(result.error!);
+      return;
     }
+
+    // The address is worth remembering either way: the account is real and the
+    // password was right, whatever the second factor decides next.
+    if (rememberMe.value) {
+      await _storage.saveRememberedEmail(emailC.text.trim());
+    } else {
+      await _storage.clearRememberedEmail();
+    }
+
+    if (result.needsTwoFactor) {
+      // Not offAllNamed: backing out of the code screen should land on login,
+      // not on an empty stack.
+      Get.toNamed(Routes.TWO_FACTOR, arguments: result.challengeToken);
+      return;
+    }
+
+    Get.offAllNamed(Routes.MAIN);
   }
 
   void forgotPassword() {
