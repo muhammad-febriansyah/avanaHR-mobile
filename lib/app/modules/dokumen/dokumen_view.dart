@@ -95,10 +95,8 @@ class DokumenView extends GetView<DokumenController> {
                       height: 240.h,
                       fit: BoxFit.cover,
                       memCacheHeight: 720,
-                      placeholder: (_, _) => Container(
-                        height: 240.h,
-                        color: AppColors.muted,
-                      ),
+                      placeholder: (_, _) =>
+                          Container(height: 240.h, color: AppColors.muted),
                       errorWidget: (_, _, _) => _previewFallback(
                         Iconsax.gallery_slash,
                         'Gambar gagal dimuat',
@@ -219,90 +217,84 @@ class DokumenView extends GetView<DokumenController> {
     final path = RxnString();
     final fileName = RxnString();
 
-    showAppSheet(
+    showAppFormSheet(
       context,
-      child: Padding(
-        padding: EdgeInsets.fromLTRB(20.w, 14.h, 20.w, 24.h),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const SheetHeader('Unggah Dokumen'),
-            SizedBox(height: 18.h),
-            AppTextField(
-              controller: nameC,
-              label: 'Nama Dokumen',
-              hint: 'cth. KTP',
-              icon: Iconsax.document_text,
-              required: true,
+      padding: EdgeInsets.fromLTRB(20.w, 14.h, 20.w, 24.h),
+      children: [
+        const SheetHeader('Unggah Dokumen'),
+        SizedBox(height: 18.h),
+        AppTextField(
+          controller: nameC,
+          label: 'Nama Dokumen',
+          hint: 'cth. KTP',
+          icon: Iconsax.document_text,
+          required: true,
+        ),
+        SizedBox(height: 14.h),
+        AppTextField(
+          controller: typeC,
+          label: 'Jenis (opsional)',
+          hint: 'cth. identitas',
+          icon: Iconsax.category,
+        ),
+        SizedBox(height: 14.h),
+        Text.rich(
+          TextSpan(
+            text: 'Berkas',
+            style: TextStyle(
+              fontWeight: FontWeight.w600,
+              color: AppColors.navy,
+              fontSize: 12.5.sp,
             ),
-            SizedBox(height: 14.h),
-            AppTextField(
-              controller: typeC,
-              label: 'Jenis (opsional)',
-              hint: 'cth. identitas',
-              icon: Iconsax.category,
-            ),
-            SizedBox(height: 14.h),
-            Text.rich(
+            children: [
               TextSpan(
-                text: 'Berkas',
+                text: ' *',
                 style: TextStyle(
-                  fontWeight: FontWeight.w600,
-                  color: AppColors.navy,
+                  color: AppColors.destructive,
                   fontSize: 12.5.sp,
                 ),
-                children: [
-                  TextSpan(
-                    text: ' *',
-                    style: TextStyle(
-                      color: AppColors.destructive,
-                      fontSize: 12.5.sp,
-                    ),
-                  ),
-                ],
               ),
-            ),
-            SizedBox(height: 6.h),
-            Obx(() {
-              final fname = fileName.value;
-              if (fname == null) {
-                return _dropzone(path, fileName);
-              }
-              final lower = fname.toLowerCase();
-              final isImage =
-                  lower.endsWith('.jpg') ||
-                  lower.endsWith('.jpeg') ||
-                  lower.endsWith('.png') ||
-                  lower.endsWith('.webp');
-
-              if (isImage && path.value != null) {
-                return _imagePreview(fname, path, fileName);
-              }
-              return _filePill(fname, path, fileName);
-            }),
-            SizedBox(height: 22.h),
-            Obx(
-              () => AppSubmitButton(
-                label: 'Unggah',
-                loading: controller.submitting.value,
-                onPressed: () async {
-                  if (nameC.text.trim().isEmpty || path.value == null) {
-                    AppToast.warning('Isi nama & pilih file.');
-                    return;
-                  }
-                  final ok = await controller.upload(
-                    name: nameC.text.trim(),
-                    type: typeC.text.trim().isEmpty ? null : typeC.text.trim(),
-                    filePath: path.value!,
-                  );
-                  if (ok) Get.back();
-                },
-              ),
-            ),
-          ],
+            ],
+          ),
         ),
-      ),
+        SizedBox(height: 6.h),
+        Obx(() {
+          final fname = fileName.value;
+          if (fname == null) {
+            return _dropzone(path, fileName);
+          }
+          final lower = fname.toLowerCase();
+          final isImage =
+              lower.endsWith('.jpg') ||
+              lower.endsWith('.jpeg') ||
+              lower.endsWith('.png') ||
+              lower.endsWith('.webp');
+
+          if (isImage && path.value != null) {
+            return _imagePreview(fname, path, fileName);
+          }
+          return _filePill(fname, path, fileName);
+        }),
+        SizedBox(height: 22.h),
+        Obx(
+          () => AppSubmitButton(
+            label: 'Unggah',
+            loading: controller.submitting.value,
+            onPressed: () async {
+              if (nameC.text.trim().isEmpty || path.value == null) {
+                AppToast.warning('Isi nama & pilih file.');
+                return;
+              }
+              final ok = await controller.upload(
+                name: nameC.text.trim(),
+                type: typeC.text.trim().isEmpty ? null : typeC.text.trim(),
+                filePath: path.value!,
+              );
+              if (ok) Get.back();
+            },
+          ),
+        ),
+      ],
     );
   }
 
@@ -514,11 +506,7 @@ class _DocCard extends StatelessWidget {
             ),
           ),
           SizedBox(width: 8.w),
-          Icon(
-            Iconsax.arrow_right_3,
-            size: 18.sp,
-            color: AppColors.textMuted,
-          ),
+          Icon(Iconsax.arrow_right_3, size: 18.sp, color: AppColors.textMuted),
         ],
       ),
     );
@@ -535,11 +523,8 @@ class _DocCard extends StatelessWidget {
           height: 46.w,
           fit: BoxFit.cover,
           memCacheHeight: 138,
-          placeholder: (_, _) => Container(
-            width: 46.w,
-            height: 46.w,
-            color: AppColors.muted,
-          ),
+          placeholder: (_, _) =>
+              Container(width: 46.w, height: 46.w, color: AppColors.muted),
           errorWidget: (_, _, _) =>
               const IconBubble(Iconsax.gallery, purple, size: 46),
         ),

@@ -411,73 +411,63 @@ class MssMemberView extends GetView<MssMemberController> {
     String fmt(DateTime d) =>
         '${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
 
-    showAppSheet(
+    showAppFormSheet(
       context,
-      child: Padding(
-        padding: EdgeInsets.fromLTRB(20.w, 14.h, 20.w, 24.h),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            SheetHeader('Atur Shift — ${controller.member.name}'),
-            SizedBox(height: 16.h),
-            Obx(
-              () => AppDateField(
-                label: 'Tanggal',
-                value: date.value,
-                onPick: (d) => date.value = d,
-              ),
-            ),
-            SizedBox(height: 16.h),
-            Text(
-              'Pilih shift',
-              style: TextStyle(
-                fontSize: 12.sp,
-                fontWeight: FontWeight.w600,
-                color: AppColors.textMuted,
-              ),
-            ),
-            SizedBox(height: 8.h),
-            Obx(
-              () => Column(
-                children: [
-                  _optionTile(
-                    'off',
-                    'Libur',
-                    'Tidak ada jadwal kerja',
-                    selectedKey,
-                  ),
-                  ...controller.shifts.map(
-                    (s) => _optionTile(
-                      s.id.toString(),
-                      s.name,
-                      s.label,
-                      selectedKey,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            SizedBox(height: 20.h),
-            Obx(
-              () => AppSubmitButton(
-                loading: controller.assigning.value,
-                onPressed: () async {
-                  if (date.value == null || selectedKey.value == null) {
-                    return;
-                  }
-                  final key = selectedKey.value!;
-                  final ok = await controller.assignShift(
-                    date: fmt(date.value!),
-                    shiftId: key == 'off' ? null : int.parse(key),
-                  );
-                  if (ok) Get.back();
-                },
-              ),
-            ),
-          ],
+      padding: EdgeInsets.fromLTRB(20.w, 14.h, 20.w, 24.h),
+      children: [
+        SheetHeader('Atur Shift — ${controller.member.name}'),
+        SizedBox(height: 16.h),
+        Obx(
+          () => AppDateField(
+            label: 'Tanggal',
+            value: date.value,
+            onPick: (d) => date.value = d,
+          ),
         ),
-      ),
+        SizedBox(height: 16.h),
+        Text(
+          'Pilih shift',
+          style: TextStyle(
+            fontSize: 12.sp,
+            fontWeight: FontWeight.w600,
+            color: AppColors.textMuted,
+          ),
+        ),
+        SizedBox(height: 8.h),
+        Obx(
+          () => Column(
+            children: [
+              _optionTile(
+                'off',
+                'Libur',
+                'Tidak ada jadwal kerja',
+                selectedKey,
+              ),
+              ...controller.shifts.map(
+                (s) =>
+                    _optionTile(s.id.toString(), s.name, s.label, selectedKey),
+              ),
+            ],
+          ),
+        ),
+        SizedBox(height: 20.h),
+        Obx(
+          () => AppSubmitButton(
+            loading: controller.assigning.value,
+            onPressed: () async {
+              if (date.value == null || selectedKey.value == null) {
+                return;
+              }
+              final key = selectedKey.value!;
+              final ok = await controller.assignShift(
+                date: fmt(date.value!),
+                shiftId: key == 'off' ? null : int.parse(key),
+              );
+              if (ok) Get.back();
+            },
+          ),
+        ),
+      ],
     );
   }
 

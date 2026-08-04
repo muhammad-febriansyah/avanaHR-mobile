@@ -120,66 +120,53 @@ class ReimbursementView extends GetView<ReimbursementController> {
     final amountC = TextEditingController();
     final receiptPath = RxnString();
 
-    showAppSheet(
+    showAppFormSheet(
       context,
-      scrollable: true,
-      child: Padding(
-        padding: EdgeInsets.fromLTRB(20.w, 20.h, 20.w, 20.h),
-        child: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const SheetHeader('Ajukan Reimbursement'),
-              SizedBox(height: 18.h),
-              AppTextField(
-                controller: categoryC,
-                label: 'Kategori',
-                hint: 'mis. transport, medis',
-                icon: Iconsax.category,
-                required: true,
-              ),
-              SizedBox(height: 14.h),
-              AppMoneyField(
-                controller: amountC,
-                label: 'Nominal',
-                required: true,
-              ),
-              SizedBox(height: 14.h),
-              Obx(
-                () => AppImageField(
-                  label: 'Struk / Bukti (opsional)',
-                  hint: 'Foto struk — kamera atau galeri',
-                  path: receiptPath.value,
-                  onPick: (p) => receiptPath.value = p,
-                  onClear: () => receiptPath.value = null,
-                ),
-              ),
-              SizedBox(height: 22.h),
-              Obx(
-                () => AppSubmitButton(
-                  loading: controller.submitting.value,
-                  icon: Iconsax.send_2,
-                  label: 'Ajukan',
-                  onPressed: () async {
-                    final amount = parseRupiah(amountC.text);
-                    if (categoryC.text.trim().isEmpty || amount <= 0) {
-                      AppToast.warning('Lengkapi kategori & nominal.');
-                      return;
-                    }
-                    final ok = await controller.submit(
-                      category: categoryC.text.trim(),
-                      amount: amount,
-                      receiptPath: receiptPath.value,
-                    );
-                    if (ok) Get.back();
-                  },
-                ),
-              ),
-            ],
+      padding: EdgeInsets.fromLTRB(20.w, 20.h, 20.w, 20.h),
+      children: [
+        const SheetHeader('Ajukan Reimbursement'),
+        SizedBox(height: 18.h),
+        AppTextField(
+          controller: categoryC,
+          label: 'Kategori',
+          hint: 'mis. transport, medis',
+          icon: Iconsax.category,
+          required: true,
+        ),
+        SizedBox(height: 14.h),
+        AppMoneyField(controller: amountC, label: 'Nominal', required: true),
+        SizedBox(height: 14.h),
+        Obx(
+          () => AppImageField(
+            label: 'Struk / Bukti (opsional)',
+            hint: 'Foto struk — kamera atau galeri',
+            path: receiptPath.value,
+            onPick: (p) => receiptPath.value = p,
+            onClear: () => receiptPath.value = null,
           ),
         ),
-      ),
+        SizedBox(height: 22.h),
+        Obx(
+          () => AppSubmitButton(
+            loading: controller.submitting.value,
+            icon: Iconsax.send_2,
+            label: 'Ajukan',
+            onPressed: () async {
+              final amount = parseRupiah(amountC.text);
+              if (categoryC.text.trim().isEmpty || amount <= 0) {
+                AppToast.warning('Lengkapi kategori & nominal.');
+                return;
+              }
+              final ok = await controller.submit(
+                category: categoryC.text.trim(),
+                amount: amount,
+                receiptPath: receiptPath.value,
+              );
+              if (ok) Get.back();
+            },
+          ),
+        ),
+      ],
     );
   }
 }

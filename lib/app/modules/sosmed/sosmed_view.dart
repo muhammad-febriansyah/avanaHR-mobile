@@ -412,69 +412,57 @@ class SosmedView extends GetView<SosmedController> {
   void _openReport(BuildContext context, SocialPostItem post) {
     final reasonC = TextEditingController();
 
-    showAppSheet(
+    showAppFormSheet(
       context,
-      child: Padding(
-        padding: EdgeInsets.fromLTRB(20.w, 14.h, 20.w, 24.h),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const SheetHeader('Laporkan postingan'),
-            SizedBox(height: 10.h),
-            Text(
-              'Tim HR akan meninjau postingan ini. Pelapor tidak ditampilkan ke pemilik postingan.',
-              style: TextStyle(
-                fontSize: 13.sp,
-                height: 1.5,
-                color: AppColors.textMuted,
-              ),
-            ),
-            SizedBox(height: 14.h),
-            TextField(
-              controller: reasonC,
-              maxLines: 3,
-              maxLength: 300,
-              style: TextStyle(fontSize: 13.5.sp),
-              decoration: InputDecoration(
-                hintText: 'Alasan (opsional)',
-                hintStyle: TextStyle(
-                  fontSize: 13.sp,
-                  color: AppColors.textMuted,
-                ),
-                counterText: '',
-                filled: true,
-                fillColor: AppColors.muted,
-                contentPadding: EdgeInsets.all(12.w),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12.r),
-                  borderSide: BorderSide.none,
-                ),
-                enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12.r),
-                  borderSide: BorderSide.none,
-                ),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12.r),
-                  borderSide: BorderSide(color: AppColors.primary, width: 1.4),
-                ),
-              ),
-            ),
-            SizedBox(height: 16.h),
-            AppSubmitButton(
-              label: 'Kirim Laporan',
-              loading: false,
-              onPressed: () async {
-                final ok = await controller.reportPost(
-                  post,
-                  reasonC.text.trim(),
-                );
-                if (ok) Get.back();
-              },
-            ),
-          ],
+      padding: EdgeInsets.fromLTRB(20.w, 14.h, 20.w, 24.h),
+      children: [
+        const SheetHeader('Laporkan postingan'),
+        SizedBox(height: 10.h),
+        Text(
+          'Tim HR akan meninjau postingan ini. Pelapor tidak ditampilkan ke pemilik postingan.',
+          style: TextStyle(
+            fontSize: 13.sp,
+            height: 1.5,
+            color: AppColors.textMuted,
+          ),
         ),
-      ),
+        SizedBox(height: 14.h),
+        TextField(
+          controller: reasonC,
+          maxLines: 3,
+          maxLength: 300,
+          style: TextStyle(fontSize: 13.5.sp),
+          decoration: InputDecoration(
+            hintText: 'Alasan (opsional)',
+            hintStyle: TextStyle(fontSize: 13.sp, color: AppColors.textMuted),
+            counterText: '',
+            filled: true,
+            fillColor: AppColors.muted,
+            contentPadding: EdgeInsets.all(12.w),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12.r),
+              borderSide: BorderSide.none,
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12.r),
+              borderSide: BorderSide.none,
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12.r),
+              borderSide: BorderSide(color: AppColors.primary, width: 1.4),
+            ),
+          ),
+        ),
+        SizedBox(height: 16.h),
+        AppSubmitButton(
+          label: 'Kirim Laporan',
+          loading: false,
+          onPressed: () async {
+            final ok = await controller.reportPost(post, reasonC.text.trim());
+            if (ok) Get.back();
+          },
+        ),
+      ],
     );
   }
 
@@ -522,218 +510,206 @@ class SosmedView extends GetView<SosmedController> {
 
     bodyC.addListener(() => length.value = bodyC.text.characters.length);
 
-    showAppSheet(
+    showAppFormSheet(
       context,
-      child: Padding(
-        padding: EdgeInsets.fromLTRB(20.w, 14.h, 20.w, 24.h),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const SheetHeader('Buat Postingan'),
-            SizedBox(height: 16.h),
+      padding: EdgeInsets.fromLTRB(20.w, 14.h, 20.w, 24.h),
+      children: [
+        const SheetHeader('Buat Postingan'),
+        SizedBox(height: 16.h),
 
-            Text(
-              'Kategori',
-              style: TextStyle(
-                fontSize: 13.sp,
-                fontWeight: FontWeight.w600,
-                color: AppColors.textPrimary,
-              ),
-            ),
-            SizedBox(height: 8.h),
-            Obx(
-              () => Wrap(
-                spacing: 8.w,
-                runSpacing: 8.h,
-                children: controller.categories.map((category) {
-                  final selected = categoryId.value == category.id;
-                  final accent = _hexColor(category.color);
+        Text(
+          'Kategori',
+          style: TextStyle(
+            fontSize: 13.sp,
+            fontWeight: FontWeight.w600,
+            color: AppColors.textPrimary,
+          ),
+        ),
+        SizedBox(height: 8.h),
+        Obx(
+          () => Wrap(
+            spacing: 8.w,
+            runSpacing: 8.h,
+            children: controller.categories.map((category) {
+              final selected = categoryId.value == category.id;
+              final accent = _hexColor(category.color);
 
-                  return GestureDetector(
-                    onTap: () =>
-                        categoryId.value = selected ? null : category.id,
-                    child: Container(
-                      padding: EdgeInsets.symmetric(
-                        horizontal: 12.w,
-                        vertical: 8.h,
-                      ),
-                      decoration: BoxDecoration(
-                        color: selected
-                            ? accent.withValues(alpha: 0.12)
-                            : AppColors.muted,
-                        borderRadius: BorderRadius.circular(10.r),
-                      ),
-                      child: Text(
-                        category.name,
-                        style: TextStyle(
-                          fontSize: 12.sp,
-                          fontWeight: FontWeight.w600,
-                          color: selected ? accent : AppColors.textMuted,
-                        ),
-                      ),
+              return GestureDetector(
+                onTap: () => categoryId.value = selected ? null : category.id,
+                child: Container(
+                  padding: EdgeInsets.symmetric(
+                    horizontal: 12.w,
+                    vertical: 8.h,
+                  ),
+                  decoration: BoxDecoration(
+                    color: selected
+                        ? accent.withValues(alpha: 0.12)
+                        : AppColors.muted,
+                    borderRadius: BorderRadius.circular(10.r),
+                  ),
+                  child: Text(
+                    category.name,
+                    style: TextStyle(
+                      fontSize: 12.sp,
+                      fontWeight: FontWeight.w600,
+                      color: selected ? accent : AppColors.textMuted,
                     ),
-                  );
-                }).toList(),
-              ),
-            ),
-
-            SizedBox(height: 16.h),
-            TextField(
-              controller: bodyC,
-              maxLines: 5,
-              maxLength: 500,
-              style: TextStyle(fontSize: 14.sp),
-              decoration: InputDecoration(
-                hintText: 'Ceritakan idemu… semakin detail semakin bagus!',
-                hintStyle: TextStyle(
-                  fontSize: 13.5.sp,
-                  color: AppColors.textMuted,
-                ),
-                counterText: '',
-                filled: true,
-                fillColor: AppColors.surface,
-                contentPadding: EdgeInsets.all(14.w),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12.r),
-                  borderSide: BorderSide.none,
-                ),
-                enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12.r),
-                  borderSide: BorderSide.none,
-                ),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12.r),
-                  borderSide: BorderSide(color: AppColors.primary, width: 1.4),
-                ),
-              ),
-            ),
-            Align(
-              alignment: Alignment.centerRight,
-              child: Obx(
-                () => Text(
-                  '${length.value}/500',
-                  style: TextStyle(
-                    fontSize: 11.sp,
-                    color: length.value > 500
-                        ? AppColors.destructive
-                        : AppColors.textMuted,
                   ),
                 ),
+              );
+            }).toList(),
+          ),
+        ),
+
+        SizedBox(height: 16.h),
+        TextField(
+          controller: bodyC,
+          maxLines: 5,
+          maxLength: 500,
+          style: TextStyle(fontSize: 14.sp),
+          decoration: InputDecoration(
+            hintText: 'Ceritakan idemu… semakin detail semakin bagus!',
+            hintStyle: TextStyle(fontSize: 13.5.sp, color: AppColors.textMuted),
+            counterText: '',
+            filled: true,
+            fillColor: AppColors.surface,
+            contentPadding: EdgeInsets.all(14.w),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12.r),
+              borderSide: BorderSide.none,
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12.r),
+              borderSide: BorderSide.none,
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12.r),
+              borderSide: BorderSide(color: AppColors.primary, width: 1.4),
+            ),
+          ),
+        ),
+        Align(
+          alignment: Alignment.centerRight,
+          child: Obx(
+            () => Text(
+              '${length.value}/500',
+              style: TextStyle(
+                fontSize: 11.sp,
+                color: length.value > 500
+                    ? AppColors.destructive
+                    : AppColors.textMuted,
               ),
             ),
+          ),
+        ),
 
-            SizedBox(height: 12.h),
-            Obx(() {
-              final path = imagePath.value;
+        SizedBox(height: 12.h),
+        Obx(() {
+          final path = imagePath.value;
 
-              if (path == null) {
-                return InkWell(
+          if (path == null) {
+            return InkWell(
+              borderRadius: BorderRadius.circular(12.r),
+              onTap: () async {
+                const typeGroup = XTypeGroup(
+                  label: 'Foto',
+                  extensions: ['jpg', 'jpeg', 'png', 'webp'],
+                );
+                final picked = await openFile(acceptedTypeGroups: [typeGroup]);
+                if (picked != null) {
+                  imagePath.value = picked.path;
+                  imageName.value = picked.name;
+                }
+              },
+              child: Container(
+                width: double.infinity,
+                padding: EdgeInsets.symmetric(vertical: 18.h),
+                decoration: BoxDecoration(
+                  color: AppColors.primary.withValues(alpha: 0.05),
                   borderRadius: BorderRadius.circular(12.r),
-                  onTap: () async {
-                    const typeGroup = XTypeGroup(
-                      label: 'Foto',
-                      extensions: ['jpg', 'jpeg', 'png', 'webp'],
-                    );
-                    final picked = await openFile(
-                      acceptedTypeGroups: [typeGroup],
-                    );
-                    if (picked != null) {
-                      imagePath.value = picked.path;
-                      imageName.value = picked.name;
-                    }
+                ),
+                child: Column(
+                  children: [
+                    Icon(
+                      Iconsax.gallery_add,
+                      size: 22.sp,
+                      color: AppColors.primary,
+                    ),
+                    SizedBox(height: 6.h),
+                    Text(
+                      'Tambah foto (opsional)',
+                      style: TextStyle(
+                        fontSize: 12.5.sp,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.primary,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          }
+
+          return Stack(
+            children: [
+              ClipRRect(
+                borderRadius: BorderRadius.circular(12.r),
+                child: Image.file(
+                  File(path),
+                  width: double.infinity,
+                  height: 150.h,
+                  fit: BoxFit.cover,
+                ),
+              ),
+              Positioned(
+                top: 8.h,
+                right: 8.w,
+                child: GestureDetector(
+                  onTap: () {
+                    imagePath.value = null;
+                    imageName.value = null;
                   },
                   child: Container(
-                    width: double.infinity,
-                    padding: EdgeInsets.symmetric(vertical: 18.h),
+                    padding: EdgeInsets.all(6.w),
                     decoration: BoxDecoration(
-                      color: AppColors.primary.withValues(alpha: 0.05),
-                      borderRadius: BorderRadius.circular(12.r),
+                      color: Colors.black54,
+                      borderRadius: BorderRadius.circular(99.r),
                     ),
-                    child: Column(
-                      children: [
-                        Icon(
-                          Iconsax.gallery_add,
-                          size: 22.sp,
-                          color: AppColors.primary,
-                        ),
-                        SizedBox(height: 6.h),
-                        Text(
-                          'Tambah foto (opsional)',
-                          style: TextStyle(
-                            fontSize: 12.5.sp,
-                            fontWeight: FontWeight.w600,
-                            color: AppColors.primary,
-                          ),
-                        ),
-                      ],
+                    child: Icon(
+                      Iconsax.close_circle,
+                      size: 16.sp,
+                      color: Colors.white,
                     ),
                   ),
-                );
+                ),
+              ),
+            ],
+          );
+        }),
+
+        SizedBox(height: 20.h),
+        Obx(
+          () => AppSubmitButton(
+            label: 'Kirim',
+            loading: controller.submitting.value,
+            onPressed: () async {
+              final body = bodyC.text.trim();
+
+              if (body.isEmpty) {
+                AppToast.warning('Tulis dulu isi postingannya.');
+                return;
               }
 
-              return Stack(
-                children: [
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(12.r),
-                    child: Image.file(
-                      File(path),
-                      width: double.infinity,
-                      height: 150.h,
-                      fit: BoxFit.cover,
-                    ),
-                  ),
-                  Positioned(
-                    top: 8.h,
-                    right: 8.w,
-                    child: GestureDetector(
-                      onTap: () {
-                        imagePath.value = null;
-                        imageName.value = null;
-                      },
-                      child: Container(
-                        padding: EdgeInsets.all(6.w),
-                        decoration: BoxDecoration(
-                          color: Colors.black54,
-                          borderRadius: BorderRadius.circular(99.r),
-                        ),
-                        child: Icon(
-                          Iconsax.close_circle,
-                          size: 16.sp,
-                          color: Colors.white,
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
+              final ok = await controller.createPost(
+                body: body,
+                categoryId: categoryId.value,
+                imagePath: imagePath.value,
               );
-            }),
-
-            SizedBox(height: 20.h),
-            Obx(
-              () => AppSubmitButton(
-                label: 'Kirim',
-                loading: controller.submitting.value,
-                onPressed: () async {
-                  final body = bodyC.text.trim();
-
-                  if (body.isEmpty) {
-                    AppToast.warning('Tulis dulu isi postingannya.');
-                    return;
-                  }
-
-                  final ok = await controller.createPost(
-                    body: body,
-                    categoryId: categoryId.value,
-                    imagePath: imagePath.value,
-                  );
-                  if (ok) Get.back();
-                },
-              ),
-            ),
-          ],
+              if (ok) Get.back();
+            },
+          ),
         ),
-      ),
+      ],
     );
   }
 }

@@ -139,121 +139,111 @@ class OvertimeView extends GetView<OvertimeController> {
     String fmt(DateTime d) =>
         '${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
 
-    showAppSheet(
+    showAppFormSheet(
       context,
-      child: Padding(
-        padding: EdgeInsets.fromLTRB(20.w, 20.h, 20.w, 20.h),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
+      padding: EdgeInsets.fromLTRB(20.w, 20.h, 20.w, 20.h),
+      children: [
+        const SheetHeader('Ajukan Lembur'),
+        SizedBox(height: 18.h),
+        Obx(
+          () => AppDateField(
+            label: 'Tanggal',
+            value: date.value,
+            onPick: (d) => date.value = d,
+            firstDate: now.subtract(const Duration(days: 30)),
+            lastDate: now.add(const Duration(days: 30)),
+            required: true,
+          ),
+        ),
+        SizedBox(height: 14.h),
+        Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const SheetHeader('Ajukan Lembur'),
-            SizedBox(height: 18.h),
-            Obx(
-              () => AppDateField(
-                label: 'Tanggal',
-                value: date.value,
-                onPick: (d) => date.value = d,
-                firstDate: now.subtract(const Duration(days: 30)),
-                lastDate: now.add(const Duration(days: 30)),
-                required: true,
+            Expanded(
+              child: Obx(
+                () => AppTimeField(
+                  label: 'Jam Mulai',
+                  value: startTime.value,
+                  onPick: (v) => startTime.value = v,
+                  required: true,
+                ),
               ),
             ),
-            SizedBox(height: 14.h),
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Expanded(
-                  child: Obx(
-                    () => AppTimeField(
-                      label: 'Jam Mulai',
-                      value: startTime.value,
-                      onPick: (v) => startTime.value = v,
-                      required: true,
-                    ),
-                  ),
+            SizedBox(width: 12.w),
+            Expanded(
+              child: Obx(
+                () => AppTimeField(
+                  label: 'Jam Selesai',
+                  value: endTime.value,
+                  onPick: (v) => endTime.value = v,
+                  required: true,
                 ),
-                SizedBox(width: 12.w),
-                Expanded(
-                  child: Obx(
-                    () => AppTimeField(
-                      label: 'Jam Selesai',
-                      value: endTime.value,
-                      onPick: (v) => endTime.value = v,
-                      required: true,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            Obx(() {
-              final hours = _hoursBetween(startTime.value, endTime.value);
-              if (hours == null) {
-                return const SizedBox.shrink();
-              }
-
-              final tooLong = hours > 12 || hours < 0.5;
-
-              return Padding(
-                padding: EdgeInsets.only(top: 8.h),
-                child: Text(
-                  tooLong
-                      ? 'Durasi ${_trim(hours)} jam — di luar batas 0,5–12 jam'
-                      : 'Durasi ${_trim(hours)} jam',
-                  style: TextStyle(
-                    fontSize: 12.sp,
-                    color: tooLong
-                        ? AppColors.destructive
-                        : AppColors.textMuted,
-                  ),
-                ),
-              );
-            }),
-            SizedBox(height: 14.h),
-            AppTextField(
-              controller: reasonC,
-              label: 'Alasan (opsional)',
-              hint: 'Tulis alasan…',
-              icon: Iconsax.note_1,
-              maxLines: 2,
-            ),
-            SizedBox(height: 22.h),
-            Obx(
-              () => AppSubmitButton(
-                loading: controller.submitting.value,
-                onPressed: () async {
-                  final start = startTime.value;
-                  final end = endTime.value;
-
-                  if (date.value == null || start == null || end == null) {
-                    AppToast.warning('Lengkapi tanggal, jam mulai & selesai.');
-                    return;
-                  }
-
-                  final hours = _hoursBetween(start, end);
-
-                  if (hours == null || hours < 0.5 || hours > 12) {
-                    AppToast.warning(
-                      'Durasi lembur harus antara 0,5 dan 12 jam.',
-                    );
-                    return;
-                  }
-
-                  final ok = await controller.submit(
-                    date: fmt(date.value!),
-                    startTime: start,
-                    endTime: end,
-                    reason: reasonC.text.trim().isEmpty
-                        ? null
-                        : reasonC.text.trim(),
-                  );
-                  if (ok) Get.back();
-                },
               ),
             ),
           ],
         ),
-      ),
+        Obx(() {
+          final hours = _hoursBetween(startTime.value, endTime.value);
+          if (hours == null) {
+            return const SizedBox.shrink();
+          }
+
+          final tooLong = hours > 12 || hours < 0.5;
+
+          return Padding(
+            padding: EdgeInsets.only(top: 8.h),
+            child: Text(
+              tooLong
+                  ? 'Durasi ${_trim(hours)} jam — di luar batas 0,5–12 jam'
+                  : 'Durasi ${_trim(hours)} jam',
+              style: TextStyle(
+                fontSize: 12.sp,
+                color: tooLong ? AppColors.destructive : AppColors.textMuted,
+              ),
+            ),
+          );
+        }),
+        SizedBox(height: 14.h),
+        AppTextField(
+          controller: reasonC,
+          label: 'Alasan (opsional)',
+          hint: 'Tulis alasan…',
+          icon: Iconsax.note_1,
+          maxLines: 2,
+        ),
+        SizedBox(height: 22.h),
+        Obx(
+          () => AppSubmitButton(
+            loading: controller.submitting.value,
+            onPressed: () async {
+              final start = startTime.value;
+              final end = endTime.value;
+
+              if (date.value == null || start == null || end == null) {
+                AppToast.warning('Lengkapi tanggal, jam mulai & selesai.');
+                return;
+              }
+
+              final hours = _hoursBetween(start, end);
+
+              if (hours == null || hours < 0.5 || hours > 12) {
+                AppToast.warning('Durasi lembur harus antara 0,5 dan 12 jam.');
+                return;
+              }
+
+              final ok = await controller.submit(
+                date: fmt(date.value!),
+                startTime: start,
+                endTime: end,
+                reason: reasonC.text.trim().isEmpty
+                    ? null
+                    : reasonC.text.trim(),
+              );
+              if (ok) Get.back();
+            },
+          ),
+        ),
+      ],
     );
   }
 }

@@ -36,7 +36,9 @@ class AttendanceCorrectionView extends GetView<AttendanceCorrectionController> {
           color: AppColors.primary,
           child: controller.items.isEmpty
               ? ListView(
-                  physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
+                  physics: const AlwaysScrollableScrollPhysics(
+                    parent: BouncingScrollPhysics(),
+                  ),
                   children: [
                     SizedBox(height: 80.h),
                     const EmptyState(
@@ -46,7 +48,9 @@ class AttendanceCorrectionView extends GetView<AttendanceCorrectionController> {
                   ],
                 )
               : ListView.separated(
-                  physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
+                  physics: const AlwaysScrollableScrollPhysics(
+                    parent: BouncingScrollPhysics(),
+                  ),
                   padding: EdgeInsets.fromLTRB(20.w, 20.h, 20.w, 90.h),
                   itemCount: controller.items.length,
                   separatorBuilder: (_, __) => SizedBox(height: 10.h),
@@ -97,7 +101,10 @@ class AttendanceCorrectionView extends GetView<AttendanceCorrectionController> {
                     c.reason!,
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
-                    style: TextStyle(color: AppColors.textMuted, fontSize: 12.sp),
+                    style: TextStyle(
+                      color: AppColors.textMuted,
+                      fontSize: 12.sp,
+                    ),
                   ),
                 ],
               ],
@@ -118,92 +125,86 @@ class AttendanceCorrectionView extends GetView<AttendanceCorrectionController> {
     String fmt(DateTime d) =>
         '${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
 
-    showAppSheet(
+    showAppFormSheet(
       context,
-      child: Padding(
-        padding: EdgeInsets.fromLTRB(20.w, 20.h, 20.w, 20.h),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
+      padding: EdgeInsets.fromLTRB(20.w, 20.h, 20.w, 20.h),
+      children: [
+        const SheetHeader('Ajukan Koreksi Absen'),
+        SizedBox(height: 6.h),
+        Text(
+          'Isi jam yang perlu diperbaiki. Persetujuan dikirim ke atasan.',
+          style: TextStyle(color: AppColors.textMuted, fontSize: 12.sp),
+        ),
+        SizedBox(height: 16.h),
+        Obx(
+          () => AppDateField(
+            label: 'Tanggal',
+            value: date.value,
+            onPick: (d) => date.value = d,
+            required: true,
+          ),
+        ),
+        SizedBox(height: 14.h),
+        Row(
           children: [
-            const SheetHeader('Ajukan Koreksi Absen'),
-            SizedBox(height: 6.h),
-            Text(
-              'Isi jam yang perlu diperbaiki. Persetujuan dikirim ke atasan.',
-              style: TextStyle(color: AppColors.textMuted, fontSize: 12.sp),
-            ),
-            SizedBox(height: 16.h),
-            Obx(
-              () => AppDateField(
-                label: 'Tanggal',
-                value: date.value,
-                onPick: (d) => date.value = d,
-                required: true,
+            Expanded(
+              child: Obx(
+                () => AppTimeField(
+                  label: 'Jam Masuk',
+                  value: clockIn.value,
+                  onPick: (t) => clockIn.value = t,
+                ),
               ),
             ),
-            SizedBox(height: 14.h),
-            Row(
-              children: [
-                Expanded(
-                  child: Obx(
-                    () => AppTimeField(
-                      label: 'Jam Masuk',
-                      value: clockIn.value,
-                      onPick: (t) => clockIn.value = t,
-                    ),
-                  ),
+            SizedBox(width: 12.w),
+            Expanded(
+              child: Obx(
+                () => AppTimeField(
+                  label: 'Jam Pulang',
+                  value: clockOut.value,
+                  onPick: (t) => clockOut.value = t,
                 ),
-                SizedBox(width: 12.w),
-                Expanded(
-                  child: Obx(
-                    () => AppTimeField(
-                      label: 'Jam Pulang',
-                      value: clockOut.value,
-                      onPick: (t) => clockOut.value = t,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            SizedBox(height: 14.h),
-            AppTextField(
-              controller: reasonC,
-              label: 'Alasan',
-              hint: 'Mis. lupa clock in',
-              icon: Iconsax.note_1,
-              maxLines: 2,
-              required: true,
-            ),
-            SizedBox(height: 22.h),
-            Obx(
-              () => AppSubmitButton(
-                loading: controller.submitting.value,
-                onPressed: () async {
-                  if (date.value == null) {
-                    AppToast.warning('Pilih tanggal.');
-                    return;
-                  }
-                  if (clockIn.value == null && clockOut.value == null) {
-                    AppToast.warning('Isi minimal satu jam (masuk atau pulang).');
-                    return;
-                  }
-                  if (reasonC.text.trim().isEmpty) {
-                    AppToast.warning('Alasan wajib diisi.');
-                    return;
-                  }
-                  final ok = await controller.submit(
-                    date: fmt(date.value!),
-                    clockIn: clockIn.value,
-                    clockOut: clockOut.value,
-                    reason: reasonC.text.trim(),
-                  );
-                  if (ok) Get.back();
-                },
               ),
             ),
           ],
         ),
-      ),
+        SizedBox(height: 14.h),
+        AppTextField(
+          controller: reasonC,
+          label: 'Alasan',
+          hint: 'Mis. lupa clock in',
+          icon: Iconsax.note_1,
+          maxLines: 2,
+          required: true,
+        ),
+        SizedBox(height: 22.h),
+        Obx(
+          () => AppSubmitButton(
+            loading: controller.submitting.value,
+            onPressed: () async {
+              if (date.value == null) {
+                AppToast.warning('Pilih tanggal.');
+                return;
+              }
+              if (clockIn.value == null && clockOut.value == null) {
+                AppToast.warning('Isi minimal satu jam (masuk atau pulang).');
+                return;
+              }
+              if (reasonC.text.trim().isEmpty) {
+                AppToast.warning('Alasan wajib diisi.');
+                return;
+              }
+              final ok = await controller.submit(
+                date: fmt(date.value!),
+                clockIn: clockIn.value,
+                clockOut: clockOut.value,
+                reason: reasonC.text.trim(),
+              );
+              if (ok) Get.back();
+            },
+          ),
+        ),
+      ],
     );
   }
 }

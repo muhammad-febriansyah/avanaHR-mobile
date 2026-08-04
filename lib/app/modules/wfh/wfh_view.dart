@@ -126,72 +126,66 @@ class WfhView extends GetView<WfhController> {
     String fmt(DateTime d) =>
         '${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
 
-    showAppSheet(
+    showAppFormSheet(
       context,
-      child: Padding(
-        padding: EdgeInsets.fromLTRB(20.w, 20.h, 20.w, 20.h),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
+      padding: EdgeInsets.fromLTRB(20.w, 20.h, 20.w, 20.h),
+      children: [
+        const SheetHeader('Ajukan WFH'),
+        SizedBox(height: 18.h),
+        Row(
           children: [
-            const SheetHeader('Ajukan WFH'),
-            SizedBox(height: 18.h),
-            Row(
-              children: [
-                Expanded(
-                  child: Obx(
-                    () => AppDateField(
-                      label: 'Mulai',
-                      value: start.value,
-                      onPick: (d) => start.value = d,
-                      required: true,
-                    ),
-                  ),
+            Expanded(
+              child: Obx(
+                () => AppDateField(
+                  label: 'Mulai',
+                  value: start.value,
+                  onPick: (d) => start.value = d,
+                  required: true,
                 ),
-                SizedBox(width: 12.w),
-                Expanded(
-                  child: Obx(
-                    () => AppDateField(
-                      label: 'Selesai',
-                      value: end.value,
-                      onPick: (d) => end.value = d,
-                      required: true,
-                    ),
-                  ),
+              ),
+            ),
+            SizedBox(width: 12.w),
+            Expanded(
+              child: Obx(
+                () => AppDateField(
+                  label: 'Selesai',
+                  value: end.value,
+                  onPick: (d) => end.value = d,
+                  required: true,
                 ),
-              ],
-            ),
-            SizedBox(height: 14.h),
-            AppTextField(
-              controller: reasonC,
-              label: 'Alasan (opsional)',
-              hint: 'Tulis alasan…',
-              icon: Iconsax.note_1,
-              maxLines: 2,
-            ),
-            SizedBox(height: 22.h),
-            Obx(
-              () => AppSubmitButton(
-                loading: controller.submitting.value,
-                onPressed: () async {
-                  if (start.value == null || end.value == null) {
-                    AppToast.warning('Lengkapi tanggal.');
-                    return;
-                  }
-                  final ok = await controller.submit(
-                    startDate: fmt(start.value!),
-                    endDate: fmt(end.value!),
-                    reason: reasonC.text.trim().isEmpty
-                        ? null
-                        : reasonC.text.trim(),
-                  );
-                  if (ok) Get.back();
-                },
               ),
             ),
           ],
         ),
-      ),
+        SizedBox(height: 14.h),
+        AppTextField(
+          controller: reasonC,
+          label: 'Alasan (opsional)',
+          hint: 'Tulis alasan…',
+          icon: Iconsax.note_1,
+          maxLines: 2,
+        ),
+        SizedBox(height: 22.h),
+        Obx(
+          () => AppSubmitButton(
+            loading: controller.submitting.value,
+            onPressed: () async {
+              if (start.value == null || end.value == null) {
+                AppToast.warning('Lengkapi tanggal.');
+                return;
+              }
+              final ok = await controller.submit(
+                startDate: fmt(start.value!),
+                endDate: fmt(end.value!),
+                reason: reasonC.text.trim().isEmpty
+                    ? null
+                    : reasonC.text.trim(),
+              );
+              if (ok) Get.back();
+            },
+          ),
+        ),
+      ],
     );
   }
 }

@@ -736,129 +736,120 @@ void showPostEditSheet(
   final bodyC = TextEditingController(text: post.body);
   final categoryId = Rxn<int>(post.categoryId);
 
-  showAppSheet<void>(
+  showAppFormSheet<void>(
     context,
-    child: Padding(
-      padding: EdgeInsets.fromLTRB(20.w, 18.h, 20.w, 24.h),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'Edit Postingan',
-            style: TextStyle(
-              fontSize: 16.sp,
-              fontWeight: FontWeight.w700,
-              color: AppColors.textPrimary,
-            ),
-          ),
-          SizedBox(height: 14.h),
-          Obx(
-            () => Wrap(
-              spacing: 8.w,
-              runSpacing: 8.h,
-              children: controller.categories.map((category) {
-                final selected = categoryId.value == category.id;
-                final accent = hexColor(category.color);
+    padding: EdgeInsets.fromLTRB(20.w, 18.h, 20.w, 24.h),
+    children: [
+      Text(
+        'Edit Postingan',
+        style: TextStyle(
+          fontSize: 16.sp,
+          fontWeight: FontWeight.w700,
+          color: AppColors.textPrimary,
+        ),
+      ),
+      SizedBox(height: 14.h),
+      Obx(
+        () => Wrap(
+          spacing: 8.w,
+          runSpacing: 8.h,
+          children: controller.categories.map((category) {
+            final selected = categoryId.value == category.id;
+            final accent = hexColor(category.color);
 
-                return GestureDetector(
-                  onTap: () => categoryId.value = selected ? null : category.id,
-                  child: Container(
-                    padding: EdgeInsets.symmetric(
-                      horizontal: 12.w,
-                      vertical: 8.h,
+            return GestureDetector(
+              onTap: () => categoryId.value = selected ? null : category.id,
+              child: Container(
+                padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 8.h),
+                decoration: BoxDecoration(
+                  color: selected
+                      ? accent.withValues(alpha: 0.12)
+                      : AppColors.muted,
+                  borderRadius: BorderRadius.circular(10.r),
+                ),
+                child: Text(
+                  category.name,
+                  style: TextStyle(
+                    fontSize: 12.sp,
+                    fontWeight: FontWeight.w600,
+                    color: selected ? accent : AppColors.textMuted,
+                  ),
+                ),
+              ),
+            );
+          }).toList(),
+        ),
+      ),
+      SizedBox(height: 14.h),
+      TextField(
+        controller: bodyC,
+        maxLines: 5,
+        maxLength: 500,
+        style: TextStyle(fontSize: 14.sp),
+        decoration: InputDecoration(
+          counterText: '',
+          filled: true,
+          fillColor: AppColors.muted,
+          contentPadding: EdgeInsets.all(14.w),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12.r),
+            borderSide: BorderSide.none,
+          ),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12.r),
+            borderSide: BorderSide.none,
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12.r),
+            borderSide: BorderSide(color: AppColors.primary, width: 1.4),
+          ),
+        ),
+      ),
+      SizedBox(height: 16.h),
+      Obx(
+        () => GestureDetector(
+          onTap: controller.submitting.value
+              ? null
+              : () async {
+                  final updated = await controller.editPost(
+                    post: post,
+                    body: bodyC.text.trim(),
+                    categoryId: categoryId.value,
+                  );
+
+                  if (updated != null) {
+                    onUpdated?.call(updated);
+                    Get.back<void>();
+                  }
+                },
+          child: Container(
+            height: 48.h,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              color: AppColors.primary,
+              borderRadius: BorderRadius.circular(12.r),
+            ),
+            child: controller.submitting.value
+                ? SizedBox(
+                    width: 18.w,
+                    height: 18.w,
+                    child: const CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: Colors.white,
                     ),
-                    decoration: BoxDecoration(
-                      color: selected
-                          ? accent.withValues(alpha: 0.12)
-                          : AppColors.muted,
-                      borderRadius: BorderRadius.circular(10.r),
-                    ),
-                    child: Text(
-                      category.name,
-                      style: TextStyle(
-                        fontSize: 12.sp,
-                        fontWeight: FontWeight.w600,
-                        color: selected ? accent : AppColors.textMuted,
-                      ),
+                  )
+                : Text(
+                    'Simpan Perubahan',
+                    style: TextStyle(
+                      fontSize: 14.sp,
+                      fontWeight: FontWeight.w700,
+                      color: Colors.white,
                     ),
                   ),
-                );
-              }).toList(),
-            ),
           ),
-          SizedBox(height: 14.h),
-          TextField(
-            controller: bodyC,
-            maxLines: 5,
-            maxLength: 500,
-            style: TextStyle(fontSize: 14.sp),
-            decoration: InputDecoration(
-              counterText: '',
-              filled: true,
-              fillColor: AppColors.muted,
-              contentPadding: EdgeInsets.all(14.w),
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12.r),
-                borderSide: BorderSide.none,
-              ),
-              enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12.r),
-                borderSide: BorderSide.none,
-              ),
-              focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12.r),
-                borderSide: BorderSide(color: AppColors.primary, width: 1.4),
-              ),
-            ),
-          ),
-          SizedBox(height: 16.h),
-          Obx(
-            () => GestureDetector(
-              onTap: controller.submitting.value
-                  ? null
-                  : () async {
-                      final updated = await controller.editPost(
-                        post: post,
-                        body: bodyC.text.trim(),
-                        categoryId: categoryId.value,
-                      );
-
-                      if (updated != null) {
-                        onUpdated?.call(updated);
-                        Get.back<void>();
-                      }
-                    },
-              child: Container(
-                height: 48.h,
-                alignment: Alignment.center,
-                decoration: BoxDecoration(
-                  color: AppColors.primary,
-                  borderRadius: BorderRadius.circular(12.r),
-                ),
-                child: controller.submitting.value
-                    ? SizedBox(
-                        width: 18.w,
-                        height: 18.w,
-                        child: const CircularProgressIndicator(
-                          strokeWidth: 2,
-                          color: Colors.white,
-                        ),
-                      )
-                    : Text(
-                        'Simpan Perubahan',
-                        style: TextStyle(
-                          fontSize: 14.sp,
-                          fontWeight: FontWeight.w700,
-                          color: Colors.white,
-                        ),
-                      ),
-              ),
-            ),
-          ),
-        ],
+        ),
       ),
-    ),
+    ],
   );
 }
 

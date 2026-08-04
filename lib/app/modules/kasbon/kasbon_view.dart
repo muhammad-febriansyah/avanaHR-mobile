@@ -100,87 +100,78 @@ class KasbonView extends GetView<KasbonController> {
     String fmt(DateTime d) =>
         '${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
 
-    showAppSheet(
+    showAppFormSheet(
       context,
-      scrollable: true,
-      child: Padding(
-        padding: EdgeInsets.fromLTRB(20.w, 20.h, 20.w, 20.h),
-        child: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const SheetHeader('Ajukan Uang Muka'),
-              SizedBox(height: 18.h),
-              AppMoneyField(
-                controller: amountC,
-                label: 'Jumlah',
-                hint: '2000000',
-                required: true,
-              ),
-              SizedBox(height: 14.h),
-              AppTextField(
-                controller: purposeC,
-                label: 'Keperluan',
-                hint: 'Uang muka dinas Bandung 3 hari',
-                icon: Iconsax.note_1,
-                required: true,
-              ),
-              SizedBox(height: 14.h),
-              Obx(
-                () => AppDateField(
-                  label: 'Dibutuhkan Tanggal',
-                  value: needed.value,
-                  onPick: (d) => needed.value = d,
-                  firstDate: DateTime.now(),
-                  lastDate: DateTime.now().add(const Duration(days: 365)),
-                  required: true,
-                ),
-              ),
-              SizedBox(height: 14.h),
-              AppTextField(
-                controller: reasonC,
-                label: 'Alasan (opsional)',
-                hint: 'Kenapa perlu dibayar di muka…',
-                icon: Iconsax.note_1,
-                maxLines: 2,
-              ),
-              SizedBox(height: 22.h),
-              Obx(
-                () => AppSubmitButton(
-                  label: 'Ajukan',
-                  loading: controller.submitting.value,
-                  onPressed: () async {
-                    final amount =
-                        int.tryParse(
-                          amountC.text.replaceAll(RegExp(r'[^0-9]'), ''),
-                        ) ??
-                        0;
-
-                    if (amount <= 0 ||
-                        purposeC.text.trim().isEmpty ||
-                        needed.value == null) {
-                      AppToast.warning('Isi jumlah, keperluan & tanggal.');
-                      return;
-                    }
-
-                    final ok = await controller.submit(
-                      amount: amount,
-                      purpose: purposeC.text.trim(),
-                      neededDate: fmt(needed.value!),
-                      reason: reasonC.text.trim().isEmpty
-                          ? null
-                          : reasonC.text.trim(),
-                    );
-
-                    if (ok) Get.back();
-                  },
-                ),
-              ),
-            ],
+      padding: EdgeInsets.fromLTRB(20.w, 20.h, 20.w, 20.h),
+      children: [
+        const SheetHeader('Ajukan Uang Muka'),
+        SizedBox(height: 18.h),
+        AppMoneyField(
+          controller: amountC,
+          label: 'Jumlah',
+          hint: '2000000',
+          required: true,
+        ),
+        SizedBox(height: 14.h),
+        AppTextField(
+          controller: purposeC,
+          label: 'Keperluan',
+          hint: 'Uang muka dinas Bandung 3 hari',
+          icon: Iconsax.note_1,
+          required: true,
+        ),
+        SizedBox(height: 14.h),
+        Obx(
+          () => AppDateField(
+            label: 'Dibutuhkan Tanggal',
+            value: needed.value,
+            onPick: (d) => needed.value = d,
+            firstDate: DateTime.now(),
+            lastDate: DateTime.now().add(const Duration(days: 365)),
+            required: true,
           ),
         ),
-      ),
+        SizedBox(height: 14.h),
+        AppTextField(
+          controller: reasonC,
+          label: 'Alasan (opsional)',
+          hint: 'Kenapa perlu dibayar di muka…',
+          icon: Iconsax.note_1,
+          maxLines: 2,
+        ),
+        SizedBox(height: 22.h),
+        Obx(
+          () => AppSubmitButton(
+            label: 'Ajukan',
+            loading: controller.submitting.value,
+            onPressed: () async {
+              final amount =
+                  int.tryParse(
+                    amountC.text.replaceAll(RegExp(r'[^0-9]'), ''),
+                  ) ??
+                  0;
+
+              if (amount <= 0 ||
+                  purposeC.text.trim().isEmpty ||
+                  needed.value == null) {
+                AppToast.warning('Isi jumlah, keperluan & tanggal.');
+                return;
+              }
+
+              final ok = await controller.submit(
+                amount: amount,
+                purpose: purposeC.text.trim(),
+                neededDate: fmt(needed.value!),
+                reason: reasonC.text.trim().isEmpty
+                    ? null
+                    : reasonC.text.trim(),
+              );
+
+              if (ok) Get.back();
+            },
+          ),
+        ),
+      ],
     );
   }
 }

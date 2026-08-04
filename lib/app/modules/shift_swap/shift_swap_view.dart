@@ -35,7 +35,9 @@ class ShiftSwapView extends GetView<ShiftSwapController> {
           color: AppColors.primary,
           child: controller.items.isEmpty
               ? ListView(
-                  physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
+                  physics: const AlwaysScrollableScrollPhysics(
+                    parent: BouncingScrollPhysics(),
+                  ),
                   children: [
                     SizedBox(height: 80.h),
                     const EmptyState(
@@ -45,7 +47,9 @@ class ShiftSwapView extends GetView<ShiftSwapController> {
                   ],
                 )
               : ListView.separated(
-                  physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
+                  physics: const AlwaysScrollableScrollPhysics(
+                    parent: BouncingScrollPhysics(),
+                  ),
                   padding: EdgeInsets.fromLTRB(20.w, 20.h, 20.w, 90.h),
                   itemCount: controller.items.length,
                   separatorBuilder: (_, i) => SizedBox(height: 10.h),
@@ -124,78 +128,72 @@ class ShiftSwapView extends GetView<ShiftSwapController> {
     String fmt(DateTime d) =>
         '${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
 
-    showAppSheet(
+    showAppFormSheet(
       context,
-      child: Padding(
-        padding: EdgeInsets.fromLTRB(20.w, 20.h, 20.w, 20.h),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const SheetHeader('Ajukan Tukar Shift'),
-            SizedBox(height: 18.h),
-            Obx(
-              () => AppDropdownField<int>(
-                label: 'Rekan (tukar dengan)',
-                hint: 'Pilih rekan',
-                value: target.value,
-                items: controller.colleagues
-                    .map(
-                      (c) => DropdownMenuItem(
-                        value: c.id,
-                        child: Text(
-                          c.employeeNumber == null
-                              ? c.name
-                              : '${c.name} (${c.employeeNumber})',
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                    )
-                    .toList(),
-                onChanged: (v) => target.value = v,
-              ),
-            ),
-            SizedBox(height: 14.h),
-            Obx(
-              () => AppDateField(
-                label: 'Tanggal Shift',
-                value: date.value,
-                onPick: (d) => date.value = d,
-                firstDate: DateTime.now(),
-                lastDate: DateTime.now().add(const Duration(days: 60)),
-              ),
-            ),
-            SizedBox(height: 14.h),
-            AppTextField(
-              controller: reasonC,
-              label: 'Alasan (opsional)',
-              hint: 'Tulis alasan…',
-              icon: Iconsax.note_1,
-              maxLines: 2,
-            ),
-            SizedBox(height: 22.h),
-            Obx(
-              () => AppSubmitButton(
-                loading: controller.submitting.value,
-                onPressed: () async {
-                  if (target.value == null || date.value == null) {
-                    AppToast.warning('Pilih rekan & tanggal.');
-                    return;
-                  }
-                  final ok = await controller.submit(
-                    targetId: target.value!,
-                    date: fmt(date.value!),
-                    reason: reasonC.text.trim().isEmpty
-                        ? null
-                        : reasonC.text.trim(),
-                  );
-                  if (ok) Get.back();
-                },
-              ),
-            ),
-          ],
+      padding: EdgeInsets.fromLTRB(20.w, 20.h, 20.w, 20.h),
+      children: [
+        const SheetHeader('Ajukan Tukar Shift'),
+        SizedBox(height: 18.h),
+        Obx(
+          () => AppDropdownField<int>(
+            label: 'Rekan (tukar dengan)',
+            hint: 'Pilih rekan',
+            value: target.value,
+            items: controller.colleagues
+                .map(
+                  (c) => DropdownMenuItem(
+                    value: c.id,
+                    child: Text(
+                      c.employeeNumber == null
+                          ? c.name
+                          : '${c.name} (${c.employeeNumber})',
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                )
+                .toList(),
+            onChanged: (v) => target.value = v,
+          ),
         ),
-      ),
+        SizedBox(height: 14.h),
+        Obx(
+          () => AppDateField(
+            label: 'Tanggal Shift',
+            value: date.value,
+            onPick: (d) => date.value = d,
+            firstDate: DateTime.now(),
+            lastDate: DateTime.now().add(const Duration(days: 60)),
+          ),
+        ),
+        SizedBox(height: 14.h),
+        AppTextField(
+          controller: reasonC,
+          label: 'Alasan (opsional)',
+          hint: 'Tulis alasan…',
+          icon: Iconsax.note_1,
+          maxLines: 2,
+        ),
+        SizedBox(height: 22.h),
+        Obx(
+          () => AppSubmitButton(
+            loading: controller.submitting.value,
+            onPressed: () async {
+              if (target.value == null || date.value == null) {
+                AppToast.warning('Pilih rekan & tanggal.');
+                return;
+              }
+              final ok = await controller.submit(
+                targetId: target.value!,
+                date: fmt(date.value!),
+                reason: reasonC.text.trim().isEmpty
+                    ? null
+                    : reasonC.text.trim(),
+              );
+              if (ok) Get.back();
+            },
+          ),
+        ),
+      ],
     );
   }
 }

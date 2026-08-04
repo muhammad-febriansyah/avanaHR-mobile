@@ -350,201 +350,189 @@ class EotmView extends GetView<EotmController> {
 
     controller.loadNominees();
 
-    showAppSheet(
+    showAppFormSheet(
       context,
-      child: Padding(
-        padding: EdgeInsets.fromLTRB(20.w, 14.h, 20.w, 24.h),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const SheetHeader('Voting Employee of the Month'),
-            SizedBox(height: 14.h),
+      padding: EdgeInsets.fromLTRB(20.w, 14.h, 20.w, 24.h),
+      children: [
+        const SheetHeader('Voting Employee of the Month'),
+        SizedBox(height: 14.h),
 
-            TextField(
-              controller: searchC,
-              onChanged: controller.searchNominees,
-              style: TextStyle(fontSize: 13.5.sp),
-              decoration: InputDecoration(
-                hintText: 'Ketik nama karyawan…',
-                hintStyle: TextStyle(
-                  fontSize: 13.sp,
-                  color: AppColors.textMuted,
-                ),
-                prefixIcon: Icon(Iconsax.search_normal, size: 17.sp),
-                filled: true,
-                fillColor: AppColors.surface,
-                contentPadding: EdgeInsets.symmetric(vertical: 10.h),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12.r),
-                  borderSide: BorderSide.none,
-                ),
-                enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12.r),
-                  borderSide: BorderSide.none,
-                ),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12.r),
-                  borderSide: BorderSide(color: AppColors.primary, width: 1.4),
-                ),
-              ),
+        TextField(
+          controller: searchC,
+          onChanged: controller.searchNominees,
+          style: TextStyle(fontSize: 13.5.sp),
+          decoration: InputDecoration(
+            hintText: 'Ketik nama karyawan…',
+            hintStyle: TextStyle(fontSize: 13.sp, color: AppColors.textMuted),
+            prefixIcon: Icon(Iconsax.search_normal, size: 17.sp),
+            filled: true,
+            fillColor: AppColors.surface,
+            contentPadding: EdgeInsets.symmetric(vertical: 10.h),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12.r),
+              borderSide: BorderSide.none,
             ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12.r),
+              borderSide: BorderSide.none,
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12.r),
+              borderSide: BorderSide(color: AppColors.primary, width: 1.4),
+            ),
+          ),
+        ),
 
-            SizedBox(height: 10.h),
-            Obx(() {
-              if (controller.loadingNominees.value) {
-                return Padding(
-                  padding: EdgeInsets.symmetric(vertical: 20.h),
-                  child: const Loading(),
-                );
-              }
+        SizedBox(height: 10.h),
+        Obx(() {
+          if (controller.loadingNominees.value) {
+            return Padding(
+              padding: EdgeInsets.symmetric(vertical: 20.h),
+              child: const Loading(),
+            );
+          }
 
-              // Both lists are read here rather than inside itemBuilder, which
-              // builds lazily and so sits outside the Obx scope.
-              final nominees = controller.nominees.toList();
-              final selectedId = controller.selectedNominee.value?.id;
+          // Both lists are read here rather than inside itemBuilder, which
+          // builds lazily and so sits outside the Obx scope.
+          final nominees = controller.nominees.toList();
+          final selectedId = controller.selectedNominee.value?.id;
 
-              return ConstrainedBox(
-                constraints: BoxConstraints(maxHeight: 190.h),
-                child: ListView.separated(
-                  shrinkWrap: true,
-                  itemCount: nominees.length,
-                  separatorBuilder: (_, _) => SizedBox(height: 6.h),
-                  itemBuilder: (_, i) {
-                    final nominee = nominees[i];
-                    final selected = selectedId == nominee.id;
+          return ConstrainedBox(
+            constraints: BoxConstraints(maxHeight: 190.h),
+            child: ListView.separated(
+              shrinkWrap: true,
+              itemCount: nominees.length,
+              separatorBuilder: (_, _) => SizedBox(height: 6.h),
+              itemBuilder: (_, i) {
+                final nominee = nominees[i];
+                final selected = selectedId == nominee.id;
 
-                    return GestureDetector(
-                      onTap: () => controller.selectedNominee.value = nominee,
-                      child: Container(
-                        padding: EdgeInsets.all(10.w),
-                        decoration: BoxDecoration(
-                          color: selected
-                              ? AppColors.primary.withValues(alpha: 0.08)
-                              : AppColors.muted,
-                          borderRadius: BorderRadius.circular(10.r),
-                        ),
-                        child: Row(
-                          children: [
-                            Expanded(
-                              child: Text(
-                                nominee.name,
-                                style: TextStyle(
-                                  fontSize: 13.sp,
-                                  fontWeight: FontWeight.w600,
-                                  color: AppColors.textPrimary,
-                                ),
-                              ),
+                return GestureDetector(
+                  onTap: () => controller.selectedNominee.value = nominee,
+                  child: Container(
+                    padding: EdgeInsets.all(10.w),
+                    decoration: BoxDecoration(
+                      color: selected
+                          ? AppColors.primary.withValues(alpha: 0.08)
+                          : AppColors.muted,
+                      borderRadius: BorderRadius.circular(10.r),
+                    ),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            nominee.name,
+                            style: TextStyle(
+                              fontSize: 13.sp,
+                              fontWeight: FontWeight.w600,
+                              color: AppColors.textPrimary,
                             ),
-                            if (selected)
-                              Icon(
-                                Iconsax.tick_circle5,
-                                size: 17.sp,
-                                color: AppColors.primary,
-                              ),
-                          ],
+                          ),
                         ),
-                      ),
-                    );
-                  },
+                        if (selected)
+                          Icon(
+                            Iconsax.tick_circle5,
+                            size: 17.sp,
+                            color: AppColors.primary,
+                          ),
+                      ],
+                    ),
+                  ),
+                );
+              },
+            ),
+          );
+        }),
+
+        SizedBox(height: 14.h),
+        Text(
+          'Core value yang paling dia tunjukkan',
+          style: TextStyle(
+            fontSize: 13.sp,
+            fontWeight: FontWeight.w600,
+            color: AppColors.textPrimary,
+          ),
+        ),
+        SizedBox(height: 8.h),
+        Obx(
+          () => Wrap(
+            spacing: 8.w,
+            runSpacing: 8.h,
+            children: controller.coreValues.map((value) {
+              final selected = controller.selectedValueId.value == value.id;
+              final accent = hexColor(value.color);
+
+              return GestureDetector(
+                onTap: () => controller.selectedValueId.value = selected
+                    ? null
+                    : value.id,
+                child: Container(
+                  padding: EdgeInsets.symmetric(
+                    horizontal: 12.w,
+                    vertical: 7.h,
+                  ),
+                  decoration: BoxDecoration(
+                    color: selected
+                        ? accent.withValues(alpha: 0.12)
+                        : AppColors.muted,
+                    borderRadius: BorderRadius.circular(99.r),
+                  ),
+                  child: Text(
+                    value.name,
+                    style: TextStyle(
+                      fontSize: 12.sp,
+                      fontWeight: FontWeight.w600,
+                      color: selected ? accent : AppColors.textMuted,
+                    ),
+                  ),
                 ),
               );
-            }),
-
-            SizedBox(height: 14.h),
-            Text(
-              'Core value yang paling dia tunjukkan',
-              style: TextStyle(
-                fontSize: 13.sp,
-                fontWeight: FontWeight.w600,
-                color: AppColors.textPrimary,
-              ),
-            ),
-            SizedBox(height: 8.h),
-            Obx(
-              () => Wrap(
-                spacing: 8.w,
-                runSpacing: 8.h,
-                children: controller.coreValues.map((value) {
-                  final selected = controller.selectedValueId.value == value.id;
-                  final accent = hexColor(value.color);
-
-                  return GestureDetector(
-                    onTap: () => controller.selectedValueId.value = selected
-                        ? null
-                        : value.id,
-                    child: Container(
-                      padding: EdgeInsets.symmetric(
-                        horizontal: 12.w,
-                        vertical: 7.h,
-                      ),
-                      decoration: BoxDecoration(
-                        color: selected
-                            ? accent.withValues(alpha: 0.12)
-                            : AppColors.muted,
-                        borderRadius: BorderRadius.circular(99.r),
-                      ),
-                      child: Text(
-                        value.name,
-                        style: TextStyle(
-                          fontSize: 12.sp,
-                          fontWeight: FontWeight.w600,
-                          color: selected ? accent : AppColors.textMuted,
-                        ),
-                      ),
-                    ),
-                  );
-                }).toList(),
-              ),
-            ),
-
-            SizedBox(height: 14.h),
-            TextField(
-              controller: reasonC,
-              maxLines: 3,
-              maxLength: 500,
-              style: TextStyle(fontSize: 13.5.sp),
-              decoration: InputDecoration(
-                hintText: 'Kenapa dia pantas? (opsional)',
-                hintStyle: TextStyle(
-                  fontSize: 13.sp,
-                  color: AppColors.textMuted,
-                ),
-                counterText: '',
-                filled: true,
-                fillColor: AppColors.surface,
-                contentPadding: EdgeInsets.all(12.w),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12.r),
-                  borderSide: BorderSide.none,
-                ),
-                enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12.r),
-                  borderSide: BorderSide.none,
-                ),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12.r),
-                  borderSide: BorderSide(color: AppColors.primary, width: 1.4),
-                ),
-              ),
-            ),
-
-            SizedBox(height: 16.h),
-            Obx(
-              () => AppSubmitButton(
-                label: 'Kirim Vote',
-                loading: controller.submitting.value,
-                onPressed: () async {
-                  final ok = await controller.submitVote(
-                    reason: reasonC.text.trim(),
-                  );
-                  if (ok) Get.back();
-                },
-              ),
-            ),
-          ],
+            }).toList(),
+          ),
         ),
-      ),
+
+        SizedBox(height: 14.h),
+        TextField(
+          controller: reasonC,
+          maxLines: 3,
+          maxLength: 500,
+          style: TextStyle(fontSize: 13.5.sp),
+          decoration: InputDecoration(
+            hintText: 'Kenapa dia pantas? (opsional)',
+            hintStyle: TextStyle(fontSize: 13.sp, color: AppColors.textMuted),
+            counterText: '',
+            filled: true,
+            fillColor: AppColors.surface,
+            contentPadding: EdgeInsets.all(12.w),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12.r),
+              borderSide: BorderSide.none,
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12.r),
+              borderSide: BorderSide.none,
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12.r),
+              borderSide: BorderSide(color: AppColors.primary, width: 1.4),
+            ),
+          ),
+        ),
+
+        SizedBox(height: 16.h),
+        Obx(
+          () => AppSubmitButton(
+            label: 'Kirim Vote',
+            loading: controller.submitting.value,
+            onPressed: () async {
+              final ok = await controller.submitVote(
+                reason: reasonC.text.trim(),
+              );
+              if (ok) Get.back();
+            },
+          ),
+        ),
+      ],
     );
   }
 }
