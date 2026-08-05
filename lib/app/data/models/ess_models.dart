@@ -211,6 +211,59 @@ class LeaveRequestItem {
   );
 }
 
+/// How the company shapes a filed overtime stretch, straight from the server.
+///
+/// Companies count the tail of an overtime stretch differently: many round it
+/// down to whole half hours and pay nothing for anything shorter. The app has
+/// to preview the same figure payroll will use, so the rule travels with the
+/// list instead of being written into the app.
+class OvertimePolicy {
+  /// Block the duration is cut down to, in minutes. 0 = pay the exact minutes.
+  final int roundingMinutes;
+
+  /// Shortest stretch worth filing, in hours.
+  final double minHours;
+
+  /// Longest stretch a person could plausibly have worked, in hours.
+  final double maxHours;
+
+  const OvertimePolicy({
+    this.roundingMinutes = 0,
+    this.minHours = 0.5,
+    this.maxHours = 12,
+  });
+
+  factory OvertimePolicy.fromJson(Map<String, dynamic> j) => OvertimePolicy(
+    roundingMinutes: (j['rounding_minutes'] ?? 0).toInt(),
+    minHours: (j['min_hours'] ?? 0.5).toDouble(),
+    maxHours: (j['max_hours'] ?? 12).toDouble(),
+  );
+
+  /// What a stretch is actually paid, under this company's rounding.
+  double payableHours(double rawHours) {
+    if (roundingMinutes <= 0 || rawHours <= 0) {
+      return rawHours < 0 ? 0 : rawHours;
+    }
+
+    final blocks = (rawHours * 60 / roundingMinutes).floor();
+
+    return blocks * roundingMinutes / 60;
+  }
+
+  /// Whether a stretch is worth filing at all.
+  bool accepts(double rawHours) =>
+      rawHours <= maxHours && payableHours(rawHours) >= minHours;
+}
+
+/// The overtime screen's payload: the employee's requests plus the rule the
+/// company files them under.
+class OvertimeBoard {
+  final List<OvertimeItem> items;
+  final OvertimePolicy policy;
+
+  const OvertimeBoard({required this.items, required this.policy});
+}
+
 class OvertimeItem {
   final int id;
   final String date;

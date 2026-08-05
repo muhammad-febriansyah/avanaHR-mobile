@@ -15,6 +15,10 @@ class OvertimeController extends GetxController {
   final items = <OvertimeItem>[].obs;
   final statusFilter = 'all'.obs;
 
+  /// The company's rounding rule, refreshed with the list. Defaults are the
+  /// server's own until the first load answers.
+  final policy = const OvertimePolicy().obs;
+
   /// Items narrowed to the selected status group ('all' = everything).
   List<OvertimeItem> get visibleItems => statusFilter.value == 'all'
       ? items
@@ -31,7 +35,9 @@ class OvertimeController extends GetxController {
   Future<void> load() async {
     isLoading.value = true;
     try {
-      items.assignAll(await _api.overtimes());
+      final board = await _api.overtimes();
+      items.assignAll(board.items);
+      policy.value = board.policy;
     } catch (_) {
       items.clear();
     }

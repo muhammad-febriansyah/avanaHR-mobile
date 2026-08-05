@@ -553,12 +553,21 @@ class AvanaApi {
   }
 
   // ---- Overtime ----
-  Future<List<OvertimeItem>> overtimes() async {
+  /// The employee's overtime requests together with the company's rounding
+  /// rule, so the filing sheet can preview the hours payroll will actually pay.
+  Future<OvertimeBoard> overtimes() async {
     final res = await _dio.get('/me/overtime');
     final list = (res.data['data'] as List?) ?? [];
-    return list
-        .map((e) => OvertimeItem.fromJson(Map<String, dynamic>.from(e)))
-        .toList();
+    final policy = res.data['policy'];
+
+    return OvertimeBoard(
+      items: list
+          .map((e) => OvertimeItem.fromJson(Map<String, dynamic>.from(e)))
+          .toList(),
+      policy: policy is Map
+          ? OvertimePolicy.fromJson(Map<String, dynamic>.from(policy))
+          : const OvertimePolicy(),
+    );
   }
 
   /// Overtime is filed as a range; the server derives the hours from it, so

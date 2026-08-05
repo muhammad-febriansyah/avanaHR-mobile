@@ -4,6 +4,7 @@ import 'package:get/get.dart';
 import 'package:iconsax/iconsax.dart';
 
 import '../../core/theme/app_colors.dart';
+import '../../data/models/ess_models.dart';
 import '../../core/widgets/app_page.dart';
 import '../../core/widgets/app_sheet.dart';
 import '../../core/widgets/app_toast.dart';
@@ -188,17 +189,17 @@ class OvertimeView extends GetView<OvertimeController> {
             return const SizedBox.shrink();
           }
 
-          final tooLong = hours > 12 || hours < 0.5;
+          final policy = controller.policy.value;
+          final payable = policy.payableHours(hours);
+          final rejected = !policy.accepts(hours);
 
           return Padding(
             padding: EdgeInsets.only(top: 8.h),
             child: Text(
-              tooLong
-                  ? 'Durasi ${_trim(hours)} jam — di luar batas 0,5–12 jam'
-                  : 'Durasi ${_trim(hours)} jam',
+              _durationNote(policy, hours, payable, rejected),
               style: TextStyle(
                 fontSize: 12.sp,
-                color: tooLong ? AppColors.destructive : AppColors.textMuted,
+                color: rejected ? AppColors.destructive : AppColors.textMuted,
               ),
             ),
           );
@@ -225,9 +226,19 @@ class OvertimeView extends GetView<OvertimeController> {
               }
 
               final hours = _hoursBetween(start, end);
+              final policy = controller.policy.value;
 
-              if (hours == null || hours < 0.5 || hours > 12) {
-                AppToast.warning('Durasi lembur harus antara 0,5 dan 12 jam.');
+              // Judged by the company's own rule, not a figure baked into the
+              // app: with a 30-minute block a 20-minute stretch is worth
+              // nothing, while a company that rounds by 15 pays it.
+              if (hours == null || !policy.accepts(hours)) {
+                AppToast.warning(
+                  hours != null && hours > policy.maxHours
+                      ? 'Durasi lembur maksimal ${_trim(policy.maxHours)} jam.'
+                      : policy.roundingMinutes > 0
+                      ? 'Lembur kurang dari ${policy.roundingMinutes} menit tidak dihitung.'
+                      : 'Durasi lembur harus antara ${_trim(policy.minHours)} dan ${_trim(policy.maxHours)} jam.',
+                );
                 return;
               }
 
@@ -274,3 +285,26 @@ double? _hoursBetween(String? start, String? end) {
 String _trim(double value) => value == value.roundToDouble()
     ? value.toInt().toString()
     : value.toString();
+
+/// What the sheet says under the time fields.
+///
+/// A company that rounds pays less than the clock shows, and an employee should
+/// read that here rather than discover it on the payslip.
+String _durationNote(
+  OvertimePolicy policy,
+  double hours,
+  double payable,
+  bool rejected,
+) {
+  if (rejected) {
+    return hours > policy.maxHours
+        ? 'Durasi ${_trim(hours)} jam — maksimal ${_trim(policy.maxHours)} jam'
+        : policy.roundingMinutes > 0
+        ? 'Durasi ${_trim(hours)} jam — kurang dari ${policy.roundingMinutes} menit, tidak dihitung lembur'
+        : 'Durasi ${_trim(hours)} jam — di luar batas ${_trim(policy.minHours)}–${_trim(policy.maxHours)} jam';
+  }
+
+  return payable < hours
+      ? 'Durasi ${_trim(hours)} jam · dibayar ${_trim(payable)} jam (dibulatkan per ${policy.roundingMinutes} menit)'
+      : 'Durasi ${_trim(hours)} jam';
+}
