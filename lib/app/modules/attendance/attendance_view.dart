@@ -210,6 +210,9 @@ class AttendanceView extends GetView<AttendanceController> {
       final done = controller.isDoneToday;
       final busy = controller.isClocking.value;
       final blocked = !done && !controller.canClockByLocation;
+      // Still resolving is not the same as being outside the fence — saying so
+      // reads as a refusal on a screen that is merely waiting.
+      final locating = controller.geoState.value == GeoState.loading;
       return SizedBox(
         width: double.infinity,
         height: 54.h,
@@ -246,8 +249,10 @@ class AttendanceView extends GetView<AttendanceController> {
                 ? 'Memproses…'
                 : done
                 ? 'Absensi hari ini selesai'
+                : locating
+                ? 'Mendeteksi lokasi…'
                 : blocked
-                ? 'Di luar radius kantor'
+                ? _blockedLabel(controller.geoState.value)
                 : isIn
                 ? 'Absen Masuk (Scan Wajah)'
                 : 'Absen Pulang (Scan Wajah)',
@@ -256,6 +261,24 @@ class AttendanceView extends GetView<AttendanceController> {
         ),
       );
     });
+  }
+
+  /// Short reason on the disabled button. "Di luar radius" is only one of the
+  /// ways the clock can be shut, and the wrong one to show a user whose GPS is
+  /// simply off — the chip above carries the full sentence.
+  String _blockedLabel(GeoState state) {
+    switch (state) {
+      case GeoState.outside:
+        return 'Di luar radius kantor';
+      case GeoState.gpsOff:
+        return 'GPS mati — aktifkan lokasi';
+      case GeoState.denied:
+        return 'Izin lokasi ditolak';
+      case GeoState.noOffice:
+        return 'Titik kantor belum diatur';
+      default:
+        return 'Lokasi belum terbaca';
+    }
   }
 
   // ---- Geofence status chip -------------------------------------------------
@@ -273,9 +296,15 @@ class AttendanceView extends GetView<AttendanceController> {
 
       switch (st) {
         case GeoState.loading:
+          final seconds = controller.locatingSeconds.value;
           color = AppColors.textMuted;
           icon = Iconsax.location;
           title = 'Mendeteksi lokasi…';
+          // Counted only once the wait is long enough to worry about, so a
+          // normal two-second fix stays quiet.
+          sub = seconds >= 5
+              ? 'Mencari sinyal GPS ($seconds dtk) — di dalam ruangan bisa lebih lama'
+              : null;
           break;
         case GeoState.inside:
           color = AppColors.success;
@@ -290,13 +319,21 @@ class AttendanceView extends GetView<AttendanceController> {
           sub = '$dist m — mendekat untuk absen';
           break;
         case GeoState.anywhere:
-          color = AppColors.success;
+          // WFA drops the radius, not the fix: the server still records — and
+          // still requires — a coordinate on every punch.
+          final located = controller.userLat.value != null;
+          color = located ? AppColors.success : AppColors.warning;
           icon = Iconsax.global;
           title = 'WFA — absen di mana saja';
-          sub = office != null
+          sub = !located
+              ? 'Radius tidak dicek, tapi GPS wajib aktif untuk absen'
+              : office != null
               ? 'Radius tidak dicek · terdekat $office ($dist m)'
               : 'Radius tidak dicek, lokasi tetap direkam';
           break;
+        // The three states below all end in a punch the server refuses — it
+        // wants coordinates on every clock, WFA included — so the chip says so
+        // instead of promising an absen that would 422.
         case GeoState.gpsOff:
           color = AppColors.warning;
           icon = Iconsax.gps_slash;
@@ -307,19 +344,19 @@ class AttendanceView extends GetView<AttendanceController> {
           color = AppColors.warning;
           icon = Iconsax.location_slash;
           title = 'Izin lokasi ditolak';
-          sub = 'Beri izin lokasi untuk memvalidasi radius';
+          sub = 'Beri izin lokasi untuk bisa absen';
           break;
         case GeoState.noOffice:
-          color = AppColors.textMuted;
+          color = AppColors.warning;
           icon = Iconsax.building;
           title = 'Belum ada titik kantor';
-          sub = 'Absen tetap bisa dilakukan';
+          sub = 'Lokasi kerja belum diatur admin — hubungi HR';
           break;
         case GeoState.error:
-          color = AppColors.textMuted;
+          color = AppColors.warning;
           icon = Iconsax.info_circle;
           title = 'Lokasi tak terbaca';
-          sub = 'Absen tetap bisa dilakukan';
+          sub = 'Periksa GPS lalu tarik untuk memuat ulang';
           break;
       }
 

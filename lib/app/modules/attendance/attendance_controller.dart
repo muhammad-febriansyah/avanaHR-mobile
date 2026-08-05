@@ -1,3 +1,6 @@
+import 'dart:async';
+import 'dart:io' show Platform;
+
 import 'package:dio/dio.dart';
 import 'package:flutter/widgets.dart';
 import 'package:geocoding/geocoding.dart';
@@ -66,20 +69,50 @@ class AttendanceController extends GetxController with WidgetsBindingObserver {
   final userLng = Rxn<double>();
   final isLocating = false.obs;
 
-  /// Clock is allowed inside the radius, or when we cannot verify location
-  /// (no office configured / GPS unavailable) — so users are never trapped.
+  /// Seconds the current detection has been running, so the chip can count a
+  /// slow fix out loud rather than look stuck.
+  final locatingSeconds = 0.obs;
+
+  /// The server's own rule, mirrored — see `AttendanceController::geofenceCheck`.
   ///
-  /// Working from home is off-site by definition, so the radius must not gate
-  /// it; the server checks the WFH approval instead. WFA is the same deal at
-  /// the policy level: the server never measures a radius for those employees.
-  bool get canClockByLocation =>
-      effectiveWorkMode == 'home' ||
-      geoState.value == GeoState.inside ||
-      geoState.value == GeoState.anywhere ||
-      geoState.value == GeoState.noOffice ||
-      geoState.value == GeoState.gpsOff ||
-      geoState.value == GeoState.denied ||
-      geoState.value == GeoState.error;
+  /// Every punch needs a fix, WFA and WFH included: the server refuses a clock
+  /// without coordinates, because the mock-location check has nothing to read
+  /// without them. Beyond that, WFH (approved) and WFA answer to no office,
+  /// while every other scope has to land inside a radius.
+  ///
+  /// Opening the gate on an unknown location would only move the refusal later,
+  /// to a 422 the employee earns *after* scanning their face.
+  bool get canClockByLocation {
+    if (userLat.value == null || userLng.value == null) return false;
+
+    return effectiveWorkMode == 'home' ||
+        geoState.value == GeoState.anywhere ||
+        geoState.value == GeoState.inside;
+  }
+
+  /// Why the clock is shut, in the words the employee can act on. Mirrors the
+  /// server's messages so the two never tell different stories.
+  String get locationBlockReason {
+    if (geoState.value == GeoState.loading) {
+      return 'Lokasi masih dideteksi. Tunggu sebentar lalu coba lagi.';
+    }
+
+    switch (geoState.value) {
+      case GeoState.gpsOff:
+        return 'GPS mati. Aktifkan lokasi lalu coba lagi.';
+      case GeoState.denied:
+        return 'Izin lokasi ditolak. Beri izin lokasi untuk bisa absen.';
+      case GeoState.noOffice:
+        return 'Lokasi kerja belum diatur admin. Hubungi HR.';
+      case GeoState.outside:
+        final office = nearest.value?.name ?? 'kantor';
+
+        return 'Di luar radius $office (${distanceMeters.value.round()} m). '
+            'Mendekat ke lokasi untuk absen.';
+      default:
+        return 'Lokasi belum terbaca. Periksa GPS lalu coba lagi.';
+    }
+  }
 
   @override
   void onInit() {
@@ -103,9 +136,15 @@ class AttendanceController extends GetxController with WidgetsBindingObserver {
   /// clock-in instead of continuing the old session.
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state == AppLifecycleState.resumed && (_isStaleDay || today.value == null)) {
-      load();
-    }
+    if (state != AppLifecycleState.resumed) return;
+
+    // The tab is persistent, so without this the screen keeps answering to the
+    // policy that was in force when the app started: an admin who switches the
+    // tenant to WFA (or changes the face mode) would not reach an employee who
+    // never closed the app. Quiet, so a resume doesn't flash a spinner over a
+    // screen that already has its answer.
+    load(quiet: !(_isStaleDay || today.value == null));
+    detectLocation();
   }
 
   /// Local calendar date as `YYYY-MM-DD`.
@@ -124,12 +163,15 @@ class AttendanceController extends GetxController with WidgetsBindingObserver {
     return date != null && date != _localToday();
   }
 
-  Future<void> load() async {
-    isLoading.value = true;
+  /// [quiet] refreshes in place, without the full-screen spinner — for reloads
+  /// the employee did not ask for (a resume, a policy re-check).
+  Future<void> load({bool quiet = false}) async {
+    isLoading.value = !quiet;
     try {
       today.value = await _api.attendanceToday();
     } catch (_) {
-      today.value = null;
+      // A failed quiet refresh must not throw away the status already on screen.
+      if (!quiet) today.value = null;
     }
     isLoading.value = false;
 
@@ -154,95 +196,233 @@ class AttendanceController extends GetxController with WidgetsBindingObserver {
     }
   }
 
+  /// How long a single non-interactive step may take. Nothing here is allowed
+  /// to run unbounded: a platform channel that never answers used to pin the
+  /// screen on [GeoState.loading], which the button reads as "outside radius".
+  static const _step = Duration(seconds: 12);
+
+  /// The permission prompt waits on a person, not on a device.
+  static const _prompt = Duration(minutes: 2);
+
+  /// The stored fix is meant to be instant — it is read from memory, not from a
+  /// radio. Waiting a full step on it only delays the live attempt on the phones
+  /// where the platform never answers at all.
+  static const _cachedFix = Duration(seconds: 3);
+
+  /// How long the screen keeps listening for a first coordinate.
+  ///
+  /// A cold receiver indoors regularly needs fifteen seconds or more; giving up
+  /// sooner is what leaves an employee reading "Lokasi belum terbaca" while the
+  /// phone was seconds away from answering.
+  static const _fixBudget = Duration(seconds: 25);
+
   /// Resolve the nearest office geofence + the user's live position for the
-  /// map and the clock gate. Best-effort; never throws.
+  /// map and the clock gate. Best-effort; never throws, always settles.
   Future<void> detectLocation() async {
     if (isLocating.value) return;
     isLocating.value = true;
     geoState.value = GeoState.loading;
+    // A cold fix can take twenty seconds, which reads as a frozen screen unless
+    // the wait is counted out loud.
+    locatingSeconds.value = 0;
+    final tick = Timer.periodic(
+      const Duration(seconds: 1),
+      (_) => locatingSeconds.value++,
+    );
     try {
-      final locations = await _api.workLocations();
-      final isAnywhere = locations.isAnywhere;
-      final withCoords = locations.items
-          .where((l) => l.latitude != null && l.longitude != null)
-          .toList();
-
-      if (!await Geolocator.isLocationServiceEnabled()) {
-        geoState.value = GeoState.gpsOff;
-
-        return;
-      }
-
-      var permission = await Geolocator.checkPermission();
-      if (permission == LocationPermission.denied) {
-        permission = await Geolocator.requestPermission();
-      }
-      if (permission == LocationPermission.denied ||
-          permission == LocationPermission.deniedForever) {
-        geoState.value = GeoState.denied;
-
-        return;
-      }
-
-      Position pos;
-      try {
-        pos = await Geolocator.getCurrentPosition(
-          locationSettings: const LocationSettings(
-            accuracy: LocationAccuracy.high,
-            timeLimit: Duration(seconds: 8),
-          ),
-        );
-      } catch (_) {
-        final last = await Geolocator.getLastKnownPosition();
-        if (last == null) {
-          geoState.value = GeoState.error;
-
-          return;
-        }
-        pos = last;
-      }
-
-      userLat.value = pos.latitude;
-      userLng.value = pos.longitude;
-
-      if (withCoords.isEmpty) {
-        geoState.value = isAnywhere ? GeoState.anywhere : GeoState.noOffice;
-
-        return;
-      }
-
-      WorkLocationItem? closest;
-      var closestDistance = double.infinity;
-      for (final loc in withCoords) {
-        final d = Geolocator.distanceBetween(
-          pos.latitude,
-          pos.longitude,
-          loc.latitude!,
-          loc.longitude!,
-        );
-        if (d < closestDistance) {
-          closestDistance = d;
-          closest = loc;
-        }
-      }
-
-      nearest.value = closest;
-      distanceMeters.value = closestDistance;
-
-      // WFA: the nearest office is only a label here, never a gate.
-      if (isAnywhere) {
-        geoState.value = GeoState.anywhere;
-
-        return;
-      }
-
-      final within =
-          (closest!.radius <= 0) || closestDistance <= closest.radius;
-      geoState.value = within ? GeoState.inside : GeoState.outside;
+      await _resolveGeofence();
     } catch (_) {
       geoState.value = GeoState.error;
     } finally {
+      tick.cancel();
+      // A step that timed out leaves the gate unresolved; unknown location must
+      // open the gate (the server still validates), never hold it shut.
+      if (geoState.value == GeoState.loading) {
+        geoState.value = GeoState.error;
+      }
       isLocating.value = false;
+    }
+  }
+
+  Future<void> _resolveGeofence() async {
+    // The policy is a fast network round-trip; the fix is the slow half. Asking
+    // for them side by side keeps a cold GPS lock off the critical path — done
+    // in sequence, the screen waited for the sum of the two.
+    final policyRequest = _api.workLocations().timeout(_step);
+    final gate = await _permissionGate();
+
+    // A slow or failed policy call used to take the whole detection down with
+    // it: the throw left the screen on "Lokasi belum terbaca" even though the
+    // GPS was working. The office list only decides which badge to show, so
+    // losing it must not cost the employee their coordinates — without offices
+    // the fix still lands on the map and the server still rules on the punch.
+    WorkLocations? locations;
+
+    try {
+      locations = await policyRequest;
+    } catch (_) {
+      locations = null;
+    }
+
+    final isAnywhere = locations?.isAnywhere ?? false;
+
+    // Shown while the fix is still coming, so a WFA employee is not left reading
+    // "di luar radius" in the meantime.
+    if (isAnywhere) {
+      geoState.value = GeoState.anywhere;
+    }
+
+    final offices = (locations?.items ?? const <WorkLocationItem>[])
+        .where((l) => l.latitude != null && l.longitude != null)
+        .toList();
+
+    // No location to be had at all. WFA does not soften this: the server needs
+    // coordinates on every punch, so the actionable reason wins over the badge.
+    if (gate != null) {
+      geoState.value = gate;
+
+      return;
+    }
+
+    // The stored fix answers in milliseconds and is usually metres from the
+    // truth — good enough to open the gate while the live one is still coming.
+    final seed = await _lastKnownPosition();
+    if (seed != null) {
+      _applyFix(seed, offices, isAnywhere);
+    }
+
+    final live = await _livePosition();
+    if (live != null) {
+      _applyFix(live, offices, isAnywhere);
+    } else if (seed == null) {
+      geoState.value = GeoState.error;
+    }
+  }
+
+  /// Place a fix on the map and settle the gate against it.
+  void _applyFix(
+    Position pos,
+    List<WorkLocationItem> offices,
+    bool isAnywhere,
+  ) {
+    userLat.value = pos.latitude;
+    userLng.value = pos.longitude;
+
+    if (offices.isEmpty) {
+      if (!isAnywhere) {
+        geoState.value = GeoState.noOffice;
+      }
+
+      return;
+    }
+
+    WorkLocationItem? closest;
+    var closestDistance = double.infinity;
+    for (final loc in offices) {
+      final d = Geolocator.distanceBetween(
+        pos.latitude,
+        pos.longitude,
+        loc.latitude!,
+        loc.longitude!,
+      );
+      if (d < closestDistance) {
+        closestDistance = d;
+        closest = loc;
+      }
+    }
+
+    nearest.value = closest;
+    distanceMeters.value = closestDistance;
+
+    // WFA: the nearest office is only a label here, never a gate.
+    if (isAnywhere) return;
+
+    final within = (closest!.radius <= 0) || closestDistance <= closest.radius;
+    geoState.value = within ? GeoState.inside : GeoState.outside;
+  }
+
+  /// Null when location may be read; otherwise the state that says why not.
+  Future<GeoState?> _permissionGate() async {
+    if (!await Geolocator.isLocationServiceEnabled().timeout(_step)) {
+      return GeoState.gpsOff;
+    }
+
+    var permission = await Geolocator.checkPermission().timeout(_step);
+    if (permission == LocationPermission.denied) {
+      permission = await Geolocator.requestPermission().timeout(_prompt);
+    }
+
+    return permission == LocationPermission.denied ||
+            permission == LocationPermission.deniedForever
+        ? GeoState.denied
+        : null;
+  }
+
+  /// The fix the platform already had, if any. Costs nothing to ask.
+  Future<Position?> _lastKnownPosition() async {
+    try {
+      return await Geolocator.getLastKnownPosition().timeout(_cachedFix);
+    } catch (_) {
+      return null;
+    }
+  }
+
+  /// A fresh fix: every provider listens at once, and the first coordinate any
+  /// of them produces wins.
+  ///
+  /// This used to be three one-shot attempts in a row, each with its own short
+  /// deadline. A phone that would have answered in fourteen seconds returned
+  /// nothing after twenty: each attempt threw away the warm-up the one before
+  /// it had paid for, and a fused provider that is merely slow looks identical
+  /// to one that is broken. Listening instead of asking also means a fix that
+  /// arrives early is used early, rather than after the current attempt's timer
+  /// runs out.
+  ///
+  /// The second Android provider goes around Play Services entirely, for the
+  /// phones where the fused one never answers at all.
+  Future<Position?> _livePosition() async {
+    final providers = <LocationSettings>[
+      if (Platform.isAndroid) ...[
+        AndroidSettings(accuracy: LocationAccuracy.medium),
+        AndroidSettings(
+          accuracy: LocationAccuracy.medium,
+          forceLocationManager: true,
+        ),
+      ] else
+        const LocationSettings(accuracy: LocationAccuracy.medium),
+    ];
+
+    final first = Completer<Position>();
+    final streams = <StreamSubscription<Position>>[];
+
+    for (final settings in providers) {
+      try {
+        streams.add(
+          Geolocator.getPositionStream(locationSettings: settings).listen(
+            (position) {
+              if (!first.isCompleted) first.complete(position);
+            },
+            // A provider this device does not have must not take the others
+            // down with it.
+            onError: (_) {},
+            cancelOnError: false,
+          ),
+        );
+      } catch (_) {
+        // Provider unavailable on this device.
+      }
+    }
+
+    if (streams.isEmpty) return null;
+
+    try {
+      return await first.future.timeout(_fixBudget);
+    } catch (_) {
+      return null;
+    } finally {
+      for (final stream in streams) {
+        unawaited(stream.cancel());
+      }
     }
   }
 
@@ -293,13 +473,14 @@ class AttendanceController extends GetxController with WidgetsBindingObserver {
 
     final type = today.value?.canClockIn ?? true ? 'in' : 'out';
 
-    // Geofence gate: block only when we positively know the user is outside a
-    // real office radius. Unknown location never blocks (see canClockByLocation).
+    // Geofence gate, mirroring the server (see canClockByLocation). A stale fix
+    // is worth one more attempt before refusing: the employee may have walked
+    // into the radius, or turned GPS on, since the screen last looked.
     if (!canClockByLocation) {
-      final office = nearest.value?.name ?? 'kantor';
-      AppToast.warning(
-        'Di luar radius $office (${distanceMeters.value.round()} m). Mendekat ke lokasi untuk absen.',
-      );
+      await detectLocation();
+    }
+    if (!canClockByLocation) {
+      AppToast.warning(locationBlockReason);
 
       return;
     }
@@ -547,28 +728,14 @@ class AttendanceController extends GetxController with WidgetsBindingObserver {
     }
   }
 
-  /// Best-effort GPS; returns null if permission denied or location off.
+  /// Best-effort GPS for the punch itself; null if permission denied or
+  /// location off. Shares the escalating provider chain with the map, so the
+  /// coordinate on the record is found the same way the gate found its own.
   Future<Position?> _currentPosition() async {
     try {
-      if (!await Geolocator.isLocationServiceEnabled()) return null;
-      var permission = await Geolocator.checkPermission();
-      if (permission == LocationPermission.denied) {
-        permission = await Geolocator.requestPermission();
-      }
-      if (permission == LocationPermission.denied ||
-          permission == LocationPermission.deniedForever) {
-        return null;
-      }
-      try {
-        return await Geolocator.getCurrentPosition(
-          locationSettings: const LocationSettings(
-            accuracy: LocationAccuracy.high,
-            timeLimit: Duration(seconds: 8),
-          ),
-        );
-      } catch (_) {
-        return await Geolocator.getLastKnownPosition();
-      }
+      if (await _permissionGate() != null) return null;
+
+      return await _livePosition() ?? await _lastKnownPosition();
     } catch (_) {
       return null;
     }
