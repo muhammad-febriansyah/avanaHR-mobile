@@ -280,7 +280,9 @@ class HomeTab extends GetView<HomeController> {
                   // ── Announcements ──
                   _sectionHeader(
                     'Pengumuman Terbaru',
-                    onTap: () => Get.find<MainController>().changeTab(3),
+                    onTap: () => Get.find<MainController>().changeTabByKey(
+                      'pengumuman',
+                    ),
                   ),
                   SizedBox(height: 14.h),
                   _announcements(),
@@ -379,8 +381,8 @@ class HomeTab extends GetView<HomeController> {
                     ),
                     onPressed: done
                         ? null
-                        : () => Get.find<MainController>().changeTab(
-                            MainController.attendanceTab,
+                        : () => Get.find<MainController>().changeTabByKey(
+                            'absensi',
                           ),
                     icon: Icon(
                       done

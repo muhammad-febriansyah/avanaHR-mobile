@@ -6,6 +6,7 @@ import 'package:persistent_bottom_nav_bar_v2/persistent_bottom_nav_bar_v2.dart';
 
 import '../../core/theme/app_colors.dart';
 import '../../core/widgets/ai_fab.dart';
+import '../../data/services/auth_service.dart';
 import '../../data/services/connectivity_service.dart';
 import '../announcement/announcement_view.dart';
 import '../attendance/attendance_view.dart';
@@ -44,7 +45,7 @@ class MainView extends GetView<MainController> {
                   // Hidden on Absensi: that tab is a full-bleed camera/GPS flow
                   // where a floating button would sit over the face frame.
                   child: Obx(
-                    () => controller.tab.value == MainController.attendanceTab
+                    () => controller.tab.value == controller.attendanceTab
                         ? const SizedBox.shrink()
                         : const AiFab(),
                   ),
@@ -67,31 +68,7 @@ class MainView extends GetView<MainController> {
       navBarOverlap: const NavBarOverlap.full(),
       handleAndroidBackButtonPress: true,
       stateManagement: true,
-      tabs: [
-        PersistentTabConfig(
-          screen: const HomeTab(),
-          item: _item(Iconsax.home_2, 'Beranda'),
-        ),
-        // Sosmed replaced Riwayat here; Riwayat moved into Menu Cepat, since
-        // the wall is opened many times a day and history only occasionally.
-        PersistentTabConfig(
-          screen: const SosmedView(),
-          item: _item(Iconsax.people, 'Ruang Kita'),
-        ),
-        // Center item (index 2) — rendered as the floating circle by Style 13.
-        PersistentTabConfig(
-          screen: _absensiScreen(),
-          item: _middleItem(Iconsax.finger_scan),
-        ),
-        PersistentTabConfig(
-          screen: const AnnouncementView(),
-          item: _item(Iconsax.volume_high, 'Pengumuman'),
-        ),
-        PersistentTabConfig(
-          screen: const ProfileView(),
-          item: _item(Iconsax.user, 'Profil'),
-        ),
-      ],
+      tabs: _tabs(),
       navBarBuilder: (navBarConfig) => Style13BottomNavBar(
         navBarConfig: navBarConfig,
         height: 64.h,
@@ -112,6 +89,58 @@ class MainView extends GetView<MainController> {
         ),
       ),
     );
+  }
+
+  /// The bar, built from the keys the server sent for this account. Absensi
+  /// keeps the centre circle wherever it lands; a key this build does not know
+  /// is skipped rather than crashing a whole bar over one new tab.
+  List<PersistentTabConfig> _tabs() {
+    final keys = controller.tabKeys;
+    final labels = {
+      for (final tab in Get.find<AuthService>().user.value?.tabs ?? [])
+        tab.key: tab.label,
+    };
+
+    return keys
+        .map((key) => _tabFor(key, labels[key]))
+        .whereType<PersistentTabConfig>()
+        .toList();
+  }
+
+  /// One tab, or null when this build has no screen for that key.
+  PersistentTabConfig? _tabFor(String key, String? label) {
+    switch (key) {
+      case 'beranda':
+        return PersistentTabConfig(
+          screen: const HomeTab(),
+          item: _item(Iconsax.home_2, label ?? 'Beranda'),
+        );
+      // Sosmed replaced Riwayat here; Riwayat moved into Menu Cepat, since
+      // the wall is opened many times a day and history only occasionally.
+      case 'sosmed':
+        return PersistentTabConfig(
+          screen: const SosmedView(),
+          item: _item(Iconsax.people, label ?? 'Ruang Kita'),
+        );
+      // Rendered as the floating circle by Style 13.
+      case 'absensi':
+        return PersistentTabConfig(
+          screen: _absensiScreen(),
+          item: _middleItem(Iconsax.finger_scan),
+        );
+      case 'pengumuman':
+        return PersistentTabConfig(
+          screen: const AnnouncementView(),
+          item: _item(Iconsax.volume_high, label ?? 'Pengumuman'),
+        );
+      case 'profil':
+        return PersistentTabConfig(
+          screen: const ProfileView(),
+          item: _item(Iconsax.user, label ?? 'Profil'),
+        );
+      default:
+        return null;
+    }
   }
 
   ItemConfig _item(IconData icon, String title) {

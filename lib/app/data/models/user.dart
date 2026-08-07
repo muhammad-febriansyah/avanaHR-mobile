@@ -49,6 +49,11 @@ class AppUser {
   /// an older backend — in which case the home tab keeps its built-in list.
   final List<MenuTile> menu;
 
+  /// The bottom navigation bar for this account, already filtered by tenant
+  /// feature and role. Empty on an older backend, where [MainView] falls back
+  /// to the five tabs this build ships with.
+  final List<MenuTile> tabs;
+
   /// The signed-in user's tenant branding, for white-labelling the app.
   /// [tenantName] is the legal name ("PT Avanah Digital Teknologi") and
   /// [tenantBrandName] the short brand ("avanahR") shown above it.
@@ -66,6 +71,7 @@ class AppUser {
     required this.email,
     required this.roles,
     this.menu = const [],
+    this.tabs = const [],
     this.avatarUrl,
     this.employee,
     this.tenantName,
@@ -89,6 +95,11 @@ class AppUser {
       roles: (json['roles'] as List?)?.map((e) => e.toString()).toList() ?? [],
       menu:
           (json['menu'] as List?)
+              ?.map((e) => MenuTile.fromJson(Map<String, dynamic>.from(e)))
+              .toList() ??
+          const [],
+      tabs:
+          (json['tabs'] as List?)
               ?.map((e) => MenuTile.fromJson(Map<String, dynamic>.from(e)))
               .toList() ??
           const [],

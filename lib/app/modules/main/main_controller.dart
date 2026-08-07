@@ -2,15 +2,42 @@ import 'package:get/get.dart';
 import 'package:persistent_bottom_nav_bar_v2/persistent_bottom_nav_bar_v2.dart';
 
 import '../../core/widgets/connection_dialog.dart';
+import '../../data/services/auth_service.dart';
 import '../../data/services/connectivity_service.dart';
 
 /// Holds the active bottom-navigation tab for the app shell.
 ///
-/// Five tabs: Beranda(0), Riwayat(1), Absensi(2, center), Pengumuman(3),
-/// Profil(4). Absensi is built lazily (only after first opened) so its
-/// controller doesn't request GPS/camera at app launch.
+/// The bar itself comes from the server (`tabs` on the login payload), already
+/// filtered by the company's features and the account's role, so switching
+/// Ruang Kita off in Hak Akses removes the tab without a new build. Which tab
+/// sits at which index therefore varies, and nothing may assume a fixed one.
+///
+/// Absensi is built lazily (only after first opened) so its controller doesn't
+/// request GPS/camera at app launch.
 class MainController extends GetxController {
-  static const attendanceTab = 2;
+  /// The bar this build ships with, used when the server sends none — an older
+  /// backend, or a session stored before the field existed.
+  static const fallbackTabKeys = [
+    'beranda',
+    'sosmed',
+    'absensi',
+    'pengumuman',
+    'profil',
+  ];
+
+  final AuthService _auth = Get.find();
+
+  /// Tab keys in bar order, as this account sees them.
+  List<String> get tabKeys {
+    final tabs = _auth.user.value?.tabs ?? const [];
+
+    return tabs.isEmpty
+        ? fallbackTabKeys
+        : tabs.map((tab) => tab.key).toList(growable: false);
+  }
+
+  /// Where Absensi sits, or -1 when the company switched it off.
+  int get attendanceTab => tabKeys.indexOf('absensi');
 
   /// Drives the [PersistentTabView]. Tapping a nav item and [changeTab] both
   /// funnel through this controller.
@@ -54,13 +81,24 @@ class MainController extends GetxController {
 
   void _sync() {
     tab.value = pageController.index;
-    if (pageController.index == attendanceTab) {
+    if (attendanceTab >= 0 && pageController.index == attendanceTab) {
       attendanceOpened.value = true;
     }
   }
 
   /// Programmatic tab switch (from quick actions / home shortcuts).
   void changeTab(int index) => pageController.jumpToTab(index);
+
+  /// Switch by key rather than position: a hidden tab shifts every index after
+  /// it, so `changeTab(3)` would land somewhere else entirely. Does nothing
+  /// when the company does not show that tab.
+  void changeTabByKey(String key) {
+    final index = tabKeys.indexOf(key);
+
+    if (index >= 0) {
+      pageController.jumpToTab(index);
+    }
+  }
 
   @override
   void onClose() {
