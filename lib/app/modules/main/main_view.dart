@@ -13,6 +13,7 @@ import '../attendance/attendance_view.dart';
 import '../home/views/home_tab.dart';
 import '../profile/profile_view.dart';
 import '../sosmed/sosmed_view.dart';
+import 'account_unlinked_view.dart';
 import 'main_controller.dart';
 
 /// App shell: five persistent tabs behind a `persistent_bottom_nav_bar_v2`
@@ -26,6 +27,24 @@ class MainView extends GetView<MainController> {
 
   @override
   Widget build(BuildContext context) {
+    final auth = Get.find<AuthService>();
+
+    return Obx(() {
+      // An account with no employee behind it can use none of these tabs —
+      // every API call would come back 403. Stop it here with instructions
+      // instead of letting it land on a dashboard of empty counters and a
+      // dismissible error toast. Reactive: the moment a re-check (or pull to
+      // refresh) comes back with the employee linked, the shell takes over.
+      final user = auth.user.value;
+      if (user != null && user.employee == null) {
+        return const AccountUnlinkedView();
+      }
+
+      return _shell();
+    });
+  }
+
+  Widget _shell() {
     return Scaffold(
       backgroundColor: AppColors.muted,
       body: Column(
