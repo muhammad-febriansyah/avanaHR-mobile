@@ -41,6 +41,51 @@ void main() {
       expect(today.canClockIn, isFalse);
       expect(today.isDone, isTrue);
     });
+
+    test('offline optimistic updates preserve attendance requirements', () {
+      final today = AttendanceToday.fromJson(
+        {'date': '2026-07-31', 'work_date': '2026-07-31', 'next_action': 'in'},
+        requirements: {
+          'timezone': 'Asia/Makassar',
+          'timezone_label': 'WITA',
+          'face_mode': 'detection',
+          'require_liveness_challenge': true,
+          'wfh_approved_today': true,
+        },
+      );
+
+      final queued = today.copyWith(
+        nextAction: 'out',
+        clockIn: '08:10',
+        workMode: 'home',
+        pendingSync: true,
+      );
+
+      expect(queued.workDate, '2026-07-31');
+      expect(queued.timezone, 'Asia/Makassar');
+      expect(queued.timezoneLabel, 'WITA');
+      expect(queued.faceMode, 'detection');
+      expect(queued.requiresLivenessChallenge, isTrue);
+      expect(queued.wfhApprovedToday, isTrue);
+      expect(queued.workMode, 'home');
+      expect(queued.pendingSync, isTrue);
+    });
+  });
+
+  test('DashboardSummary keeps monthly statuses mutually exclusive', () {
+    final summary = DashboardSummary.fromJson({
+      'attendance_month': {
+        'present': 10,
+        'late': 2,
+        'absent': 1,
+        'incomplete': 3,
+      },
+    });
+
+    expect(summary.presentDays, 10);
+    expect(summary.lateDays, 2);
+    expect(summary.absentDays, 1);
+    expect(summary.incompleteDays, 3);
   });
 
   group('AttendanceToday requirements', () {

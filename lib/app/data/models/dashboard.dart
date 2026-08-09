@@ -55,6 +55,7 @@ class DashboardSummary {
   final int presentDays;
   final int absentDays;
   final int lateDays;
+  final int incompleteDays;
   final TodayShift? todayShift;
 
   /// A preview slice of the colleagues celebrating a birthday today — the API
@@ -74,6 +75,7 @@ class DashboardSummary {
     this.presentDays = 0,
     this.absentDays = 0,
     this.lateDays = 0,
+    this.incompleteDays = 0,
     this.todayShift,
     this.birthdays = const [],
     this.birthdaysTotal = 0,
@@ -89,14 +91,13 @@ class DashboardSummary {
         .toList();
     return DashboardSummary(
       leaveAvailable: (j['leave_available'] as num?)?.toDouble() ?? 0,
-      workMinutesMonth: (j['work_minutes_month'] ?? 0) is int
-          ? j['work_minutes_month']
-          : 0,
+      workMinutesMonth: (j['work_minutes_month'] as num?)?.toInt() ?? 0,
       workHoursMonth: (j['work_hours_month'] as num?)?.toDouble() ?? 0,
-      pendingCount: (j['pending_count'] ?? 0) is int ? j['pending_count'] : 0,
+      pendingCount: (j['pending_count'] as num?)?.toInt() ?? 0,
       presentDays: (m['present'] as num?)?.toInt() ?? 0,
       absentDays: (m['absent'] as num?)?.toInt() ?? 0,
       lateDays: (m['late'] as num?)?.toInt() ?? 0,
+      incompleteDays: (m['incomplete'] as num?)?.toInt() ?? 0,
       todayShift: j['today_shift'] is Map
           ? TodayShift.fromJson(Map<String, dynamic>.from(j['today_shift']))
           : null,

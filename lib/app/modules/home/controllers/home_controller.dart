@@ -13,6 +13,7 @@ import '../../../data/models/ess_models.dart';
 import '../../../data/providers/api_client.dart';
 import '../../../data/providers/avana_api.dart';
 import '../../../data/services/auth_service.dart';
+import '../../../data/services/attendance_queue_service.dart';
 import '../../../data/services/storage_service.dart';
 import '../../../routes/app_pages.dart';
 import '../views/mood_dialog.dart';
@@ -59,6 +60,7 @@ class HomeController extends GetxController with WidgetsBindingObserver {
   final userAddress = ''.obs;
   final locating = true.obs;
   StreamSubscription<Position>? _posSub;
+  late final Worker _queueWorker;
 
   String get name => auth.user.value?.name ?? '';
   bool get isManager => auth.isManager;
@@ -134,6 +136,10 @@ class HomeController extends GetxController with WidgetsBindingObserver {
   void onInit() {
     super.onInit();
     WidgetsBinding.instance.addObserver(this);
+    _queueWorker = ever<int>(
+      Get.find<AttendanceQueueService>().revision,
+      (_) => refreshAttendance(),
+    );
     refreshAll();
     detectLocation();
     startLocationStream();
@@ -143,6 +149,7 @@ class HomeController extends GetxController with WidgetsBindingObserver {
   void onClose() {
     WidgetsBinding.instance.removeObserver(this);
     _posSub?.cancel();
+    _queueWorker.dispose();
     super.onClose();
   }
 

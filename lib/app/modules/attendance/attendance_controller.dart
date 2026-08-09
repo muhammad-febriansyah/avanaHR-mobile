@@ -42,7 +42,9 @@ class AttendanceController extends GetxController with WidgetsBindingObserver {
 
   final isLoading = true.obs;
   final isClocking = false.obs;
+  final loadFailed = false.obs;
   final today = Rxn<AttendanceToday>();
+  late final Worker _queueWorker;
 
   /// Where the employee says they are working from: 'office' or 'home'.
   /// 'home' is only offered — and only accepted by the server — on a day an
@@ -119,6 +121,10 @@ class AttendanceController extends GetxController with WidgetsBindingObserver {
     super.onInit();
     WidgetsBinding.instance.addObserver(this);
     requiresFace.value = _box.read<bool>(_faceKey) ?? false;
+    _queueWorker = ever<int>(Get.find<AttendanceQueueService>().revision, (_) {
+      load(quiet: true);
+      _syncHome();
+    });
     load();
     detectLocation();
   }
@@ -126,6 +132,7 @@ class AttendanceController extends GetxController with WidgetsBindingObserver {
   @override
   void onClose() {
     WidgetsBinding.instance.removeObserver(this);
+    _queueWorker.dispose();
     super.onClose();
   }
 
@@ -167,11 +174,11 @@ class AttendanceController extends GetxController with WidgetsBindingObserver {
   /// the employee did not ask for (a resume, a policy re-check).
   Future<void> load({bool quiet = false}) async {
     isLoading.value = !quiet;
+    loadFailed.value = false;
     try {
       today.value = await _api.attendanceToday();
     } catch (_) {
-      // A failed quiet refresh must not throw away the status already on screen.
-      if (!quiet) today.value = null;
+      loadFailed.value = true;
     }
     isLoading.value = false;
 
@@ -442,7 +449,11 @@ class AttendanceController extends GetxController with WidgetsBindingObserver {
   /// Whether the geofence currently allows clocking; the on-page scanner uses
   /// this to decide whether to run the camera.
   bool get canClockNow =>
-      canClockByLocation && !isClocking.value && !isDoneToday;
+      today.value != null &&
+      !loadFailed.value &&
+      canClockByLocation &&
+      !isClocking.value &&
+      !isDoneToday;
 
   /// Full clock action with the built-in navigating face gate. Kept for entry
   /// points that push the standalone camera route.
@@ -457,6 +468,14 @@ class AttendanceController extends GetxController with WidgetsBindingObserver {
     required bool navigateFaceGate,
     List<double>? providedEmbedding,
   }) async {
+    if (today.value == null || loadFailed.value) {
+      AppToast.warning(
+        'Status absensi belum tersedia. Muat ulang lalu coba lagi.',
+      );
+
+      return;
+    }
+
     // A day may have rolled over while the app sat in memory; refresh first so
     // we never clock out on a new day against yesterday's open record.
     if (_isStaleDay) {
@@ -631,17 +650,24 @@ class AttendanceController extends GetxController with WidgetsBindingObserver {
       // Anything unexpected while preparing the punch — never leave the loader
       // spinning.
       hideClockLoader();
-      showClockResult(
-        success: false,
-        message: 'Terjadi kesalahan. Coba lagi.',
-      );
+      showClockResult(success: false, message: 'Terjadi kesalahan. Coba lagi.');
     } finally {
       isClocking.value = false;
     }
   }
 
   void _queueOffline(String type, Map<String, dynamic> entry) {
-    Get.find<AttendanceQueueService>().enqueue(entry);
+    if (today.value == null) {
+      AppToast.warning(
+        'Status absensi belum tersedia. Muat ulang lalu coba lagi.',
+      );
+
+      return;
+    }
+    Get.find<AttendanceQueueService>().enqueue({
+      ...entry,
+      'work_date': today.value?.workDate ?? today.value?.date,
+    });
     _applyOptimistic(type);
     // Offline: there is nothing to re-fetch, so hand the home card the same
     // optimistic record this screen is showing.
@@ -705,25 +731,21 @@ class AttendanceController extends GetxController with WidgetsBindingObserver {
     final hm =
         '${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}';
     final t = today.value;
-    final date = t?.date ?? now.toIso8601String().split('T').first;
+    if (t == null) return;
 
     if (type == 'in') {
-      today.value = AttendanceToday(
-        date: date,
+      today.value = t.copyWith(
         nextAction: 'out',
         clockIn: hm,
-        clockOut: t?.clockOut,
-        status: 'present',
-        workMinutes: t?.workMinutes ?? 0,
+        clockInAt: now.toIso8601String(),
+        workMode: workMode.value,
+        pendingSync: true,
       );
     } else {
-      today.value = AttendanceToday(
-        date: date,
+      today.value = t.copyWith(
         nextAction: 'done',
-        clockIn: t?.clockIn,
         clockOut: hm,
-        status: t?.status,
-        workMinutes: t?.workMinutes ?? 0,
+        pendingSync: true,
       );
     }
   }

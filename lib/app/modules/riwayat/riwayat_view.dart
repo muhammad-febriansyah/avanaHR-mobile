@@ -205,47 +205,50 @@ class RiwayatView extends GetView<RiwayatController> {
         ),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            width: 42.w,
-            height: 42.w,
-            decoration: BoxDecoration(
-              color: color.withValues(alpha: 0.12),
-              borderRadius: BorderRadius.circular(12.r),
+          children: [
+            Container(
+              width: 42.w,
+              height: 42.w,
+              decoration: BoxDecoration(
+                color: color.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(12.r),
+              ),
+              child: Icon(icon, size: 20.sp, color: color),
             ),
-            child: Icon(icon, size: 20.sp, color: color),
-          ),
-          SizedBox(width: 12.w),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  item.title,
-                  style: TextStyle(
-                    fontSize: 13.5.sp,
-                    fontWeight: FontWeight.w700,
-                    color: AppColors.navy,
-                  ),
-                ),
-                SizedBox(height: 2.h),
-                Text(
-                  item.subtitle,
-                  style: TextStyle(fontSize: 12.sp, color: AppColors.textMuted),
-                ),
-                if (item.occurredAt != null) ...[
-                  SizedBox(height: 4.h),
+            SizedBox(width: 12.w),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
                   Text(
-                    formatTanggalJam(item.occurredAt),
+                    item.title,
                     style: TextStyle(
-                      fontSize: 10.5.sp,
+                      fontSize: 13.5.sp,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.navy,
+                    ),
+                  ),
+                  SizedBox(height: 2.h),
+                  Text(
+                    item.subtitle,
+                    style: TextStyle(
+                      fontSize: 12.sp,
                       color: AppColors.textMuted,
                     ),
                   ),
+                  if (item.occurredAt != null) ...[
+                    SizedBox(height: 4.h),
+                    Text(
+                      formatTanggalJam(item.occurredAt),
+                      style: TextStyle(
+                        fontSize: 10.5.sp,
+                        color: AppColors.textMuted,
+                      ),
+                    ),
+                  ],
                 ],
-              ],
+              ),
             ),
-          ),
             if (item.status != null && item.status!.isNotEmpty) ...[
               SizedBox(width: 8.w),
               _statusChip(item.status!),
@@ -403,8 +406,7 @@ class RiwayatView extends GetView<RiwayatController> {
               ),
               children: [
                 TileLayer(
-                  urlTemplate:
-                      'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                  urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
                   userAgentPackageName: 'com.avanahr.avanahr',
                 ),
                 MarkerLayer(
@@ -552,6 +554,16 @@ class RiwayatView extends GetView<RiwayatController> {
 
   String _statusLabel(String status) {
     final s = status.toLowerCase();
+    const attendanceLabels = {
+      'present': 'Hadir',
+      'late': 'Terlambat',
+      'absent': 'Tidak Hadir',
+      'incomplete': 'Belum Lengkap',
+      'leave': 'Cuti',
+    };
+    if (attendanceLabels.containsKey(s)) {
+      return attendanceLabels[s]!;
+    }
     if (s.contains('approve') || s.contains('setuju')) {
       return 'Disetujui';
     }

@@ -39,6 +39,7 @@ class MenuTile {
 
 class AppUser {
   final int id;
+  final int? tenantId;
   final String name;
   final String email;
   final List<String> roles;
@@ -78,6 +79,7 @@ class AppUser {
     this.tenantBrandName,
     this.tenantLogoUrl,
     this.tenantAccentHex,
+    this.tenantId,
   });
 
   /// Manager Self-Service access is driven by the employee record's
@@ -90,6 +92,7 @@ class AppUser {
 
     return AppUser(
       id: json['id'],
+      tenantId: tenant is Map ? (tenant['id'] as num?)?.toInt() : null,
       name: json['name'] ?? '',
       email: json['email'] ?? '',
       roles: (json['roles'] as List?)?.map((e) => e.toString()).toList() ?? [],

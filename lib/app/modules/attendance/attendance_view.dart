@@ -8,6 +8,7 @@ import 'package:latlong2/latlong.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/widgets/app_page.dart';
 import '../../data/services/attendance_queue_service.dart';
+import '../../routes/app_pages.dart';
 import 'attendance_controller.dart';
 
 class AttendanceView extends GetView<AttendanceController> {
@@ -30,31 +31,55 @@ class AttendanceView extends GetView<AttendanceController> {
     );
   }
 
-  /// A slim amber bar shown while queued clock actions await sync.
+  /// Shows queued actions and server rejections that need a correction request.
   Widget _pendingBanner() {
     final queue = Get.find<AttendanceQueueService>();
     return Obx(() {
-      if (queue.pendingCount.value == 0) return const SizedBox.shrink();
-      return Container(
-        width: double.infinity,
-        margin: EdgeInsets.only(top: 12.h),
-        color: const Color(0xFFFEF3C7),
-        padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 8.h),
-        child: Row(
-          children: [
-            Icon(Iconsax.clock, size: 15.sp, color: const Color(0xFFB45309)),
-            SizedBox(width: 8.w),
-            Expanded(
-              child: Text(
-                '${queue.pendingCount.value} absen menunggu sinkron — terkirim otomatis saat online',
-                style: TextStyle(
-                  fontSize: 11.5.sp,
-                  color: const Color(0xFFB45309),
-                  fontWeight: FontWeight.w600,
+      final failed = queue.failedCount.value;
+      final pending = queue.pendingCount.value;
+      if (failed == 0 && pending == 0) return const SizedBox.shrink();
+      final color = failed > 0
+          ? AppColors.destructive
+          : const Color(0xFFB45309);
+      final background = failed > 0
+          ? const Color(0xFFFEE2E2)
+          : const Color(0xFFFEF3C7);
+      final message = failed > 0
+          ? queue.lastFailure.value ??
+                '$failed absensi ditolak. Ajukan koreksi absensi.'
+          : '$pending absen menunggu sinkron dan akan terkirim saat online';
+
+      return Material(
+        color: background,
+        child: InkWell(
+          onTap: failed > 0
+              ? () => Get.toNamed(Routes.ATTENDANCE_CORRECTION)
+              : null,
+          child: Padding(
+            padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 9.h),
+            child: Row(
+              children: [
+                Icon(
+                  failed > 0 ? Iconsax.warning_2 : Iconsax.clock,
+                  size: 15.sp,
+                  color: color,
                 ),
-              ),
+                SizedBox(width: 8.w),
+                Expanded(
+                  child: Text(
+                    message,
+                    style: TextStyle(
+                      fontSize: 11.5.sp,
+                      color: color,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+                if (failed > 0)
+                  Icon(Iconsax.arrow_right_3, size: 15.sp, color: color),
+              ],
             ),
-          ],
+          ),
         ),
       );
     });
@@ -209,7 +234,9 @@ class AttendanceView extends GetView<AttendanceController> {
       final isIn = controller.today.value?.canClockIn ?? true;
       final done = controller.isDoneToday;
       final busy = controller.isClocking.value;
-      final blocked = !done && !controller.canClockByLocation;
+      final unavailable =
+          controller.today.value == null || controller.loadFailed.value;
+      final blocked = !unavailable && !done && !controller.canClockByLocation;
       // Still resolving is not the same as being outside the fence — saying so
       // reads as a refusal on a screen that is merely waiting.
       final locating = controller.geoState.value == GeoState.loading;
@@ -217,7 +244,9 @@ class AttendanceView extends GetView<AttendanceController> {
         width: double.infinity,
         height: 54.h,
         child: ElevatedButton.icon(
-          onPressed: busy || blocked || done ? null : controller.clock,
+          onPressed: busy || unavailable || blocked || done
+              ? null
+              : controller.clock,
           style: ElevatedButton.styleFrom(
             backgroundColor: isIn ? AppColors.primary : AppColors.destructive,
             disabledBackgroundColor: AppColors.textMuted.withValues(alpha: 0.3),
@@ -247,6 +276,8 @@ class AttendanceView extends GetView<AttendanceController> {
           label: Text(
             busy
                 ? 'Memproses…'
+                : unavailable
+                ? 'Status absensi gagal dimuat - tarik untuk mencoba lagi'
                 : done
                 ? 'Absensi hari ini selesai'
                 : locating
@@ -474,16 +505,26 @@ class AttendanceView extends GetView<AttendanceController> {
   }
 
   Widget _statusChip(String status) {
+    final normalized = status.toLowerCase();
+    final (label, color) = switch (normalized) {
+      'present' => ('Hadir', AppColors.success),
+      'late' => ('Terlambat', AppColors.warning),
+      'absent' => ('Tidak Hadir', AppColors.destructive),
+      'incomplete' => ('Belum Lengkap', AppColors.warning),
+      'leave' => ('Cuti', AppColors.primary),
+      _ => (status, AppColors.textMuted),
+    };
+
     return Container(
       padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 4.h),
       decoration: BoxDecoration(
-        color: AppColors.primaryLight,
+        color: color.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(999),
       ),
       child: Text(
-        status,
+        label,
         style: TextStyle(
-          color: AppColors.primary,
+          color: color,
           fontSize: 10.5.sp,
           fontWeight: FontWeight.w700,
         ),

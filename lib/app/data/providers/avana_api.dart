@@ -426,8 +426,19 @@ class AvanaApi {
   }
 
   // ---- Activity feed (Riwayat) ----
-  Future<List<ActivityItem>> activities() async {
-    final res = await _dio.get('/me/activities');
+  Future<List<ActivityItem>> activities({DateTime? from, DateTime? to}) async {
+    String formatDate(DateTime value) =>
+        '${value.year.toString().padLeft(4, '0')}-'
+        '${value.month.toString().padLeft(2, '0')}-'
+        '${value.day.toString().padLeft(2, '0')}';
+
+    final res = await _dio.get(
+      '/me/activities',
+      queryParameters: {
+        if (from != null) 'from': formatDate(from),
+        if (to != null) 'to': formatDate(to),
+      },
+    );
     final list = (res.data['data'] as List?) ?? [];
 
     return list

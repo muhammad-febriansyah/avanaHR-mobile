@@ -5,6 +5,7 @@ import '../../core/widgets/app_toast.dart';
 import '../../data/models/ess_models.dart';
 import '../../data/providers/api_client.dart';
 import '../../data/providers/avana_api.dart';
+import '../../data/services/attendance_queue_service.dart';
 
 class AttendanceCorrectionController extends GetxController {
   final AvanaApi _api = AvanaApi();
@@ -45,6 +46,9 @@ class AttendanceCorrectionController extends GetxController {
       );
       submitting.value = false;
       if (res.statusCode == 201) {
+        if (Get.isRegistered<AttendanceQueueService>()) {
+          Get.find<AttendanceQueueService>().resolveFailedForDate(date);
+        }
         AppToast.success('Pengajuan koreksi absen terkirim');
         await load();
         return true;
@@ -53,7 +57,9 @@ class AttendanceCorrectionController extends GetxController {
       return false;
     } on DioException catch (e) {
       submitting.value = false;
-      AppToast.error(ApiClient.messageFrom(e.response, 'Gagal terhubung ke server.'));
+      AppToast.error(
+        ApiClient.messageFrom(e.response, 'Gagal terhubung ke server.'),
+      );
       return false;
     }
   }

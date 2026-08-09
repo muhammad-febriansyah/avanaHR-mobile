@@ -270,9 +270,7 @@ class HomeTab extends GetView<HomeController> {
                       // page one rather than a page that no longer exists.
                       return _MenuCarousel(
                         actions,
-                        key: ValueKey(
-                          actions.map((a) => a.label).join('|'),
-                        ),
+                        key: ValueKey(actions.map((a) => a.label).join('|')),
                       );
                     }),
                   ),
@@ -280,9 +278,8 @@ class HomeTab extends GetView<HomeController> {
                   // ── Announcements ──
                   _sectionHeader(
                     'Pengumuman Terbaru',
-                    onTap: () => Get.find<MainController>().changeTabByKey(
-                      'pengumuman',
-                    ),
+                    onTap: () =>
+                        Get.find<MainController>().changeTabByKey('pengumuman'),
                   ),
                   SizedBox(height: 14.h),
                   _announcements(),
@@ -579,13 +576,11 @@ class HomeTab extends GetView<HomeController> {
       final present = s?.presentDays ?? 0;
       final absent = s?.absentDays ?? 0;
       final late = s?.lateDays ?? 0;
-      // Late days still count as present, so split "present" into on-time + late
-      // for a truthful part-to-whole (on-time + late + absent = work days).
-      final onTime = (present - late).clamp(0, present);
-      final total = present + absent;
+      final incomplete = s?.incompleteDays ?? 0;
+      final total = present + late + absent + incomplete;
       final centerText = total == 0
           ? '—'
-          : '${((present / total) * 100).round()}%';
+          : '${(((present + late) / total) * 100).round()}%';
 
       return Container(
         padding: EdgeInsets.fromLTRB(18.w, 18.h, 20.w, 18.h),
@@ -600,9 +595,10 @@ class HomeTab extends GetView<HomeController> {
               height: 116.w,
               child: _AttendanceDonut(
                 segments: [
-                  (onTime.toDouble(), AppColors.success),
+                  (present.toDouble(), AppColors.success),
                   (late.toDouble(), AppColors.warning),
                   (absent.toDouble(), AppColors.destructive),
+                  (incomplete.toDouble(), AppColors.textMuted),
                 ],
                 centerText: centerText,
                 centerLabel: 'Hadir',
@@ -613,11 +609,13 @@ class HomeTab extends GetView<HomeController> {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  _legendRow(AppColors.success, 'Tepat Waktu', onTime),
+                  _legendRow(AppColors.success, 'Tepat Waktu', present),
                   SizedBox(height: 12.h),
                   _legendRow(AppColors.warning, 'Terlambat', late),
                   SizedBox(height: 12.h),
                   _legendRow(AppColors.destructive, 'Absen', absent),
+                  SizedBox(height: 12.h),
+                  _legendRow(AppColors.textMuted, 'Belum Lengkap', incomplete),
                 ],
               ),
             ),
@@ -886,24 +884,26 @@ class HomeTab extends GetView<HomeController> {
 
   /// Iconsax icon for the name the server stores, falling back to a neutral
   /// glyph so a tile added after this build still renders.
-  static IconData _iconFor(String name) => const {
-    'category': Iconsax.category,
-    'sun_1': Iconsax.sun_1,
-    'calendar_remove': Iconsax.calendar_remove,
-    'timer_1': Iconsax.timer_1,
-    'house': Iconsax.house,
-    'calendar_1': Iconsax.calendar_1,
-    'clock': Iconsax.clock,
-    'arrow_swap_horizontal': Iconsax.arrow_swap_horizontal,
-    'receipt_2': Iconsax.receipt_2,
-    'wallet_money': Iconsax.wallet_money,
-    'wallet_add': Iconsax.wallet_add,
-    'receipt_2_1': Iconsax.receipt_2_1,
-    'location': Iconsax.location,
-    'document_text': Iconsax.document_text,
-    'emoji_happy': Iconsax.emoji_happy,
-    'flash_1': Iconsax.flash_1,
-  }[name] ?? Iconsax.element_3;
+  static IconData _iconFor(String name) =>
+      const {
+        'category': Iconsax.category,
+        'sun_1': Iconsax.sun_1,
+        'calendar_remove': Iconsax.calendar_remove,
+        'timer_1': Iconsax.timer_1,
+        'house': Iconsax.house,
+        'calendar_1': Iconsax.calendar_1,
+        'clock': Iconsax.clock,
+        'arrow_swap_horizontal': Iconsax.arrow_swap_horizontal,
+        'receipt_2': Iconsax.receipt_2,
+        'wallet_money': Iconsax.wallet_money,
+        'wallet_add': Iconsax.wallet_add,
+        'receipt_2_1': Iconsax.receipt_2_1,
+        'location': Iconsax.location,
+        'document_text': Iconsax.document_text,
+        'emoji_happy': Iconsax.emoji_happy,
+        'flash_1': Iconsax.flash_1,
+      }[name] ??
+      Iconsax.element_3;
 
   /// `#RRGGBB` to a Color, falling back to the brand blue on anything odd.
   static Color _colorFor(String hex) {
@@ -1436,26 +1436,26 @@ class _BirthdayBanner extends StatelessWidget {
               padding: EdgeInsets.fromLTRB(16.w, 15.h, 16.w, 15.h),
               child: Row(
                 children: [
-                SizedBox(
-                  // Each extra face peeks out by 22 of its 44 logical pixels.
-                  width: (44 + (faces.length - 1) * 22).w,
-                  height: 44.w,
-                  child: Stack(
-                    clipBehavior: Clip.none,
-                    children: [
-                      for (var i = faces.length - 1; i >= 0; i--)
-                        Positioned(
-                          left: (i * 22).w,
-                          child: _BirthdayAvatar(
-                            faces[i],
-                            // Only the front face carries the cake, otherwise
-                            // the badges collide with the face behind them.
-                            showCake: i == 0,
+                  SizedBox(
+                    // Each extra face peeks out by 22 of its 44 logical pixels.
+                    width: (44 + (faces.length - 1) * 22).w,
+                    height: 44.w,
+                    child: Stack(
+                      clipBehavior: Clip.none,
+                      children: [
+                        for (var i = faces.length - 1; i >= 0; i--)
+                          Positioned(
+                            left: (i * 22).w,
+                            child: _BirthdayAvatar(
+                              faces[i],
+                              // Only the front face carries the cake, otherwise
+                              // the badges collide with the face behind them.
+                              showCake: i == 0,
+                            ),
                           ),
-                        ),
-                    ],
+                      ],
+                    ),
                   ),
-                ),
                   SizedBox(width: 14.w),
                   Expanded(
                     child: Column(
@@ -1634,7 +1634,9 @@ class _BirthdaySheetState extends State<_BirthdaySheet> {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
-                                person.isMe ? '${person.name} (Anda)' : person.name,
+                                person.isMe
+                                    ? '${person.name} (Anda)'
+                                    : person.name,
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
                                 style: TextStyle(
@@ -1768,7 +1770,8 @@ class _ConfettiPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     for (final (fx, fy, turn, colorIndex) in _pieces) {
-      final paint = Paint()..color = _colors[colorIndex].withValues(alpha: 0.22);
+      final paint = Paint()
+        ..color = _colors[colorIndex].withValues(alpha: 0.22);
       canvas.save();
       canvas.translate(fx * size.width, fy * size.height);
       canvas.rotate(turn * 2 * math.pi);

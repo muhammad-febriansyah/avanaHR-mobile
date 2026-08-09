@@ -52,9 +52,9 @@ Future<void> main() async {
   Get.put(ApiClient(), permanent: true);
   Get.put(ConnectivityService(), permanent: true);
   Get.put(DeviceService(), permanent: true);
-  Get.put(AttendanceQueueService(), permanent: true);
   Get.put(FaceEmbedderService(), permanent: true);
   Get.put(AuthService(), permanent: true);
+  Get.put(AttendanceQueueService(), permanent: true);
   Get.put(ConfigService(), permanent: true);
   // Warm branding in the background so any entry point (deep link too) has it.
   Get.find<ConfigService>().load();

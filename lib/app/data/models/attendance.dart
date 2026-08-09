@@ -1,5 +1,6 @@
 class AttendanceToday {
   final String date;
+  final String? workDate;
   final String? clockIn;
   final String? clockOut;
 
@@ -40,9 +41,13 @@ class AttendanceToday {
   final String timezone;
   final String timezoneLabel;
 
+  /// True while one or more punches only exist in the device queue.
+  final bool pendingSync;
+
   AttendanceToday({
     required this.date,
     required this.nextAction,
+    this.workDate,
     this.clockIn,
     this.clockOut,
     this.clockInAt,
@@ -56,6 +61,7 @@ class AttendanceToday {
     this.requiresFaceEnrollment = false,
     this.timezone = 'Asia/Jakarta',
     this.timezoneLabel = 'WIB',
+    this.pendingSync = false,
   });
 
   /// Indonesia keeps no daylight saving, so each zone is a fixed offset and
@@ -91,6 +97,7 @@ class AttendanceToday {
     final summary = json['summary'];
     return AttendanceToday(
       date: json['date'] ?? '',
+      workDate: json['work_date']?.toString(),
       clockIn: json['clock_in'],
       clockOut: json['clock_out'],
       clockInAt: json['clock_in_at'],
@@ -108,4 +115,35 @@ class AttendanceToday {
       timezoneLabel: (requirements['timezone_label'] as String?) ?? 'WIB',
     );
   }
+
+  AttendanceToday copyWith({
+    String? date,
+    String? workDate,
+    String? clockIn,
+    String? clockOut,
+    String? clockInAt,
+    String? nextAction,
+    String? status,
+    int? workMinutes,
+    String? workMode,
+    bool? pendingSync,
+  }) => AttendanceToday(
+    date: date ?? this.date,
+    workDate: workDate ?? this.workDate,
+    clockIn: clockIn ?? this.clockIn,
+    clockOut: clockOut ?? this.clockOut,
+    clockInAt: clockInAt ?? this.clockInAt,
+    nextAction: nextAction ?? this.nextAction,
+    status: status ?? this.status,
+    workMinutes: workMinutes ?? this.workMinutes,
+    workMode: workMode ?? this.workMode,
+    wfhApprovedToday: wfhApprovedToday,
+    faceMode: faceMode,
+    deviceBindingEnabled: deviceBindingEnabled,
+    requiresLivenessChallenge: requiresLivenessChallenge,
+    requiresFaceEnrollment: requiresFaceEnrollment,
+    timezone: timezone,
+    timezoneLabel: timezoneLabel,
+    pendingSync: pendingSync ?? this.pendingSync,
+  );
 }
