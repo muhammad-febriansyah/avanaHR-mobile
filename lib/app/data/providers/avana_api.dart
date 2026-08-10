@@ -452,6 +452,13 @@ class AvanaApi {
   Future<Response> enrollFace(List<double> embedding) =>
       _dio.post('/me/face/enroll', data: {'embedding': embedding});
 
+  /// Ship a batch of face-scan diagnostics so a failure that only happens on
+  /// certain devices is visible server-side instead of only on the phone.
+  Future<Response> logFaceScans({
+    required List<Map<String, dynamic>> events,
+    required Map<String, dynamic> device,
+  }) => _dio.post('/me/face/log', data: {'events': events, 'device': device});
+
   Future<Response> submitLeave({
     required int leaveTypeId,
     required String startDate,

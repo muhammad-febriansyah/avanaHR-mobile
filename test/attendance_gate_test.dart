@@ -110,6 +110,45 @@ void main() {
       expect(today.wfhApprovedToday, isTrue);
     });
 
+    test('reads whether a failed face blocks the punch or only flags it', () {
+      final flagging = AttendanceToday.fromJson(
+        {'date': '2026-07-31', 'next_action': 'in'},
+        requirements: {'face_enforcement': 'flag'},
+      );
+
+      // Under "flag" the server records the punch and marks it for review, so
+      // the app must not refuse one the tenant's own policy accepts.
+      expect(flagging.faceEnforcement, 'flag');
+      expect(flagging.blocksOnFaceFailure, isFalse);
+
+      final blocking = AttendanceToday.fromJson(
+        {'date': '2026-07-31', 'next_action': 'in'},
+        requirements: {'face_enforcement': 'block'},
+      );
+
+      expect(blocking.blocksOnFaceFailure, isTrue);
+    });
+
+    test('blocks on face failure when the server names no enforcement', () {
+      final today = AttendanceToday.fromJson({
+        'date': '2026-07-31',
+        'next_action': 'in',
+      });
+
+      // An older server, or a dropped field, must never be read as permission
+      // to skip the face check.
+      expect(today.blocksOnFaceFailure, isTrue);
+    });
+
+    test('optimistic updates keep the enforcement the tenant set', () {
+      final today = AttendanceToday.fromJson(
+        {'date': '2026-07-31', 'next_action': 'in'},
+        requirements: {'face_enforcement': 'flag'},
+      );
+
+      expect(today.copyWith(nextAction: 'out').blocksOnFaceFailure, isFalse);
+    });
+
     test('leaves the optional gates off when the tenant has not asked', () {
       final today = AttendanceToday.fromJson(
         {'date': '2026-07-31', 'next_action': 'in'},

@@ -12,6 +12,7 @@ import '../../data/providers/api_client.dart';
 import '../../data/providers/avana_api.dart';
 import '../../data/services/face_detector_service.dart';
 import '../../data/services/face_embedder_service.dart';
+import '../../data/services/face_scan_log_service.dart';
 
 /// Face enrollment with a two-step active-liveness challenge: capture a neutral
 /// face, then a smiling one. The front camera runs continuously and a scan loop
@@ -22,6 +23,7 @@ class FaceEnrollController extends GetxController {
   final AvanaApi _api = AvanaApi();
   final FaceDetectorService _detector = FaceDetectorService();
   final FaceEmbedderService _embedder = Get.find<FaceEmbedderService>();
+  final FaceScanLogService _scanLog = Get.find<FaceScanLogService>();
 
   CameraController? camera;
 
@@ -76,6 +78,7 @@ class FaceEnrollController extends GetxController {
       final cams = await availableCameras();
       if (cams.isEmpty) {
         hint.value = 'Kamera tidak tersedia di perangkat ini.';
+        _log('blocked', 'camera_unavailable', hint.value);
         return;
       }
       final front = cams.firstWhere(
@@ -106,9 +109,29 @@ class FaceEnrollController extends GetxController {
       isReady.value = true;
       hint.value = 'Hadap kamera dengan wajah netral';
       _startScan();
-    } catch (_) {
+    } catch (e) {
       hint.value = 'Gagal membuka kamera. Beri izin kamera lalu coba lagi.';
+      _log('blocked', 'camera_error', hint.value, {'error': e.toString()});
     }
+  }
+
+  /// Queue one scan attempt for the server-side face log.
+  void _log(
+    String outcome,
+    String reason,
+    String? message, [
+    Map<String, dynamic>? metrics,
+  ]) {
+    _scanLog.record(
+      FaceScanEvent(
+        context: 'enroll',
+        outcome: outcome,
+        reason: reason,
+        step: step.value,
+        message: message,
+        metrics: {...?metrics, 'fail_streak': _failStreak},
+      ),
+    );
   }
 
   void _startScan() {
@@ -143,22 +166,55 @@ class FaceEnrollController extends GetxController {
       final faces = await _detector.detectFile(shot.path);
       debugPrint('[FaceEnroll] step=${step.value} faces=${faces.length}');
 
-      if (faces.length != 1) {
-        _fail('Pastikan hanya wajah Anda yang terlihat');
+      if (faces.isEmpty || faces.length > 1) {
+        // Read the frame size even with no face: a capture whose dimensions
+        // don't match what the preview shows is itself the diagnosis.
+        await _detector.measureFrame(shot.path);
+        final size = _detector.frameSize;
+        _fail(
+          faces.isEmpty
+              ? 'Wajah tidak terdeteksi — dekatkan wajah'
+              : 'Pastikan hanya wajah Anda yang terlihat',
+        );
+        _log('fail', faces.isEmpty ? 'no_face' : 'multi_face', hint.value, {
+          'faces': faces.length,
+          'detector': _detector.lastDetector,
+          if (size != null) 'frame_width': size.$1,
+          if (size != null) 'frame_height': size.$2,
+          if (_detector.frameDecodeFailed) 'error': 'frame_decode_failed',
+        });
         return;
       }
       final face = faces.first;
-      if (!_detector.isFrontalOpenEyes(face)) {
+      // Learn the frame size before reading metrics, so the logged ratios are
+      // populated even on the branches that return before the centering check.
+      await _detector.measureFrame(shot.path);
+      final metrics = {'faces': faces.length, ..._detector.metricsOf(face)};
+
+      if (!_detector.isCloseEnough(face)) {
+        _fail('Wajah terlalu jauh — dekatkan ke kamera');
+        _log('fail', 'too_far', hint.value, metrics);
+        return;
+      }
+
+      final rejection = _detector.rejectionOf(face);
+      if (rejection != null) {
         debugPrint(
-          '[FaceEnroll] not frontal/open — yaw=${face.headEulerAngleY} '
-          'roll=${face.headEulerAngleZ} leftEye=${face.leftEyeOpenProbability} '
+          '[FaceEnroll] not frontal/open ($rejection) — '
+          'yaw=${face.headEulerAngleY} roll=${face.headEulerAngleZ} '
+          'leftEye=${face.leftEyeOpenProbability} '
           'rightEye=${face.rightEyeOpenProbability}',
         );
-        _fail('Dekatkan & hadapkan wajah lurus, buka mata');
+        _fail(_detector.hintForRejection(rejection));
+        _log('fail', 'not_frontal', hint.value, {
+          ...metrics,
+          'error': rejection,
+        });
         return;
       }
       if (!await _detector.isCentered(face, shot.path)) {
         _fail('Posisikan wajah di tengah bingkai');
+        _log('fail', 'not_centered', hint.value, metrics);
         return;
       }
 
@@ -166,10 +222,12 @@ class FaceEnrollController extends GetxController {
       debugPrint('[FaceEnroll] smiling=$smiling');
       if (step.value == 0 && smiling > 0.5) {
         _fail('Wajah netral dulu (jangan senyum)');
+        _log('fail', 'expression_neutral', hint.value, metrics);
         return;
       }
       if (step.value == 1 && smiling < 0.5) {
         _fail('Sekarang senyum 😊');
+        _log('fail', 'expression_smile', hint.value, metrics);
         return;
       }
 
@@ -193,11 +251,16 @@ class FaceEnrollController extends GetxController {
         isBusy.value = false;
         faceOk.value = false;
         hint.value = 'Model wajah tidak tersedia. Hubungi admin.';
+        _log('blocked', 'embed_failed', hint.value, metrics);
         return;
       }
       debugPrint(
         '[FaceEnroll] captured step=${step.value} len=${embedding.length}',
       );
+      _log('ok', 'captured', null, {
+        ...metrics,
+        'embedding_dimensions': embedding.length,
+      });
       _captures.add(embedding);
       _lastShotPath = shot.path;
 
@@ -215,6 +278,7 @@ class FaceEnrollController extends GetxController {
       debugPrint('[FaceEnroll] scan error: $e\n$st');
       faceOk.value = false;
       hint.value = 'Menyesuaikan kamera…';
+      _log('fail', 'scan_error', hint.value, {'error': e.toString()});
     } finally {
       _scanning = false;
     }
@@ -233,11 +297,15 @@ class FaceEnrollController extends GetxController {
         // can clock in immediately without a second face scan.
         Get.back(result: {'embedding': template, 'photo': _lastShotPath});
       } else {
-        AppToast.error(ApiClient.messageFrom(res, 'Gagal mendaftar wajah.'));
+        final message = ApiClient.messageFrom(res, 'Gagal mendaftar wajah.');
+        AppToast.error(message);
+        _log('blocked', 'enroll_failed', message, {'error': 'HTTP $code'});
         _resetAndResume();
       }
     } on DioException catch (e) {
-      AppToast.error(ApiClient.errorMessage(e));
+      final message = ApiClient.errorMessage(e);
+      AppToast.error(message);
+      _log('blocked', 'enroll_failed', message, {'error': e.type.name});
       _resetAndResume();
     }
   }
@@ -263,6 +331,9 @@ class FaceEnrollController extends GetxController {
   @override
   void onClose() {
     _scanTimer?.cancel();
+    // Send whatever the session recorded — a user who gives up and backs out is
+    // exactly the case the log exists for.
+    _scanLog.flush();
     camera?.dispose();
     _detector.dispose();
     super.onClose();

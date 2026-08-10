@@ -75,6 +75,24 @@ class AttendanceController extends GetxController with WidgetsBindingObserver {
   /// slow fix out loud rather than look stuck.
   final locatingSeconds = 0.obs;
 
+  /// The reported margin of error on the current fix, in metres.
+  ///
+  /// A geofence of a hundred metres cannot be judged by a fix that is itself
+  /// accurate to three thousand: the employee is then told they are kilometres
+  /// from an office they are standing in. Kept so the screen can say so.
+  final fixAccuracyMeters = 0.0.obs;
+
+  /// iOS 14+ only: the employee granted "Approximate Location" and declined to
+  /// upgrade. Every fix from here on can be kilometres off, by design.
+  final isReducedAccuracy = false.obs;
+
+  /// Matches the key inside `NSLocationTemporaryUsageDescriptionDictionary`
+  /// in ios/Runner/Info.plist. iOS refuses the upgrade prompt without it.
+  static const _preciseLocationPurposeKey = 'AbsensiPresisi';
+
+  /// Whether the one-per-run precision prompt has already been shown.
+  bool _askedForPreciseLocation = false;
+
   /// The server's own rule, mirrored — see `AttendanceController::geofenceCheck`.
   ///
   /// Every punch needs a fix, WFA and WFH included: the server refuses a clock
@@ -90,6 +108,35 @@ class AttendanceController extends GetxController with WidgetsBindingObserver {
     return effectiveWorkMode == 'home' ||
         geoState.value == GeoState.anywhere ||
         geoState.value == GeoState.inside;
+  }
+
+  /// Whether the current fix is too coarse to be judged against the office
+  /// radius — either iOS is deliberately blurring it, or the reported margin of
+  /// error is larger than the geofence itself.
+  bool get isCoarseFix {
+    if (isReducedAccuracy.value) return true;
+
+    final radius = nearest.value?.radius ?? 0;
+
+    return radius > 0 && fixAccuracyMeters.value > radius;
+  }
+
+  /// What to do about a fix too coarse to trust. Same diagnosis on both
+  /// platforms; only the settings path differs.
+  String get coarseFixAdvice {
+    final margin = '±${fixAccuracyMeters.value.round()} m';
+
+    if (isReducedAccuracy.value) {
+      return Platform.isIOS
+          ? 'Lokasi masih mode perkiraan ($margin). Buka Pengaturan → Privasi '
+                '& Keamanan → Layanan Lokasi → AvanaHR, lalu aktifkan '
+                '"Lokasi Tepat".'
+          : 'Lokasi masih mode perkiraan ($margin). Buka Pengaturan → Aplikasi '
+                '→ AvanaHR → Izin → Lokasi, lalu pilih "Gunakan lokasi persis".';
+    }
+
+    return 'Akurasi lokasi masih $margin, lebih besar dari radius kantor. '
+        'Cari tempat yang lebih terbuka lalu coba lagi.';
   }
 
   /// Why the clock is shut, in the words the employee can act on. Mirrors the
@@ -108,9 +155,14 @@ class AttendanceController extends GetxController with WidgetsBindingObserver {
         return 'Lokasi kerja belum diatur admin. Hubungi HR.';
       case GeoState.outside:
         final office = nearest.value?.name ?? 'kantor';
-
-        return 'Di luar radius $office (${distanceMeters.value.round()} m). '
+        final base =
+            'Di luar radius $office (${distanceMeters.value.round()} m). '
             'Mendekat ke lokasi untuk absen.';
+
+        // A coarse fix is the likelier explanation than an employee who has
+        // wandered kilometres off, so say which one the phone is reporting
+        // instead of leaving them arguing with the distance.
+        return isCoarseFix ? '$base\n$coarseFixAdvice' : base;
       default:
         return 'Lokasi belum terbaca. Periksa GPS lalu coba lagi.';
     }
@@ -314,6 +366,7 @@ class AttendanceController extends GetxController with WidgetsBindingObserver {
   ) {
     userLat.value = pos.latitude;
     userLng.value = pos.longitude;
+    fixAccuracyMeters.value = pos.accuracy;
 
     if (offices.isEmpty) {
       if (!isAnywhere) {
@@ -359,10 +412,52 @@ class AttendanceController extends GetxController with WidgetsBindingObserver {
       permission = await Geolocator.requestPermission().timeout(_prompt);
     }
 
-    return permission == LocationPermission.denied ||
-            permission == LocationPermission.deniedForever
-        ? GeoState.denied
-        : null;
+    if (permission == LocationPermission.denied ||
+        permission == LocationPermission.deniedForever) {
+      return GeoState.denied;
+    }
+
+    await _ensurePreciseLocation();
+
+    return null;
+  }
+
+  /// Establish whether the platform is giving precise coordinates, and on iOS
+  /// ask for them when it is not.
+  ///
+  /// Granting location does not mean granting a usable location. iOS 14+ offers
+  /// "Approximate Location" and Android 12+ offers the same choice by granting
+  /// only `ACCESS_COARSE_LOCATION`; either way the coordinates that follow are
+  /// deliberately blurred by kilometres. Against a hundred-metre geofence that
+  /// reads exactly like standing far from an office one is sitting inside — a
+  /// permission problem wearing a GPS problem's clothes.
+  ///
+  /// The detection is identical on both platforms; only the remedy differs.
+  /// iOS can raise precision for the session on request, so it is asked;
+  /// Android has no such prompt, and the employee is pointed at the permission
+  /// screen instead (see [coarseFixAdvice]). Best-effort throughout: a refusal,
+  /// or a build whose Info.plist lacks the purpose key, only records the fact
+  /// and lets detection continue.
+  Future<void> _ensurePreciseLocation() async {
+    try {
+      var accuracy = await Geolocator.getLocationAccuracy().timeout(_step);
+
+      // Asked at most once per app run. Detection re-runs on every pull, and a
+      // system prompt that reappears each time would be worse than the coarse
+      // fix it is trying to fix; the advice text carries the rest.
+      if (accuracy == LocationAccuracyStatus.reduced &&
+          Platform.isIOS &&
+          !_askedForPreciseLocation) {
+        _askedForPreciseLocation = true;
+        accuracy = await Geolocator.requestTemporaryFullAccuracy(
+          purposeKey: _preciseLocationPurposeKey,
+        ).timeout(_prompt);
+      }
+
+      isReducedAccuracy.value = accuracy == LocationAccuracyStatus.reduced;
+    } catch (e) {
+      debugPrint('[Attendance] precise-location check failed: $e');
+    }
   }
 
   /// The fix the platform already had, if any. Costs nothing to ask.
@@ -388,15 +483,19 @@ class AttendanceController extends GetxController with WidgetsBindingObserver {
   /// The second Android provider goes around Play Services entirely, for the
   /// phones where the fused one never answers at all.
   Future<Position?> _livePosition() async {
+    // Both platforms ask for the same grade of fix. `medium` means "within a
+    // hundred metres" on either one — the same size as a typical office
+    // geofence, so a fix the platform considers good enough is already
+    // borderline for the radius it gets judged against. `high` is GPS-grade on
+    // Android and ten metres on iOS, for the seconds this screen is open.
+    const target = LocationAccuracy.high;
+
     final providers = <LocationSettings>[
       if (Platform.isAndroid) ...[
-        AndroidSettings(accuracy: LocationAccuracy.medium),
-        AndroidSettings(
-          accuracy: LocationAccuracy.medium,
-          forceLocationManager: true,
-        ),
+        AndroidSettings(accuracy: target),
+        AndroidSettings(accuracy: target, forceLocationManager: true),
       ] else
-        const LocationSettings(accuracy: LocationAccuracy.medium),
+        AppleSettings(accuracy: target),
     ];
 
     final first = Completer<Position>();
@@ -518,12 +617,26 @@ class AttendanceController extends GetxController with WidgetsBindingObserver {
       if (requiresFace.value) {
         final result = await Get.toNamed(Routes.FACE_VERIFY);
         if (result is! Map || result['embedding'] is! List) {
-          AppToast.warning('Verifikasi wajah dibatalkan.');
+          // Whether a scan that never completed ends the punch is the tenant's
+          // call, mirrored from `requirements.face_enforcement`. Under "flag"
+          // the server records the punch and marks it for review, so refusing
+          // here would be stricter than the policy the tenant chose — and would
+          // leave an employee whose camera cannot read their face with no way
+          // to clock in at all.
+          if (today.value?.blocksOnFaceFailure ?? true) {
+            AppToast.warning('Verifikasi wajah dibatalkan.');
 
-          return;
+            return;
+          }
+
+          AppToast.info(
+            'Wajah tidak terverifikasi. Absen tetap dicatat dan ditandai '
+            'untuk ditinjau HR.',
+          );
+        } else {
+          faceEmbedding = List<double>.from(result['embedding'] as List);
+          selfiePath = result['photo'] as String?;
         }
-        faceEmbedding = List<double>.from(result['embedding'] as List);
-        selfiePath = result['photo'] as String?;
       } else {
         // Not enrolled yet → explain first so the flow is clear, then register.
         // The just-captured template + frame are reused for this same punch.
@@ -542,11 +655,18 @@ class AttendanceController extends GetxController with WidgetsBindingObserver {
           if (result is! Map || result['embedding'] is! List) {
             AppToast.warning('Pendaftaran wajah dibatalkan.');
 
-            return;
+            // Same rule as backing out of the prompt above: only a tenant that
+            // requires enrolment loses the punch over an enrolment that did not
+            // finish. Without that requirement the server clocks them in and
+            // skips the match, so the app must not refuse on its behalf.
+            if (today.value?.requiresFaceEnrollment ?? true) {
+              return;
+            }
+          } else {
+            markFaceEnrolled();
+            faceEmbedding = List<double>.from(result['embedding'] as List);
+            selfiePath = result['photo'] as String?;
           }
-          markFaceEnrolled();
-          faceEmbedding = List<double>.from(result['embedding'] as List);
-          selfiePath = result['photo'] as String?;
         }
       }
     }

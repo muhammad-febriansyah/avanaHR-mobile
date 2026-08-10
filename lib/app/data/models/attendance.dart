@@ -22,6 +22,11 @@ class AttendanceToday {
   /// only, no match), or 'off' (no face check). From `requirements.face_mode`.
   final String faceMode;
 
+  /// Tenant face enforcement: 'block' refuses a punch whose face was never
+  /// captured or does not match; 'flag' records the punch and marks it for
+  /// review instead. From `requirements.face_enforcement`.
+  final String faceEnforcement;
+
   /// Whether "1 device 1 account" binding is enforced by the tenant.
   final bool deviceBindingEnabled;
 
@@ -56,6 +61,7 @@ class AttendanceToday {
     this.workMode,
     this.wfhApprovedToday = false,
     this.faceMode = 'recognition',
+    this.faceEnforcement = 'block',
     this.deviceBindingEnabled = true,
     this.requiresLivenessChallenge = false,
     this.requiresFaceEnrollment = false,
@@ -84,6 +90,11 @@ class AttendanceToday {
   /// The captured face is identity-matched against the enrolled template.
   bool get usesFaceRecognition => faceMode == 'recognition';
 
+  /// Whether a missing or unmatched face refuses the punch outright. When false
+  /// the tenant only wants it flagged, so the app must not be stricter than the
+  /// server and strand the employee at the camera.
+  bool get blocksOnFaceFailure => faceEnforcement != 'flag';
+
   bool get canClockIn => nextAction == 'in';
 
   /// The server reports 'done' once both clocks are recorded; the button must
@@ -107,6 +118,7 @@ class AttendanceToday {
       workMode: json['work_mode'],
       wfhApprovedToday: requirements['wfh_approved_today'] == true,
       faceMode: (requirements['face_mode'] as String?) ?? 'recognition',
+      faceEnforcement: (requirements['face_enforcement'] as String?) ?? 'block',
       deviceBindingEnabled: requirements['device_binding_enabled'] != false,
       requiresLivenessChallenge:
           requirements['require_liveness_challenge'] == true,
@@ -139,6 +151,7 @@ class AttendanceToday {
     workMode: workMode ?? this.workMode,
     wfhApprovedToday: wfhApprovedToday,
     faceMode: faceMode,
+    faceEnforcement: faceEnforcement,
     deviceBindingEnabled: deviceBindingEnabled,
     requiresLivenessChallenge: requiresLivenessChallenge,
     requiresFaceEnrollment: requiresFaceEnrollment,
