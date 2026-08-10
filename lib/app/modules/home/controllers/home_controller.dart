@@ -288,9 +288,16 @@ class HomeController extends GetxController with WidgetsBindingObserver {
 
   /// Auto-show the mood popup at most once per calendar day, and only when the
   /// employee hasn't checked in yet today.
+  ///
+  /// The prompt waits on a handful of network calls, so it can land long after
+  /// the employee has moved on — including onto the face scanner, where a
+  /// dialog over a live camera hides the very frame they are trying to aim.
+  /// It belongs on the home screen or nowhere: skipped here, the next home
+  /// visit shows it, since the once-a-day marker is only set when it opens.
   void _maybePromptMood() {
     if (moodCheckedIn.value) return;
     if (Get.isDialogOpen ?? false) return;
+    if (Get.currentRoute != Routes.MAIN) return;
     final today = _todayStr();
     if (_storage.moodPromptDate == today) return;
     _storage.setMoodPromptDate(today);

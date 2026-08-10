@@ -1,6 +1,9 @@
 import 'dart:io';
-import 'dart:ui' show Offset;
+import 'dart:math' as math;
+import 'dart:ui' show Offset, Size;
 
+import 'package:camera/camera.dart';
+import 'package:flutter/services.dart' show DeviceOrientation;
 import 'package:google_mlkit_face_detection/google_mlkit_face_detection.dart';
 import 'package:image/image.dart' as img;
 
@@ -65,6 +68,141 @@ class FaceDetectorService {
     lastDetector = fast.isEmpty ? 'none' : 'fast';
 
     return fast;
+  }
+
+  /// Detector for live camera frames.
+  ///
+  /// `fast` here, deliberately: a preview frame arrives many times a second and
+  /// only has to answer "is a usable face in shot right now". The authoritative
+  /// reading — the one an embedding is taken from — still runs through
+  /// [detectFile] on a full still, where accuracy is worth the milliseconds.
+  final FaceDetector _live = FaceDetector(
+    options: FaceDetectorOptions(
+      enableClassification: true,
+      enableLandmarks: true,
+      enableTracking: false,
+      performanceMode: FaceDetectorMode.fast,
+      minFaceSize: 0.15,
+    ),
+  );
+
+  /// Device rotations the camera plugin reports, as degrees.
+  static const Map<DeviceOrientation, int> _orientationDegrees = {
+    DeviceOrientation.portraitUp: 0,
+    DeviceOrientation.landscapeLeft: 90,
+    DeviceOrientation.portraitDown: 180,
+    DeviceOrientation.landscapeRight: 270,
+  };
+
+  /// Detect faces in a live preview frame.
+  ///
+  /// Returns null when the frame's pixel format is not one ML Kit accepts, so
+  /// the caller can fall back rather than treat it as "no face".
+  Future<List<Face>?> detectFrame(
+    CameraImage image, {
+    required CameraDescription camera,
+    required DeviceOrientation deviceOrientation,
+  }) async {
+    final input = _inputFrom(image, camera, deviceOrientation);
+    if (input == null) {
+      return null;
+    }
+
+    lastDetector = 'live';
+
+    return _live.processImage(input);
+  }
+
+  /// Build an ML Kit input from a camera frame, or null when the platform
+  /// handed over a format it cannot read.
+  ///
+  /// The two platforms deliver different things: iOS a single BGRA plane, and
+  /// Android NV21 (which the camera has to be asked for — its default YUV_420
+  /// arrives in three planes ML Kit will not take). Rotation is ours to work
+  /// out as well, from the sensor's mounting angle against the device's current
+  /// orientation, mirrored for the front camera.
+  /// Why the last frame could not be turned into an ML Kit input, or null when
+  /// the last one converted fine. Reported to the scan log so a device that
+  /// silently drops to the shutter fallback says why, instead of only showing
+  /// the white flash the fallback causes.
+  String? lastFrameRejection;
+
+  InputImage? _inputFrom(
+    CameraImage image,
+    CameraDescription camera,
+    DeviceOrientation deviceOrientation,
+  ) {
+    final rotation = _rotationFor(camera, deviceOrientation);
+    if (rotation == null) {
+      lastFrameRejection = 'rotation_unknown:${camera.sensorOrientation}';
+
+      return null;
+    }
+
+    final raw = image.format.raw;
+    final format = raw is int ? InputImageFormatValue.fromRawValue(raw) : null;
+    if (format == null || image.planes.isEmpty) {
+      lastFrameRejection = 'format_unknown:$raw:planes=${image.planes.length}';
+
+      return null;
+    }
+
+    final expected = Platform.isIOS
+        ? InputImageFormat.bgra8888
+        : InputImageFormat.nv21;
+    if (format != expected) {
+      lastFrameRejection = 'format_mismatch:${format.name}';
+
+      return null;
+    }
+
+    lastFrameRejection = null;
+
+    return InputImage.fromBytes(
+      bytes: image.planes.first.bytes,
+      metadata: InputImageMetadata(
+        size: Size(image.width.toDouble(), image.height.toDouble()),
+        rotation: rotation,
+        format: format,
+        bytesPerRow: image.planes.first.bytesPerRow,
+      ),
+    );
+  }
+
+  InputImageRotation? _rotationFor(
+    CameraDescription camera,
+    DeviceOrientation deviceOrientation,
+  ) {
+    if (Platform.isIOS) {
+      return InputImageRotationValue.fromRawValue(camera.sensorOrientation);
+    }
+
+    final compensation = _orientationDegrees[deviceOrientation];
+    if (compensation == null) {
+      return null;
+    }
+
+    final degrees = camera.lensDirection == CameraLensDirection.front
+        ? (camera.sensorOrientation + compensation) % 360
+        : (camera.sensorOrientation - compensation + 360) % 360;
+
+    return InputImageRotationValue.fromRawValue(degrees);
+  }
+
+  /// Whether [f] fills enough of a live frame of [width]×[height] to be worth
+  /// pursuing.
+  ///
+  /// Measured against the frame's shorter side, which is the one the portrait
+  /// preview is bounded by whichever way ML Kit reports the coordinates — the
+  /// still-photo check ([isCloseEnough]) has the exact geometry and rules for
+  /// real; this only keeps the loop from chasing a face across the room.
+  bool isCloseEnoughInFrame(Face f, int width, int height) {
+    final shortSide = math.min(width, height);
+    if (shortSide <= 0) {
+      return true;
+    }
+
+    return f.boundingBox.width / shortSide >= minFaceWidthRatio;
   }
 
   /// Whether [f] fills enough of the frame to be worth embedding. Unknown frame
@@ -238,5 +376,6 @@ class FaceDetectorService {
   void dispose() {
     _fast.close();
     _accurate.close();
+    _live.close();
   }
 }

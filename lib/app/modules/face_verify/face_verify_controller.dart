@@ -78,6 +78,16 @@ class FaceVerifyController extends GetxController {
             : ImageFormatGroup.bgra8888,
       );
       await controller.initialize();
+      // The plugin's default is FlashMode.auto, and an iPhone front camera has
+      // no lamp — it flashes the *screen* white to light the face instead. In a
+      // dim room that fires on every still, which employees read as the app
+      // breaking. Nothing here needs a flash: the scan gates reject a face too
+      // dark to read and ask for better light in words.
+      try {
+        await controller.setFlashMode(FlashMode.off);
+      } catch (_) {
+        // Not fatal — a camera without flash control still scans.
+      }
       // The same lock enrollment applies. Without it the two scanners can hand
       // the embedder differently-oriented frames on the same phone — the
       // template is built from an upright face and the verification crop from a
@@ -119,18 +129,36 @@ class FaceVerifyController extends GetxController {
   }
 
   /// Begin reading preview frames. Safe to call again after a pause.
-  Future<void> _startStream() async {
+  Future<void> _startStream({bool retried = false}) async {
     final cam = camera;
     if (cam == null || _streaming || _done) return;
 
     try {
       await cam.startImageStream(_onFrame);
       _streaming = true;
+
+      return;
     } catch (e) {
+      // iOS refuses a stream started while the capture session is still
+      // settling — right after `initialize()`, or after a page that had the
+      // camera open has only just let go of it. One retry clears that, and
+      // avoids dropping to the shutter loop, whose every photo blanks the
+      // preview white.
+      if (!retried) {
+        debugPrint('[FaceVerify] image stream refused, retrying: $e');
+        await Future<void>.delayed(const Duration(milliseconds: 400));
+        await _startStream(retried: true);
+
+        return;
+      }
+
       // A device that refuses the stream still deserves a working scan, so fall
       // back to the old shutter loop rather than leaving a dead camera.
       debugPrint('[FaceVerify] image stream unavailable: $e');
-      _log('fail', 'scan_error', null, {'error': 'stream_unavailable'});
+      _log('fail', 'scan_error', null, {
+        'error': 'stream_unavailable',
+        'detail': e.toString(),
+      });
       _startShutterFallback();
     }
   }
@@ -173,7 +201,10 @@ class FaceVerifyController extends GetxController {
       // the shutter loop, which decodes a JPEG instead.
       if (faces == null) {
         debugPrint('[FaceVerify] unsupported stream format — falling back');
-        _log('fail', 'scan_error', null, {'error': 'unsupported_frame_format'});
+        _log('fail', 'scan_error', null, {
+          'error': 'unsupported_frame_format',
+          'detail': _detector.lastFrameRejection,
+        });
         await _stopStream();
         _startShutterFallback();
 
