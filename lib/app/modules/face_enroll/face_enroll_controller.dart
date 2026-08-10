@@ -44,6 +44,13 @@ class FaceEnrollController extends GetxController {
   bool _scanning = false;
   bool _done = false;
 
+  /// Consecutive failed scans for the current step. Purely informational —
+  /// past a threshold we append a troubleshooting tip to the hint so a stuck
+  /// user (e.g. an orientation edge case the capture-lock fix didn't cover)
+  /// gets a next step instead of a hint that silently repeats forever.
+  int _failStreak = 0;
+  static const _stuckThreshold = 12; // ~16s at the 1300ms scan interval
+
   @override
   void onInit() {
     super.onInit();
@@ -81,6 +88,20 @@ class FaceEnrollController extends GetxController {
         enableAudio: false,
       );
       await controller.initialize();
+      // iOS in particular can save takePicture() JPEGs without the EXIF
+      // orientation matching the sensor's actual rotation, which throws off
+      // ML Kit's head-pose (yaw/roll) reading and our own frame-centering
+      // math independently — the scan gate then never agrees the face is
+      // frontal/centered and enrollment loops forever. Locking capture
+      // orientation forces a consistent, correctly-oriented JPEG on both
+      // platforms.
+      try {
+        await controller.lockCaptureOrientation(DeviceOrientation.portraitUp);
+      } catch (_) {
+        // Not fatal — some devices/plugin versions don't support locking;
+        // scanning still proceeds with whatever orientation the platform
+        // gives.
+      }
       camera = controller;
       isReady.value = true;
       hint.value = 'Hadap kamera dengan wajah netral';
@@ -98,6 +119,19 @@ class FaceEnrollController extends GetxController {
     );
   }
 
+  /// Records a failed scan and updates [hint], appending a troubleshooting
+  /// tip once the same step has failed for too long in a row — so a user
+  /// stuck on a platform quirk the orientation fix doesn't fully cover sees
+  /// a next step instead of the same sentence repeating forever.
+  void _fail(String reason) {
+    faceOk.value = false;
+    _failStreak++;
+    hint.value = _failStreak >= _stuckThreshold
+        ? '$reason\nMasih gagal? Tutup & buka ulang halaman ini, atau '
+              'pastikan pencahayaan cukup terang.'
+        : reason;
+  }
+
   Future<void> _scanOnce() async {
     if (_scanning || _done || isBusy.value) return;
     final cam = camera;
@@ -110,8 +144,7 @@ class FaceEnrollController extends GetxController {
       debugPrint('[FaceEnroll] step=${step.value} faces=${faces.length}');
 
       if (faces.length != 1) {
-        faceOk.value = false;
-        hint.value = 'Pastikan hanya wajah Anda yang terlihat';
+        _fail('Pastikan hanya wajah Anda yang terlihat');
         return;
       }
       final face = faces.first;
@@ -121,30 +154,27 @@ class FaceEnrollController extends GetxController {
           'roll=${face.headEulerAngleZ} leftEye=${face.leftEyeOpenProbability} '
           'rightEye=${face.rightEyeOpenProbability}',
         );
-        faceOk.value = false;
-        hint.value = 'Dekatkan & hadapkan wajah lurus, buka mata';
+        _fail('Dekatkan & hadapkan wajah lurus, buka mata');
         return;
       }
       if (!await _detector.isCentered(face, shot.path)) {
-        faceOk.value = false;
-        hint.value = 'Posisikan wajah di tengah bingkai';
+        _fail('Posisikan wajah di tengah bingkai');
         return;
       }
 
       final smiling = face.smilingProbability ?? 0;
       debugPrint('[FaceEnroll] smiling=$smiling');
       if (step.value == 0 && smiling > 0.5) {
-        faceOk.value = false;
-        hint.value = 'Wajah netral dulu (jangan senyum)';
+        _fail('Wajah netral dulu (jangan senyum)');
         return;
       }
       if (step.value == 1 && smiling < 0.5) {
-        faceOk.value = false;
-        hint.value = 'Sekarang senyum 😊';
+        _fail('Sekarang senyum 😊');
         return;
       }
 
       // Good frame for this step → embed & record.
+      _failStreak = 0;
       faceOk.value = true;
       isBusy.value = true;
       HapticFeedback.mediumImpact();
@@ -218,6 +248,8 @@ class FaceEnrollController extends GetxController {
     _done = false;
     faceOk.value = false;
     isBusy.value = false;
+    _failStreak = 0;
+    _detector.resetFrame();
     hint.value = 'Ulangi — hadap kamera dengan wajah netral';
     _startScan();
   }

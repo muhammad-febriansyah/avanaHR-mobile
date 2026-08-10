@@ -62,6 +62,15 @@ class FaceDetectorService {
   double _frameW = 0;
   double _frameH = 0;
 
+  /// Forgets the cached frame size so the next [isCentered] call re-measures
+  /// it. Call this whenever enrollment restarts (e.g. after a failed submit),
+  /// so a bad first reading from an earlier attempt can't poison the rest of
+  /// a new session.
+  void resetFrame() {
+    _frameW = 0;
+    _frameH = 0;
+  }
+
   /// Whether [f] sits roughly in the middle of the frame — rejects captures
   /// where the phone is pointed away and the face drifts to an edge/corner, the
   /// way a normal face-recognition prompt requires the face centered. Learns the
