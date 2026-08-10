@@ -2,6 +2,7 @@ import 'dart:io' show Platform;
 import 'dart:math';
 
 import 'package:device_info_plus/device_info_plus.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 import 'package:flutter_jailbreak_detection/flutter_jailbreak_detection.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:get/get.dart';
@@ -39,7 +40,16 @@ class DeviceMeta {
 /// survives app restarts) plus human-readable hardware details.
 class DeviceService extends GetxService {
   static const _kDeviceId = 'avana_device_id';
-  static const _appVersion = '1.0.0';
+
+  /// Shown to the server on every login, punch, and face-scan log entry.
+  ///
+  /// This used to be a constant that nobody remembered to change, so every
+  /// build since the first reported itself as 1.0.0 — which made a face-scan
+  /// log unable to answer the one question it existed for: whether the phone
+  /// that failed was running the build that fixed it. Read from the bundle now,
+  /// with the build number, because "1.0.1" alone does not distinguish two
+  /// TestFlight uploads of the same version.
+  static const _fallbackVersion = '1.0.0';
 
   final FlutterSecureStorage _secure = const FlutterSecureStorage();
   final DeviceInfoPlugin _info = DeviceInfoPlugin();
@@ -55,6 +65,16 @@ class DeviceService extends GetxService {
     var model = 'Perangkat';
     var osVersion = '';
     var name = '';
+    var appVersion = _fallbackVersion;
+
+    try {
+      final info = await PackageInfo.fromPlatform();
+      appVersion = info.buildNumber.isEmpty
+          ? info.version
+          : '${info.version} (${info.buildNumber})';
+    } catch (_) {
+      // Keep the fallback: an unreadable bundle must not stop a punch.
+    }
 
     try {
       if (Platform.isAndroid) {
@@ -80,7 +100,7 @@ class DeviceService extends GetxService {
       model: model,
       osVersion: osVersion,
       deviceName: name,
-      appVersion: _appVersion,
+      appVersion: appVersion,
     );
     return _cached!;
   }

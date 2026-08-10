@@ -347,7 +347,13 @@ class AttendanceView extends GetView<AttendanceController> {
           color = AppColors.destructive;
           icon = Iconsax.close_circle;
           title = 'Di luar radius${office != null ? ' · $office' : ''}';
-          sub = '$dist m — mendekat untuk absen';
+          // A fix too coarse to judge against the radius is the likelier
+          // explanation than an employee kilometres from an office they are
+          // sitting in — and the clock button is disabled in this state, so
+          // this chip is the only place the remedy can still be read.
+          sub = controller.isCoarseFix
+              ? '$dist m. ${controller.coarseFixAdvice}'
+              : '$dist m — mendekat untuk absen';
           break;
         case GeoState.anywhere:
           // WFA drops the radius, not the fix: the server still records — and
