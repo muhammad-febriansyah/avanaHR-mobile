@@ -1,13 +1,13 @@
 {
   "project_info": {
-    "project_number": "122541462056",
-    "project_id": "febrinogen-learn",
-    "storage_bucket": "febrinogen-learn.firebasestorage.app"
+    "project_number": "577229631661",
+    "project_id": "avanahr-e5012",
+    "storage_bucket": "avanahr-e5012.firebasestorage.app"
   },
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:122541462056:android:060ec72b07d0db92b21b1d",
+        "mobilesdk_app_id": "1:577229631661:android:dc590baa7bb52df4605624",
         "android_client_info": {
           "package_name": "com.avanahr.avanahr"
         }
@@ -15,26 +15,7 @@
       "oauth_client": [],
       "api_key": [
         {
-          "current_key": "AIzaSyDe0DPv3m3CT4wMLLBFE0Pk4zL7_cE7WuQ"
-        }
-      ],
-      "services": {
-        "appinvite_service": {
-          "other_platform_oauth_client": []
-        }
-      }
-    },
-    {
-      "client_info": {
-        "mobilesdk_app_id": "1:122541462056:android:d06ee1c354eec37db21b1d",
-        "android_client_info": {
-          "package_name": "com.example.febrinogen"
-        }
-      },
-      "oauth_client": [],
-      "api_key": [
-        {
-          "current_key": "AIzaSyDe0DPv3m3CT4wMLLBFE0Pk4zL7_cE7WuQ"
+          "current_key": "AIzaSyB1DNtrfsN7nziNRhoEvVBmfysqEhWN3Ow"
         }
       ],
       "services": {
