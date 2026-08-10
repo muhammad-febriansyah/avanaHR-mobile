@@ -25,19 +25,45 @@ class MainController extends GetxController {
     'profil',
   ];
 
+  /// Keys this build actually has a screen for. A server free to add tabs will
+  /// eventually send one this app has never heard of; it is dropped here so a
+  /// single unknown key cannot take down the whole bar.
+  static const supportedTabKeys = {
+    'beranda',
+    'sosmed',
+    'absensi',
+    'pengumuman',
+    'profil',
+  };
+
   final AuthService _auth = Get.find();
 
-  /// Tab keys in bar order, as this account sees them.
+  /// Tab keys in bar order, as this account sees them — already narrowed to
+  /// what this build can render, so an index into this list is the index of
+  /// the tab on screen. Anything that maps a key to a position must read it
+  /// from here, never from the raw server list.
   List<String> get tabKeys {
-    final tabs = _auth.user.value?.tabs ?? const [];
+    final keys = (_auth.user.value?.tabs ?? const [])
+        .map((tab) => tab.key)
+        .where(supportedTabKeys.contains)
+        .toList(growable: false);
 
-    return tabs.isEmpty
-        ? fallbackTabKeys
-        : tabs.map((tab) => tab.key).toList(growable: false);
+    // An empty bar would leave PersistentTabView with no tabs at all, so an
+    // account whose every tab is unknown to this build still gets the shipped
+    // one rather than a blank shell.
+    return keys.isEmpty ? fallbackTabKeys : keys;
   }
 
   /// Where Absensi sits, or -1 when the company switched it off.
   int get attendanceTab => tabKeys.indexOf('absensi');
+
+  /// Whether Absensi lands exactly where Style 13 draws its floating centre
+  /// circle. That style asserts an odd item count and turns whichever item
+  /// sits at the middle position into the circle, so it may only be used when
+  /// both hold — otherwise an even bar trips the assertion and a reordered one
+  /// hands the circle to a tab that has no icon prepared for it.
+  static bool absensiIsCentred(List<String> keys) =>
+      keys.length.isOdd && keys.indexOf('absensi') == keys.length ~/ 2;
 
   /// Drives the [PersistentTabView]. Tapping a nav item and [changeTab] both
   /// funnel through this controller.

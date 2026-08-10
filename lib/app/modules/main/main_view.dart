@@ -16,9 +16,11 @@ import '../sosmed/sosmed_view.dart';
 import 'account_unlinked_view.dart';
 import 'main_controller.dart';
 
-/// App shell: five persistent tabs behind a `persistent_bottom_nav_bar_v2`
-/// Style 8 nav bar (the selected item expands into a pill). Absensi sits in the
-/// center. Each tab keeps its scroll/state alive when switching.
+/// App shell: the persistent tabs the server allows this account, behind a
+/// `persistent_bottom_nav_bar_v2` bar. Absensi gets the Style 13 floating
+/// centre circle when it happens to sit in the middle of an odd-length bar,
+/// and the bar falls back to Style 2 (the selected item expands into a rounded
+/// pill) otherwise. Each tab keeps its scroll/state alive when switching.
 class MainView extends GetView<MainController> {
   const MainView({super.key});
 
@@ -78,6 +80,14 @@ class MainView extends GetView<MainController> {
   }
 
   Widget _tabView() {
+    final keys = controller.tabKeys;
+    // Style 13 draws whichever item sits at the middle *position* as the
+    // floating circle, and asserts the count is odd. Neither holds once the
+    // bar comes from the server: a company that switches one tab off leaves
+    // an even count (assertion crash), and one that reorders them puts the
+    // circle on a tab that never asked to be a circle.
+    final centred = MainController.absensiIsCentred(keys);
+
     return PersistentTabView(
       controller: controller.pageController,
       // Transparent + full overlap: tab content extends behind the nav bar so
@@ -87,47 +97,62 @@ class MainView extends GetView<MainController> {
       navBarOverlap: const NavBarOverlap.full(),
       handleAndroidBackButtonPress: true,
       stateManagement: true,
-      tabs: _tabs(),
-      navBarBuilder: (navBarConfig) => Style13BottomNavBar(
-        navBarConfig: navBarConfig,
-        height: 64.h,
-        middleItemSize: 58.w,
-        navBarDecoration: NavBarDecoration(
-          color: AppColors.surface,
-          // A soft upward shadow so the bar reads as floating over the page —
-          // a hard top border draws a full-width line that looks like the
-          // content is cut off above the bar.
-          boxShadow: [
-            BoxShadow(
-              color: AppColors.navy.withValues(alpha: 0.08),
-              blurRadius: 24,
-              offset: const Offset(0, -6),
+      tabs: _tabs(keys, centred: centred),
+      navBarBuilder: (navBarConfig) => centred
+          ? Style13BottomNavBar(
+              navBarConfig: navBarConfig,
+              height: 64.h,
+              middleItemSize: 58.w,
+              navBarDecoration: _barDecoration(),
+            )
+          : Style2BottomNavBar(
+              navBarConfig: navBarConfig,
+              height: 64.h,
+              navBarDecoration: _barDecoration(),
             ),
-          ],
-          padding: EdgeInsets.symmetric(horizontal: 4.w, vertical: 6.h),
-        ),
-      ),
     );
   }
 
-  /// The bar, built from the keys the server sent for this account. Absensi
-  /// keeps the centre circle wherever it lands; a key this build does not know
-  /// is skipped rather than crashing a whole bar over one new tab.
-  List<PersistentTabConfig> _tabs() {
-    final keys = controller.tabKeys;
+  NavBarDecoration _barDecoration() {
+    return NavBarDecoration(
+      color: AppColors.surface,
+      // A soft upward shadow so the bar reads as floating over the page —
+      // a hard top border draws a full-width line that looks like the
+      // content is cut off above the bar.
+      boxShadow: [
+        BoxShadow(
+          color: AppColors.navy.withValues(alpha: 0.08),
+          blurRadius: 24,
+          offset: const Offset(0, -6),
+        ),
+      ],
+      padding: EdgeInsets.symmetric(horizontal: 4.w, vertical: 6.h),
+    );
+  }
+
+  /// The bar, built from the keys the server sent for this account. A key this
+  /// build does not know is skipped rather than crashing a whole bar over one
+  /// new tab. Absensi is drawn as the floating circle only when [centred];
+  /// anywhere else it needs a label and normal colours like its neighbours,
+  /// since no style would render it as a circle there.
+  List<PersistentTabConfig> _tabs(List<String> keys, {required bool centred}) {
     final labels = {
       for (final tab in Get.find<AuthService>().user.value?.tabs ?? [])
         tab.key: tab.label,
     };
 
     return keys
-        .map((key) => _tabFor(key, labels[key]))
+        .map((key) => _tabFor(key, labels[key], centred: centred))
         .whereType<PersistentTabConfig>()
         .toList();
   }
 
   /// One tab, or null when this build has no screen for that key.
-  PersistentTabConfig? _tabFor(String key, String? label) {
+  PersistentTabConfig? _tabFor(
+    String key,
+    String? label, {
+    required bool centred,
+  }) {
     switch (key) {
       case 'beranda':
         return PersistentTabConfig(
@@ -141,11 +166,12 @@ class MainView extends GetView<MainController> {
           screen: const SosmedView(),
           item: _item(Iconsax.people, label ?? 'Ruang Kita'),
         );
-      // Rendered as the floating circle by Style 13.
       case 'absensi':
         return PersistentTabConfig(
           screen: _absensiScreen(),
-          item: _middleItem(Iconsax.finger_scan),
+          item: centred
+              ? _middleItem(Iconsax.finger_scan)
+              : _item(Iconsax.finger_scan, label ?? 'Absensi'),
         );
       case 'pengumuman':
         return PersistentTabConfig(
