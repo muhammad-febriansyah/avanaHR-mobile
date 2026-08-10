@@ -82,7 +82,10 @@ Widget _dialogButton(
 
 /// Ask the user to enrol their face before clocking. Returns true to proceed to
 /// enrollment, false if they dismiss.
-Future<bool> confirmFaceEnroll() async {
+///
+/// When [mandatory] is true (tenant requires face enrollment), the dismiss
+/// option is removed — the employee must register their face before clocking.
+Future<bool> confirmFaceEnroll({bool mandatory = false}) async {
   final res = await Get.dialog<bool>(
     _shell(
       Column(
@@ -101,8 +104,11 @@ Future<bool> confirmFaceEnroll() async {
           ),
           SizedBox(height: 8.h),
           Text(
-            'Absensi memakai pengenalan wajah. Daftarkan wajah Anda dulu, '
-            'lalu absen langsung dilanjutkan.',
+            mandatory
+                ? 'Absensi wajib menggunakan pengenalan wajah. '
+                    'Anda harus mendaftarkan wajah terlebih dahulu.'
+                : 'Absensi memakai pengenalan wajah. Daftarkan wajah Anda dulu, '
+                    'lalu absen langsung dilanjutkan.',
             textAlign: TextAlign.center,
             style: TextStyle(
               fontSize: 12.5.sp,
@@ -113,14 +119,16 @@ Future<bool> confirmFaceEnroll() async {
           SizedBox(height: 20.h),
           Row(
             children: [
-              Expanded(
-                child: _dialogButton(
-                  'Nanti',
-                  () => Get.back(result: false),
-                  filled: false,
+              if (!mandatory) ...[
+                Expanded(
+                  child: _dialogButton(
+                    'Nanti',
+                    () => Get.back(result: false),
+                    filled: false,
+                  ),
                 ),
-              ),
-              SizedBox(width: 10.w),
+                SizedBox(width: 10.w),
+              ],
               Expanded(
                 child: _dialogButton(
                   'Daftar Wajah',

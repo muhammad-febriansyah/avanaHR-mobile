@@ -273,7 +273,7 @@ class AttendanceController extends GetxController with WidgetsBindingObserver {
   /// A cold receiver indoors regularly needs fifteen seconds or more; giving up
   /// sooner is what leaves an employee reading "Lokasi belum terbaca" while the
   /// phone was seconds away from answering.
-  static const _fixBudget = Duration(seconds: 25);
+  static const _fixBudget = Duration(seconds: 10);
 
   /// Resolve the nearest office geofence + the user's live position for the
   /// map and the clock gate. Best-effort; never throws, always settles.
@@ -304,11 +304,15 @@ class AttendanceController extends GetxController with WidgetsBindingObserver {
   }
 
   Future<void> _resolveGeofence() async {
-    // The policy is a fast network round-trip; the fix is the slow half. Asking
-    // for them side by side keeps a cold GPS lock off the critical path — done
-    // in sequence, the screen waited for the sum of the two.
-    final policyRequest = _api.workLocations().timeout(_step);
+    // The permission gate can sit on a system dialog for as long as a person
+    // takes to read it. The policy request therefore starts *after* it, never
+    // alongside: a twelve-second deadline that begins while an employee is
+    // still deciding whether to grant location expires before they answer, and
+    // the office list is then lost to a timeout that had nothing to do with the
+    // network. It still overlaps the slow half — the GPS lock below — which is
+    // what keeps a cold fix off the critical path.
     final gate = await _permissionGate();
+    final policyRequest = _api.workLocations().timeout(_step);
 
     // A slow or failed policy call used to take the whole detection down with
     // it: the throw left the screen on "Lokasi belum terbaca" even though the
@@ -347,7 +351,7 @@ class AttendanceController extends GetxController with WidgetsBindingObserver {
     // truth — good enough to open the gate while the live one is still coming.
     final seed = await _lastKnownPosition();
     if (seed != null) {
-      _applyFix(seed, offices, isAnywhere);
+      _applyFix(seed, offices, isAnywhere, settleGate: false);
     }
 
     final live = await _livePosition();
@@ -358,12 +362,15 @@ class AttendanceController extends GetxController with WidgetsBindingObserver {
     }
   }
 
-  /// Place a fix on the map and settle the gate against it.
+  /// Place a fix on the map and, when [settleGate] is true, settle the geofence
+  /// gate against it. [settleGate] is false for a fast cached seed (it should
+  /// not open or close the gate on stale coordinates) and true for a live fix.
   void _applyFix(
     Position pos,
     List<WorkLocationItem> offices,
-    bool isAnywhere,
-  ) {
+    bool isAnywhere, {
+    bool settleGate = true,
+  }) {
     userLat.value = pos.latitude;
     userLng.value = pos.longitude;
     fixAccuracyMeters.value = pos.accuracy;
@@ -395,7 +402,7 @@ class AttendanceController extends GetxController with WidgetsBindingObserver {
     distanceMeters.value = closestDistance;
 
     // WFA: the nearest office is only a label here, never a gate.
-    if (isAnywhere) return;
+    if (isAnywhere || !settleGate) return;
 
     final within = (closest!.radius <= 0) || closestDistance <= closest.radius;
     geoState.value = within ? GeoState.inside : GeoState.outside;
@@ -640,14 +647,16 @@ class AttendanceController extends GetxController with WidgetsBindingObserver {
       } else {
         // Not enrolled yet → explain first so the flow is clear, then register.
         // The just-captured template + frame are reused for this same punch.
-        final wantEnroll = await confirmFaceEnroll();
+        final mandatory = (today.value?.requiresFaceEnrollment ?? true) ||
+            today.value?.faceMode == 'recognition';
+        final wantEnroll = await confirmFaceEnroll(mandatory: mandatory);
         if (!wantEnroll) {
           // Whether backing out ends the punch is the tenant's call. With
           // "wajib daftar wajah" on the server refuses a clock from someone
           // unenrolled, so there is nothing to submit; with it off it accepts
           // the punch and simply skips the identity match, and forcing an
           // enrolment here would be stricter than the policy asks.
-          if (today.value?.requiresFaceEnrollment ?? true) {
+          if (mandatory) {
             return;
           }
         } else {
@@ -655,11 +664,8 @@ class AttendanceController extends GetxController with WidgetsBindingObserver {
           if (result is! Map || result['embedding'] is! List) {
             AppToast.warning('Pendaftaran wajah dibatalkan.');
 
-            // Same rule as backing out of the prompt above: only a tenant that
-            // requires enrolment loses the punch over an enrolment that did not
-            // finish. Without that requirement the server clocks them in and
-            // skips the match, so the app must not refuse on its behalf.
-            if (today.value?.requiresFaceEnrollment ?? true) {
+            // Same rule as backing out of the prompt above.
+            if (mandatory) {
               return;
             }
           } else {
@@ -696,6 +702,7 @@ class AttendanceController extends GetxController with WidgetsBindingObserver {
           latitude: pos?.latitude,
           longitude: pos?.longitude,
           at: DateTime.now(),
+          logoUrl: me?.tenantLogoUrl,
         );
       }
 
@@ -705,6 +712,13 @@ class AttendanceController extends GetxController with WidgetsBindingObserver {
         'latitude': pos?.latitude,
         'longitude': pos?.longitude,
         'device_id': device.deviceId,
+        // The rest of the device's identity travels too, so the face log can
+        // say which phone a punch was matched (or refused) on. Without it the
+        // server-side rows carry a score and no idea what produced it.
+        'platform': device.platform,
+        'os_version': device.osVersion,
+        'device_model': device.model,
+        'app_version': device.appVersion,
         'is_mock_location': pos?.isMocked ?? false,
         'is_rooted': isRooted,
         'is_emulator': isEmulator,
@@ -877,7 +891,7 @@ class AttendanceController extends GetxController with WidgetsBindingObserver {
     try {
       if (await _permissionGate() != null) return null;
 
-      return await _livePosition() ?? await _lastKnownPosition();
+      return await _lastKnownPosition() ?? await _livePosition();
     } catch (_) {
       return null;
     }
