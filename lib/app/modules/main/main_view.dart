@@ -47,6 +47,9 @@ class MainView extends GetView<MainController> {
   }
 
   Widget _shell() {
+    final keys = controller.tabKeys;
+    final centred = MainController.absensiIsCentred(keys);
+
     return Scaffold(
       backgroundColor: AppColors.muted,
       body: Column(
@@ -59,10 +62,10 @@ class MainView extends GetView<MainController> {
             // Scaffold FAB would sit under the bar instead of above it.
             child: Stack(
               children: [
-                _tabView(),
+                _tabView(keys, centred: centred),
                 Positioned(
                   right: 16.w,
-                  bottom: _navBarHeight.h + 28.h,
+                  bottom: _navBarHeight.h + (centred ? 28.h : 70.h),
                   // Hidden on Absensi: that tab is a full-bleed camera/GPS flow
                   // where a floating button would sit over the face frame.
                   child: Obx(
@@ -79,15 +82,12 @@ class MainView extends GetView<MainController> {
     );
   }
 
-  Widget _tabView() {
-    final keys = controller.tabKeys;
+  Widget _tabView(List<String> keys, {required bool centred}) {
     // Style 13 draws whichever item sits at the middle *position* as the
     // floating circle, and asserts the count is odd. Neither holds once the
     // bar comes from the server: a company that switches one tab off leaves
     // an even count (assertion crash), and one that reorders them puts the
     // circle on a tab that never asked to be a circle.
-    final centred = MainController.absensiIsCentred(keys);
-
     return PersistentTabView(
       controller: controller.pageController,
       // Transparent + full overlap: tab content extends behind the nav bar so
