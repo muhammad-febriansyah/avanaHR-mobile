@@ -13,6 +13,7 @@ import '../../data/providers/avana_api.dart';
 import '../../data/services/face_detector_service.dart';
 import '../../data/services/face_embedder_service.dart';
 import '../../data/services/face_scan_log_service.dart';
+import '../attendance/attendance_controller.dart';
 
 /// Face enrollment with a three-frame active-liveness challenge: neutral,
 /// smiling, then neutral again. Requiring an expression change on demand blocks
@@ -92,6 +93,12 @@ class FaceEnrollController extends GetxController with WidgetsBindingObserver {
 
   Future<void> _boot() async {
     await _loadStatus();
+    if (_closed) return;
+    if (enrolled.value) {
+      isReady.value = true;
+      hint.value = 'Wajah sudah terdaftar';
+      return;
+    }
     await _initCamera();
   }
 
@@ -101,6 +108,48 @@ class FaceEnrollController extends GetxController with WidgetsBindingObserver {
       enrolled.value = (res.data['data']?['enrolled'] as bool?) ?? false;
     } catch (_) {
       // Non-fatal: enrollment can still proceed.
+    }
+  }
+
+  Future<void> startReEnrollment() async {
+    if (_closed || isBusy.value || camera != null) return;
+
+    isReady.value = false;
+    hint.value = 'Menyiapkan kamera…';
+    await _initCamera();
+  }
+
+  Future<void> deleteFace() async {
+    if (_closed || isBusy.value) return;
+
+    isBusy.value = true;
+    try {
+      final res = await _api.deleteFace();
+      final code = res.statusCode ?? 0;
+      if (code < 200 || code >= 300) {
+        AppToast.error(ApiClient.messageFrom(res, 'Data wajah gagal dihapus.'));
+        return;
+      }
+
+      enrolled.value = false;
+      if (Get.isRegistered<AttendanceController>()) {
+        Get.find<AttendanceController>().markFaceDeleted();
+      }
+      AppToast.success(
+        ApiClient.messageFrom(res, 'Data wajah berhasil dihapus.'),
+      );
+      _done = true;
+      await _shutdownCamera();
+      Get.back(result: {'faceDeleted': true});
+    } on DioException catch (e) {
+      AppToast.error(
+        ApiClient.messageFrom(e.response, 'Data wajah gagal dihapus.'),
+      );
+    } catch (e, st) {
+      debugPrint('[FaceEnroll] delete error: $e\n$st');
+      AppToast.error('Data wajah gagal dihapus. Silakan coba lagi.');
+    } finally {
+      if (!_closed) isBusy.value = false;
     }
   }
 

@@ -46,7 +46,11 @@ class _FaceEnrollViewState extends State<FaceEnrollView>
     return Scaffold(
       backgroundColor: _bg,
       body: Obx(() {
-        if (!c.isReady.value) return _loading();
+        final ready = c.isReady.value;
+        if (c.enrolled.value && c.camera == null && ready) {
+          return _enrolledManager();
+        }
+        if (!ready) return _loading();
         return Stack(
           fit: StackFit.expand,
           children: [
@@ -60,6 +64,128 @@ class _FaceEnrollViewState extends State<FaceEnrollView>
         );
       }),
     );
+  }
+
+  Widget _enrolledManager() {
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        const ColoredBox(color: _bg),
+        const Positioned.fill(child: IgnorePointer(child: _EdgeGradient())),
+        _topBar(title: 'Data Wajah'),
+        SafeArea(
+          child: Padding(
+            padding: EdgeInsets.fromLTRB(24.w, 84.h, 24.w, 28.h),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Container(
+                  width: 76.w,
+                  height: 76.w,
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(
+                    color: AppColors.success.withValues(alpha: 0.16),
+                    shape: BoxShape.circle,
+                    border: Border.all(
+                      color: AppColors.success.withValues(alpha: 0.55),
+                    ),
+                  ),
+                  child: Icon(
+                    Iconsax.shield_tick,
+                    color: AppColors.success,
+                    size: 38.sp,
+                  ),
+                ),
+                SizedBox(height: 22.h),
+                Text(
+                  'Wajah sudah terdaftar',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 20.sp,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                SizedBox(height: 8.h),
+                Text(
+                  'Data biometrik digunakan untuk verifikasi absensi akun ini.',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    color: Colors.white70,
+                    fontSize: 12.5.sp,
+                    height: 1.5,
+                  ),
+                ),
+                SizedBox(height: 32.h),
+                SizedBox(
+                  width: double.infinity,
+                  height: 48.h,
+                  child: FilledButton.icon(
+                    onPressed: c.isBusy.value ? null : c.startReEnrollment,
+                    icon: Icon(Iconsax.refresh, size: 18.sp),
+                    label: const Text('Perbarui wajah'),
+                  ),
+                ),
+                SizedBox(height: 12.h),
+                SizedBox(
+                  width: double.infinity,
+                  height: 48.h,
+                  child: OutlinedButton.icon(
+                    onPressed: c.isBusy.value ? null : _confirmDelete,
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: AppColors.destructive,
+                      side: BorderSide(
+                        color: AppColors.destructive.withValues(alpha: 0.8),
+                      ),
+                    ),
+                    icon: c.isBusy.value
+                        ? SizedBox(
+                            width: 18.w,
+                            height: 18.w,
+                            child: const CircularProgressIndicator(
+                              strokeWidth: 2,
+                            ),
+                          )
+                        : Icon(Iconsax.trash, size: 18.sp),
+                    label: const Text('Hapus data wajah'),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Future<void> _confirmDelete() async {
+    final confirmed = await Get.dialog<bool>(
+      AlertDialog(
+        title: const Text('Hapus data wajah?'),
+        content: const Text(
+          'Anda harus mendaftarkan wajah kembali sebelum menggunakan absensi '
+          'yang mewajibkan pengenalan wajah.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Get.back(result: false),
+            child: const Text('Batal'),
+          ),
+          TextButton(
+            onPressed: () => Get.back(result: true),
+            child: Text(
+              'Hapus',
+              style: TextStyle(
+                color: AppColors.destructive,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true) await c.deleteFace();
   }
 
   Widget _loading() {
@@ -160,7 +286,7 @@ class _FaceEnrollViewState extends State<FaceEnrollView>
     );
   }
 
-  Widget _topBar() {
+  Widget _topBar({String title = 'Daftar Wajah'}) {
     return Align(
       alignment: Alignment.topCenter,
       child: SafeArea(
@@ -172,7 +298,7 @@ class _FaceEnrollViewState extends State<FaceEnrollView>
               _glassButton(Iconsax.arrow_left_2, c.cancel),
               SizedBox(width: 8.w),
               Text(
-                'Daftar Wajah',
+                title,
                 style: TextStyle(
                   color: Colors.white,
                   fontSize: 16.sp,

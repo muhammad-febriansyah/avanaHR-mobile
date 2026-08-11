@@ -441,6 +441,8 @@ class AvanaApi {
   // ---- Face recognition ----
   Future<Response> faceStatus() => _dio.get('/me/face');
 
+  Future<Response> deleteFace() => _dio.delete('/me/face');
+
   Future<Response> enrollFace(List<String> imagePaths) async {
     final form = FormData();
     for (var index = 0; index < imagePaths.length; index++) {

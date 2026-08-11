@@ -585,6 +585,13 @@ class AttendanceController extends GetxController with WidgetsBindingObserver {
     _box.write(_faceKey, true);
   }
 
+  /// Clears the local face flag immediately after the server removes the
+  /// caller's biometric template.
+  void markFaceDeleted() {
+    requiresFace.value = false;
+    _box.write(_faceKey, false);
+  }
+
   /// Both clocks are spent for today — there is no action left to offer.
   bool get isDoneToday => today.value?.isDone ?? false;
 
