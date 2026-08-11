@@ -40,10 +40,13 @@ class TenantBrandRow extends StatelessWidget {
       final user = auth.user.value;
       final box = GetStorage();
 
-      final logoUrl = _firstFilled([
-        user?.tenantLogoUrl,
-        box.read<String>(kBrandLogoKey),
-      ]);
+      // With a session loaded the API is the authority, including when it says
+      // the tenant has no logo: falling through to the cache there showed the
+      // previous company's logo to an employee of a company that simply has
+      // none. The cache is only a stand-in before the profile arrives.
+      final logoUrl = user != null
+          ? user.tenantLogoUrl
+          : box.read<String>(kBrandLogoKey);
       final legalName = _firstFilled([
         user?.tenantName,
         box.read<String>(kBrandNameKey),
@@ -71,10 +74,14 @@ class TenantBrandRow extends StatelessWidget {
           ? legalName
           : null;
 
+      final logo = _logo(logoUrl);
+
       return Row(
         children: [
-          _logo(logoUrl, brandName),
-          SizedBox(width: 10.w),
+          // No logo means no placeholder: the company name carries the row on
+          // its own. An initials badge here read as a brand mark the company
+          // never chose.
+          if (logo != null) ...[logo, SizedBox(width: 10.w)],
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -131,12 +138,13 @@ class TenantBrandRow extends StatelessWidget {
     });
   }
 
-  Widget _logo(String? logoUrl, String brandName) {
+  /// The tenant's logo, or null when there is nothing real to show.
+  Widget? _logo(String? logoUrl) {
     final showImage =
         logoUrl != null && !logoUrl.toLowerCase().endsWith('.svg');
 
     if (!showImage) {
-      return _initialsBadge(brandName);
+      return null;
     }
 
     // No frame around the logo: on a white card the border and inner padding
@@ -155,44 +163,11 @@ class TenantBrandRow extends StatelessWidget {
       child: Image.network(
         logoUrl,
         fit: BoxFit.contain,
-        errorBuilder: (_, _, _) => _initialsBadge(brandName),
+        // A logo that fails to load leaves the name to speak for itself,
+        // rather than a badge standing in for a brand mark.
+        errorBuilder: (_, _, _) => const SizedBox.shrink(),
       ),
     );
-  }
-
-  Widget _initialsBadge(String brandName) {
-    return Container(
-      width: size.w,
-      height: size.w,
-      alignment: Alignment.center,
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [AppColors.primary, AppColors.primaryHover],
-        ),
-        borderRadius: BorderRadius.circular(size.w * 0.26),
-      ),
-      child: Text(
-        _initials(brandName),
-        style: TextStyle(
-          color: Colors.white,
-          fontSize: (size * 0.38).sp,
-          fontWeight: FontWeight.w700,
-        ),
-      ),
-    );
-  }
-
-  String _initials(String brandName) {
-    final initials = brandName
-        .trim()
-        .split(RegExp(r'\s+'))
-        .where((w) => w.isNotEmpty)
-        .take(2)
-        .map((w) => w[0].toUpperCase())
-        .join();
-    return initials.isEmpty ? 'A' : initials;
   }
 
   static String? _firstFilled(List<String?> candidates) {

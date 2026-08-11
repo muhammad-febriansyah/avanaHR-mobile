@@ -17,6 +17,12 @@ const String kBrandAccentKey = 'brand_accent';
 const String kBrandNameKey = 'brand_name';
 const String kBrandLogoKey = 'brand_logo';
 
+/// Which tenant the cached brand above belongs to. Without it the cache is
+/// just "the last brand this device saw", and signing in as another company —
+/// especially one with no logo of its own — kept showing the previous
+/// company's logo.
+const String kBrandTenantKey = 'brand_tenant_id';
+
 /// What a sign-in attempt came back with: a session, a request for the second
 /// factor, or a message to show.
 class LoginResult {
@@ -167,6 +173,7 @@ class AuthService extends GetxService {
     box.remove(kBrandAccentKey);
     box.remove(kBrandNameKey);
     box.remove(kBrandLogoKey);
+    box.remove(kBrandTenantKey);
     AppColors.applyBrand(null);
     Get.changeTheme(AppTheme.light);
   }
@@ -178,7 +185,23 @@ class AuthService extends GetxService {
     final hex = user.value?.tenantAccentHex;
     final name = user.value?.tenantName;
     final logo = user.value?.tenantLogoUrl;
+    final tenantId = user.value?.tenantId;
     final box = GetStorage();
+
+    // A cached brand only speaks for the tenant it came from. Signing in as a
+    // different company drops it wholesale — otherwise the "keep what we have"
+    // rule below preserves the previous company's logo for a tenant that has
+    // none of its own, and the employee sees someone else's brand.
+    final cachedTenantId = box.read<int>(kBrandTenantKey);
+
+    if (tenantId != null && cachedTenantId != null && cachedTenantId != tenantId) {
+      box.remove(kBrandAccentKey);
+      box.remove(kBrandNameKey);
+      box.remove(kBrandLogoKey);
+    }
+
+    if (tenantId != null) box.write(kBrandTenantKey, tenantId);
+
     // Only overwrite a cached brand with a real value — never wipe it back to
     // null if a response is briefly missing the tenant, so the launch splash
     // stays tenant-branded across cold starts / hot restarts.
