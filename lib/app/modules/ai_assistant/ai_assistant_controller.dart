@@ -23,8 +23,8 @@ class AiAssistantController extends GetxController {
   final usage = Rxn<AiTokenUsage>();
   final activeId = Rxn<int>();
 
-  final TextEditingController inputCtrl = TextEditingController();
   final ScrollController scrollCtrl = ScrollController();
+  bool _closed = false;
 
   @override
   void onInit() {
@@ -34,7 +34,7 @@ class AiAssistantController extends GetxController {
 
   @override
   void onClose() {
-    inputCtrl.dispose();
+    _closed = true;
     scrollCtrl.dispose();
     super.onClose();
   }
@@ -58,7 +58,6 @@ class AiAssistantController extends GetxController {
     if (sending.value) return;
     activeId.value = null;
     messages.clear();
-    inputCtrl.clear();
   }
 
   /// Load one of the caller's past conversations into the transcript.
@@ -97,7 +96,6 @@ class AiAssistantController extends GetxController {
       return;
     }
 
-    inputCtrl.clear();
     sending.value = true;
     messages.add(AiChatMessage(role: 'user', content: message));
     _scrollToBottom();
@@ -160,7 +158,7 @@ class AiAssistantController extends GetxController {
 
   void _scrollToBottom() {
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (scrollCtrl.hasClients) {
+      if (!_closed && scrollCtrl.hasClients) {
         scrollCtrl.animateTo(
           scrollCtrl.position.maxScrollExtent,
           duration: const Duration(milliseconds: 260),

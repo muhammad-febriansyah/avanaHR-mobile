@@ -18,8 +18,28 @@ import '../../core/widgets/ui.dart';
 import '../../data/models/ai_models.dart';
 import 'ai_assistant_controller.dart';
 
-class AiAssistantView extends GetView<AiAssistantController> {
+class AiAssistantView extends StatefulWidget {
   const AiAssistantView({super.key});
+
+  @override
+  State<AiAssistantView> createState() => _AiAssistantViewState();
+}
+
+class _AiAssistantViewState extends State<AiAssistantView> {
+  late final AiAssistantController controller;
+  final TextEditingController _inputController = TextEditingController();
+
+  @override
+  void initState() {
+    super.initState();
+    controller = Get.find<AiAssistantController>();
+  }
+
+  @override
+  void dispose() {
+    _inputController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -28,7 +48,7 @@ class AiAssistantView extends GetView<AiAssistantController> {
       subtitle: 'Asisten HR pribadi Anda',
       actions: [
         HeaderAction(Iconsax.messages_2, () => _openHistory(context)),
-        HeaderAction(Iconsax.message_add_1, controller.newChat),
+        HeaderAction(Iconsax.message_add_1, _newChat),
       ],
       child: Column(
         children: [
@@ -51,7 +71,11 @@ class AiAssistantView extends GetView<AiAssistantController> {
               return _Transcript();
             }),
           ),
-          _Composer(),
+          _Composer(
+            controller: controller,
+            inputController: _inputController,
+            onSend: _send,
+          ),
         ],
       ),
     );
@@ -59,6 +83,20 @@ class AiAssistantView extends GetView<AiAssistantController> {
 
   void _openHistory(BuildContext context) {
     showAppSheet(context, scrollable: true, child: _HistorySheet());
+  }
+
+  void _newChat() {
+    if (controller.sending.value) return;
+    _inputController.clear();
+    controller.newChat();
+  }
+
+  void _send() {
+    final message = _inputController.text;
+    if (message.trim().isEmpty || controller.sending.value) return;
+
+    _inputController.clear();
+    controller.send(message);
   }
 }
 
@@ -368,7 +406,17 @@ class _TypingBubble extends StatelessWidget {
 }
 
 /// Bottom message composer.
-class _Composer extends GetView<AiAssistantController> {
+class _Composer extends StatelessWidget {
+  final AiAssistantController controller;
+  final TextEditingController inputController;
+  final VoidCallback onSend;
+
+  const _Composer({
+    required this.controller,
+    required this.inputController,
+    required this.onSend,
+  });
+
   @override
   Widget build(BuildContext context) {
     return Container(
@@ -385,7 +433,7 @@ class _Composer extends GetView<AiAssistantController> {
               // inputDecorationTheme is `filled` with an OutlineInputBorder,
               // so the box inside the box reads as two stacked inputs.
               child: TextField(
-                controller: controller.inputCtrl,
+                controller: inputController,
                 minLines: 1,
                 maxLines: 5,
                 textInputAction: TextInputAction.newline,
@@ -420,9 +468,7 @@ class _Composer extends GetView<AiAssistantController> {
             Obx(() {
               final busy = controller.sending.value;
               return GestureDetector(
-                onTap: busy
-                    ? null
-                    : () => controller.send(controller.inputCtrl.text),
+                onTap: busy ? null : onSend,
                 child: Container(
                   width: 46.w,
                   height: 46.w,
@@ -656,8 +702,7 @@ class _AiImageState extends State<_AiImage> {
       AppToast.error(switch (e.type) {
         GalExceptionType.accessDenied =>
           'Izin galeri ditolak. Aktifkan lewat Pengaturan aplikasi.',
-        GalExceptionType.notEnoughSpace =>
-          'Penyimpanan perangkat tidak cukup.',
+        GalExceptionType.notEnoughSpace => 'Penyimpanan perangkat tidak cukup.',
         GalExceptionType.notSupportedFormat =>
           'Format gambar ini tidak didukung galeri.',
         GalExceptionType.unexpected => 'Gambar gagal disimpan.',
