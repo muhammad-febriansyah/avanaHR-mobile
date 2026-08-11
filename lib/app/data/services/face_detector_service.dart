@@ -1,6 +1,6 @@
 import 'dart:io';
 import 'dart:math' as math;
-import 'dart:ui' show Offset, Size;
+import 'dart:ui' show Offset, Rect, Size;
 
 import 'package:camera/camera.dart';
 import 'package:flutter/services.dart' show DeviceOrientation;
@@ -9,7 +9,7 @@ import 'package:image/image.dart' as img;
 
 /// Thin wrapper around ML Kit face detection. Classification (smiling / eyes
 /// open) and head-angle data are enabled so enrollment can gate on face quality
-/// and run a lightweight active-liveness challenge (neutral → smile).
+/// and verification can run active blink/head-movement liveness.
 class FaceDetectorService {
   /// Primary detector. ML Kit documents `accurate` as detecting more faces at
   /// higher attribute accuracy than `fast`, so it stays the one whose pose and
@@ -25,7 +25,7 @@ class FaceDetectorService {
       // report a face at all — and a frame under that bar comes back as an
       // empty list, indistinguishable from "no one is there". How close the
       // face must be is now enforced separately against the measured frame
-      // (see [isCloseEnough]), which can say "dekatkan wajah" instead.
+      // (see [positionRejectionForBox]), which can give a useful distance hint.
       minFaceSize: 0.15,
     ),
   );
@@ -72,16 +72,17 @@ class FaceDetectorService {
 
   /// Detector for live camera frames.
   ///
-  /// `fast` here, deliberately: a preview frame arrives many times a second and
-  /// only has to answer "is a usable face in shot right now". The authoritative
-  /// reading — the one an embedding is taken from — still runs through
-  /// [detectFile] on a full still, where accuracy is worth the milliseconds.
+  /// The preview itself is now authoritative: its accepted frame is embedded
+  /// and saved without switching to still capture. Accurate mode is therefore
+  /// required for dependable pose and classification values.
   final FaceDetector _live = FaceDetector(
     options: FaceDetectorOptions(
       enableClassification: true,
       enableLandmarks: true,
-      enableTracking: false,
-      performanceMode: FaceDetectorMode.fast,
+      enableTracking: true,
+      // Euler Y is only guaranteed by ML Kit in accurate mode. The active
+      // head-movement challenge must not depend on an optional fast-mode value.
+      performanceMode: FaceDetectorMode.accurate,
       minFaceSize: 0.15,
     ),
   );
@@ -141,7 +142,7 @@ class FaceDetectorService {
 
     final raw = image.format.raw;
     final format = raw is int ? InputImageFormatValue.fromRawValue(raw) : null;
-    if (format == null || image.planes.isEmpty) {
+    if (format == null || image.planes.length != 1) {
       lastFrameRejection = 'format_unknown:$raw:planes=${image.planes.length}';
 
       return null;
@@ -156,15 +157,32 @@ class FaceDetectorService {
       return null;
     }
 
+    if (image.width <= 0 || image.height <= 0) {
+      lastFrameRejection = 'invalid_dimensions:${image.width}x${image.height}';
+      return null;
+    }
+
+    final plane = image.planes.first;
+    final minimumBytesPerRow = Platform.isIOS ? image.width * 4 : image.width;
+    final minimumBytes = Platform.isIOS
+        ? plane.bytesPerRow * image.height
+        : plane.bytesPerRow * image.height * 3 ~/ 2;
+    if (plane.bytesPerRow < minimumBytesPerRow ||
+        plane.bytes.length < minimumBytes) {
+      lastFrameRejection =
+          'truncated_frame:${plane.bytes.length}:expected=$minimumBytes';
+      return null;
+    }
+
     lastFrameRejection = null;
 
     return InputImage.fromBytes(
-      bytes: image.planes.first.bytes,
+      bytes: plane.bytes,
       metadata: InputImageMetadata(
         size: Size(image.width.toDouble(), image.height.toDouble()),
         rotation: rotation,
         format: format,
-        bytesPerRow: image.planes.first.bytesPerRow,
+        bytesPerRow: plane.bytesPerRow,
       ),
     );
   }
@@ -189,38 +207,86 @@ class FaceDetectorService {
     return InputImageRotationValue.fromRawValue(degrees);
   }
 
-  /// Whether [f] fills enough of a live frame of [width]×[height] to be worth
-  /// pursuing.
-  ///
-  /// Measured against the frame's shorter side, which is the one the portrait
-  /// preview is bounded by whichever way ML Kit reports the coordinates — the
-  /// still-photo check ([isCloseEnough]) has the exact geometry and rules for
-  /// real; this only keeps the loop from chasing a face across the room.
-  bool isCloseEnoughInFrame(Face f, int width, int height) {
-    final shortSide = math.min(width, height);
-    if (shortSide <= 0) {
-      return true;
+  /// Rejects a live face that is too small, too close, cropped, or outside the
+  /// central capture area. Android bounding boxes use the image after ML Kit's
+  /// metadata rotation, so 90/270 degree frames must swap their dimensions.
+  String? positionRejectionInFrame(
+    Face face,
+    int width,
+    int height, {
+    required CameraDescription camera,
+    required DeviceOrientation deviceOrientation,
+  }) {
+    var frameWidth = width.toDouble();
+    var frameHeight = height.toDouble();
+    final rotation = _rotationFor(camera, deviceOrientation);
+    if (Platform.isAndroid &&
+        (rotation == InputImageRotation.rotation90deg ||
+            rotation == InputImageRotation.rotation270deg)) {
+      final originalWidth = frameWidth;
+      frameWidth = frameHeight;
+      frameHeight = originalWidth;
     }
 
-    return f.boundingBox.width / shortSide >= minFaceWidthRatio;
+    return positionRejectionForBox(face.boundingBox, frameWidth, frameHeight);
   }
 
-  /// Whether [f] fills enough of the frame to be worth embedding. Unknown frame
-  /// size (the capture failed to decode) never blocks — that case is reported
-  /// on its own.
-  bool isCloseEnough(Face f) {
-    if (_frameW <= 0) {
-      return true;
+  /// Pure geometry gate, exposed so edge/crop behavior can be unit tested
+  /// without opening a native ML Kit detector.
+  static String? positionRejectionForBox(
+    Rect box,
+    double frameWidth,
+    double frameHeight,
+  ) {
+    if (!frameWidth.isFinite ||
+        !frameHeight.isFinite ||
+        frameWidth <= 0 ||
+        frameHeight <= 0 ||
+        !box.left.isFinite ||
+        !box.top.isFinite ||
+        !box.right.isFinite ||
+        !box.bottom.isFinite ||
+        box.width <= 0 ||
+        box.height <= 0) {
+      return 'frame_invalid';
     }
 
-    return f.boundingBox.width / _frameW >= minFaceWidthRatio;
+    final tolerance = math.min(frameWidth, frameHeight) * 0.02;
+    if (box.left < -tolerance ||
+        box.top < -tolerance ||
+        box.right > frameWidth + tolerance ||
+        box.bottom > frameHeight + tolerance) {
+      return 'face_cropped';
+    }
+
+    final widthRatio = box.width / frameWidth;
+    final heightRatio = box.height / frameHeight;
+    if (widthRatio < minFaceWidthRatio) return 'too_far';
+    if (widthRatio > 0.72 || heightRatio > 0.82) return 'too_close';
+
+    final centerX = box.center.dx / frameWidth;
+    final centerY = box.center.dy / frameHeight;
+    if (centerX < 0.24 || centerX > 0.76 || centerY < 0.20 || centerY > 0.80) {
+      return 'not_centered';
+    }
+
+    return null;
   }
 
-  /// Whether [f] is a usable capture: a full, roughly frontal face with both
-  /// eyes open. Rejects profiles, tilted heads, closed eyes, and — crucially —
-  /// far / partial captures (e.g. only the forehead in frame), which ML Kit
-  /// reports with null pose/eye data that previously defaulted to "good".
-  bool isFrontalOpenEyes(Face f) => rejectionOf(f) == null;
+  String hintForPositionRejection(String reason) {
+    switch (reason) {
+      case 'too_far':
+        return 'Wajah terlalu jauh — dekatkan ke kamera';
+      case 'too_close':
+        return 'Wajah terlalu dekat — mundur sedikit';
+      case 'face_cropped':
+        return 'Pastikan seluruh wajah terlihat di dalam bingkai';
+      case 'not_centered':
+        return 'Posisikan wajah di tengah bingkai';
+      default:
+        return 'Wajah belum terbaca dengan baik — sesuaikan posisi kamera';
+    }
+  }
 
   /// Why [f] is not a usable capture, as a stable reason code, or null when it
   /// is. Splitting the pose check from the eye check makes the server-side log
@@ -240,7 +306,11 @@ class FaceDetectorService {
     if (leftEye == null || rightEye == null) {
       return 'eyes_unknown';
     }
-    if (leftEye < 0.5 || rightEye < 0.5) {
+    // ML Kit classification probabilities vary across platform camera
+    // pipelines. A slightly lower iOS threshold avoids rejecting naturally
+    // half-open eyes while still rejecting a clearly closed eye.
+    final eyeThreshold = Platform.isIOS ? 0.35 : 0.5;
+    if (leftEye < eyeThreshold || rightEye < eyeThreshold) {
       return 'eyes_closed';
     }
 
@@ -292,29 +362,18 @@ class FaceDetectorService {
   double _frameW = 0;
   double _frameH = 0;
 
-  /// Forgets the cached frame size so the next [isCentered] call re-measures
-  /// it. Call this whenever enrollment restarts (e.g. after a failed submit),
-  /// so a bad first reading from an earlier attempt can't poison the rest of
-  /// a new session.
+  /// Forgets the cached still-frame size. Call this whenever enrollment
+  /// restarts so a bad first reading cannot poison the next attempt.
   void resetFrame() {
     _frameW = 0;
     _frameH = 0;
   }
 
-  /// Whether [f] sits roughly in the middle of the frame — rejects captures
-  /// where the phone is pointed away and the face drifts to an edge/corner, the
-  /// way a normal face-recognition prompt requires the face centered. Learns the
-  /// frame size once from [path] (all captures share the camera resolution).
-  Future<bool> isCentered(Face f, String path) async {
+  Future<String?> positionRejectionInFile(Face face, String path) async {
     await measureFrame(path);
-    if (_frameW <= 0 || _frameH <= 0) {
-      return true; // unknown frame size → don't block
-    }
+    if (_frameW <= 0 || _frameH <= 0) return 'frame_invalid';
 
-    final cx = f.boundingBox.center.dx / _frameW;
-    final cy = f.boundingBox.center.dy / _frameH;
-
-    return cx > 0.28 && cx < 0.72 && cy > 0.22 && cy < 0.78;
+    return positionRejectionForBox(face.boundingBox, _frameW, _frameH);
   }
 
   /// Learn the capture's frame size once, so centering and the diagnostics in
@@ -373,9 +432,11 @@ class FaceDetectorService {
     return p == null ? null : Offset(p.x.toDouble(), p.y.toDouble());
   }
 
-  void dispose() {
-    _fast.close();
-    _accurate.close();
-    _live.close();
+  Future<void> dispose() async {
+    await Future.wait([
+      _fast.close().catchError((_) {}),
+      _accurate.close().catchError((_) {}),
+      _live.close().catchError((_) {}),
+    ]);
   }
 }

@@ -207,7 +207,7 @@ class _FaceEnrollViewState extends State<FaceEnrollView>
                   SizedBox(width: 6.w),
                   Flexible(
                     child: Text(
-                      'Hanya data wajah (bukan foto) yang dikirim.',
+                      'Foto diproses aman untuk membuat data wajah.',
                       style: TextStyle(
                         color: Colors.white60,
                         fontSize: 10.5.sp,
@@ -237,9 +237,15 @@ class _FaceEnrollViewState extends State<FaceEnrollView>
           _stepDot(s >= 0),
           SizedBox(width: 5.w),
           _stepDot(s >= 1),
+          SizedBox(width: 5.w),
+          _stepDot(s >= 2),
           SizedBox(width: 9.w),
           Text(
-            s == 0 ? 'Langkah 1/2 · Wajah netral' : 'Langkah 2/2 · Senyum',
+            switch (s) {
+              0 => 'Langkah 1/3 · Wajah netral',
+              1 => 'Langkah 2/3 · Senyum',
+              _ => 'Langkah 3/3 · Wajah netral',
+            },
             style: TextStyle(
               color: Colors.white,
               fontSize: 11.5.sp,

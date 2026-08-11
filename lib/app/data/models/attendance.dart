@@ -106,14 +106,17 @@ class AttendanceToday {
     Map<String, dynamic> requirements = const {},
   }) {
     final summary = json['summary'];
+    final rawStatus = summary is Map
+        ? summary['status']?.toString().trim().toLowerCase()
+        : null;
     return AttendanceToday(
       date: json['date'] ?? '',
       workDate: json['work_date']?.toString(),
       clockIn: json['clock_in'],
       clockOut: json['clock_out'],
       clockInAt: json['clock_in_at'],
-      nextAction: json['next_action'] ?? 'in',
-      status: summary is Map ? summary['status'] : null,
+      nextAction: json['next_action']?.toString().trim().toLowerCase() ?? 'in',
+      status: rawStatus == null || rawStatus.isEmpty ? null : rawStatus,
       workMinutes: summary is Map ? (summary['work_minutes'] ?? 0) : 0,
       workMode: json['work_mode'],
       wfhApprovedToday: requirements['wfh_approved_today'] == true,

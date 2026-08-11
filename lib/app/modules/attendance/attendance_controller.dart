@@ -31,6 +31,7 @@ enum GeoState {
   inside,
   outside,
   anywhere,
+  serverValidation,
   gpsOff,
   denied,
   noOffice,
@@ -70,6 +71,7 @@ class AttendanceController extends GetxController with WidgetsBindingObserver {
   final userLat = Rxn<double>();
   final userLng = Rxn<double>();
   final isLocating = false.obs;
+  Position? _freshPosition;
 
   /// Seconds the current detection has been running, so the chip can count a
   /// slow fix out loud rather than look stuck.
@@ -103,11 +105,27 @@ class AttendanceController extends GetxController with WidgetsBindingObserver {
   /// Opening the gate on an unknown location would only move the refusal later,
   /// to a 422 the employee earns *after* scanning their face.
   bool get canClockByLocation {
-    if (userLat.value == null || userLng.value == null) return false;
+    return locationGateAllows(
+      state: geoState.value,
+      hasCoordinates: userLat.value != null && userLng.value != null,
+      worksFromHome: effectiveWorkMode == 'home',
+    );
+  }
 
-    return effectiveWorkMode == 'home' ||
-        geoState.value == GeoState.anywhere ||
-        geoState.value == GeoState.inside;
+  /// Keep the client gate strict when GPS itself failed, while allowing the
+  /// server to make the final geofence decision when only the policy request
+  /// failed. Every punch still carries coordinates and the API validates them.
+  static bool locationGateAllows({
+    required GeoState state,
+    required bool hasCoordinates,
+    required bool worksFromHome,
+  }) {
+    if (!hasCoordinates) return false;
+
+    return worksFromHome ||
+        state == GeoState.anywhere ||
+        state == GeoState.inside ||
+        state == GeoState.serverValidation;
   }
 
   /// Whether the current fix is too coarse to be judged against the office
@@ -163,6 +181,8 @@ class AttendanceController extends GetxController with WidgetsBindingObserver {
         // wandered kilometres off, so say which one the phone is reporting
         // instead of leaving them arguing with the distance.
         return isCoarseFix ? '$base\n$coarseFixAdvice' : base;
+      case GeoState.serverValidation:
+        return 'Lokasi sudah ditemukan. Radius akan diperiksa saat absen.';
       default:
         return 'Lokasi belum terbaca. Periksa GPS lalu coba lagi.';
     }
@@ -312,7 +332,19 @@ class AttendanceController extends GetxController with WidgetsBindingObserver {
     // network. It still overlaps the slow half — the GPS lock below — which is
     // what keeps a cold fix off the critical path.
     final gate = await _permissionGate();
+
+    if (gate != null) {
+      geoState.value = gate;
+
+      return;
+    }
+
+    // Network policy, cached coordinates, and a fresh GPS fix are independent.
+    // Start all three together so a slow endpoint is not added in front of a
+    // cold GPS lock (previously the waits could total roughly 25 seconds).
     final policyRequest = _api.workLocations().timeout(_step);
+    final seedRequest = _lastKnownPosition();
+    final liveRequest = _livePosition();
 
     // A slow or failed policy call used to take the whole detection down with
     // it: the throw left the screen on "Lokasi belum terbaca" even though the
@@ -339,27 +371,36 @@ class AttendanceController extends GetxController with WidgetsBindingObserver {
         .where((l) => l.latitude != null && l.longitude != null)
         .toList();
 
-    // No location to be had at all. WFA does not soften this: the server needs
-    // coordinates on every punch, so the actionable reason wins over the badge.
-    if (gate != null) {
-      geoState.value = gate;
-
-      return;
-    }
-
-    // The stored fix answers in milliseconds and is usually metres from the
-    // truth — good enough to open the gate while the live one is still coming.
-    final seed = await _lastKnownPosition();
-    if (seed != null) {
+    // The stored fix is only a map seed. For a fenced office it must not settle
+    // the gate because the employee may have moved since it was recorded.
+    final seed = await seedRequest;
+    if (seed != null && locations != null) {
       _applyFix(seed, offices, isAnywhere, settleGate: false);
     }
 
-    final live = await _livePosition();
+    final live = await liveRequest;
     if (live != null) {
-      _applyFix(live, offices, isAnywhere);
+      if (locations == null) {
+        _recordFix(live, fresh: true);
+        // GPS succeeded but the policy endpoint did not. Do not misreport this
+        // as "no office"; let the attendance endpoint validate the radius.
+        geoState.value = GeoState.serverValidation;
+      } else {
+        _applyFix(live, offices, isAnywhere);
+      }
     } else if (seed == null) {
       geoState.value = GeoState.error;
+    } else if (locations == null) {
+      _recordFix(seed);
+      geoState.value = GeoState.error;
     }
+  }
+
+  void _recordFix(Position pos, {bool fresh = false}) {
+    userLat.value = pos.latitude;
+    userLng.value = pos.longitude;
+    fixAccuracyMeters.value = pos.accuracy;
+    if (fresh) _freshPosition = pos;
   }
 
   /// Place a fix on the map and, when [settleGate] is true, settle the geofence
@@ -371,9 +412,7 @@ class AttendanceController extends GetxController with WidgetsBindingObserver {
     bool isAnywhere, {
     bool settleGate = true,
   }) {
-    userLat.value = pos.latitude;
-    userLng.value = pos.longitude;
-    fixAccuracyMeters.value = pos.accuracy;
+    _recordFix(pos, fresh: settleGate);
 
     if (offices.isEmpty) {
       if (!isAnywhere) {
@@ -561,19 +600,9 @@ class AttendanceController extends GetxController with WidgetsBindingObserver {
       !isClocking.value &&
       !isDoneToday;
 
-  /// Full clock action with the built-in navigating face gate. Kept for entry
-  /// points that push the standalone camera route.
-  Future<void> clock() => _runClock(navigateFaceGate: true);
+  Future<void> clock() => _runClock();
 
-  /// Clock using a face embedding already captured by the on-page scanner —
-  /// no navigation. Pass null when enrollment just happened (no verify needed).
-  Future<void> clockWithEmbedding(List<double>? faceEmbedding) =>
-      _runClock(navigateFaceGate: false, providedEmbedding: faceEmbedding);
-
-  Future<void> _runClock({
-    required bool navigateFaceGate,
-    List<double>? providedEmbedding,
-  }) async {
+  Future<void> _runClock() async {
     if (today.value == null || loadFailed.value) {
       AppToast.warning(
         'Status absensi belum tersedia. Muat ulang lalu coba lagi.',
@@ -615,15 +644,24 @@ class AttendanceController extends GetxController with WidgetsBindingObserver {
     //   'detection'   → capture a live face; the server accepts it without a match.
     //   'recognition' → capture + the server matches it against the template.
     // Already enrolled → verify against the stored template; not yet enrolled →
-    // run enrollment (active liveness) first, then clock. Capture + embedding
-    // both run locally, so this works offline too.
+    // run enrollment (active liveness) first, then clock. Recognition itself
+    // runs behind Laravel, so strict face modes require a network connection.
     final requiresFaceCapture = today.value?.requiresFaceCapture ?? true;
-    List<double>? faceEmbedding = providedEmbedding;
+    final requiresOnlineFace =
+        requiresFaceCapture &&
+        ((today.value?.blocksOnFaceFailure ?? true) ||
+            (today.value?.requiresFaceEnrollment ?? true) ||
+            today.value?.faceMode == 'recognition');
+    if (requiresOnlineFace && !Get.find<ConnectivityService>().online.value) {
+      AppToast.warning('Koneksi internet diperlukan untuk verifikasi wajah.');
+      return;
+    }
+
     String? selfiePath;
-    if (navigateFaceGate && requiresFaceCapture) {
+    if (requiresFaceCapture) {
       if (requiresFace.value) {
         final result = await Get.toNamed(Routes.FACE_VERIFY);
-        if (result is! Map || result['embedding'] is! List) {
+        if (result is! Map || result['photo'] is! String) {
           // Whether a scan that never completed ends the punch is the tenant's
           // call, mirrored from `requirements.face_enforcement`. Under "flag"
           // the server records the punch and marks it for review, so refusing
@@ -641,13 +679,13 @@ class AttendanceController extends GetxController with WidgetsBindingObserver {
             'untuk ditinjau HR.',
           );
         } else {
-          faceEmbedding = List<double>.from(result['embedding'] as List);
           selfiePath = result['photo'] as String?;
         }
       } else {
         // Not enrolled yet → explain first so the flow is clear, then register.
         // The just-captured template + frame are reused for this same punch.
-        final mandatory = (today.value?.requiresFaceEnrollment ?? true) ||
+        final mandatory =
+            (today.value?.requiresFaceEnrollment ?? true) ||
             today.value?.faceMode == 'recognition';
         final wantEnroll = await confirmFaceEnroll(mandatory: mandatory);
         if (!wantEnroll) {
@@ -661,7 +699,7 @@ class AttendanceController extends GetxController with WidgetsBindingObserver {
           }
         } else {
           final result = await Get.toNamed(Routes.FACE_ENROLL);
-          if (result is! Map || result['embedding'] is! List) {
+          if (result is! Map || result['photo'] is! String) {
             AppToast.warning('Pendaftaran wajah dibatalkan.');
 
             // Same rule as backing out of the prompt above.
@@ -670,7 +708,6 @@ class AttendanceController extends GetxController with WidgetsBindingObserver {
             }
           } else {
             markFaceEnrolled();
-            faceEmbedding = List<double>.from(result['embedding'] as List);
             selfiePath = result['photo'] as String?;
           }
         }
@@ -687,8 +724,8 @@ class AttendanceController extends GetxController with WidgetsBindingObserver {
       final isEmulator = await deviceService.isEmulator();
 
       // Un-mirror the front-camera selfie and stamp company/identity/time/GPS
-      // onto it before upload. The face embedding was already computed from the
-      // raw shot, so this only affects the stored photo.
+      // onto it before upload. Laravel verifies this same accepted frame with
+      // the private Python service and stores it as the attendance selfie.
       if (selfiePath != null) {
         final me = Get.find<AuthService>().user.value;
         final address = pos != null
@@ -725,7 +762,6 @@ class AttendanceController extends GetxController with WidgetsBindingObserver {
         // UTC, so the server reads one unambiguous instant no matter what
         // zone the phone is set to.
         'clocked_at': DateTime.now().toUtc().toIso8601String(),
-        if (faceEmbedding != null) 'face_embedding': faceEmbedding,
         // A nonce lives two minutes, so a queued punch cannot carry one: the
         // queue fetches its own when it finally reaches the server.
         if (needsChallenge) 'needs_nonce': true,
@@ -734,7 +770,14 @@ class AttendanceController extends GetxController with WidgetsBindingObserver {
       // No internet → queue it and reflect the action locally.
       if (!Get.find<ConnectivityService>().online.value) {
         hideClockLoader();
-        _queueOffline(type, entry);
+        if (requiresOnlineFace) {
+          showClockResult(
+            success: false,
+            message: 'Koneksi terputus sebelum wajah dapat diverifikasi.',
+          );
+        } else {
+          _queueOffline(type, entry);
+        }
         return;
       }
 
@@ -749,7 +792,6 @@ class AttendanceController extends GetxController with WidgetsBindingObserver {
           workMode: effectiveWorkMode,
           latitude: pos?.latitude,
           longitude: pos?.longitude,
-          faceEmbedding: faceEmbedding,
           deviceId: device.deviceId,
           isMockLocation: pos?.isMocked ?? false,
           isRooted: isRooted,
@@ -775,7 +817,14 @@ class AttendanceController extends GetxController with WidgetsBindingObserver {
         hideClockLoader();
         // Lost connection mid-request → fall back to the offline queue.
         if (_isNetworkError(e)) {
-          _queueOffline(type, entry);
+          if (requiresOnlineFace) {
+            showClockResult(
+              success: false,
+              message: 'Koneksi terputus saat memverifikasi wajah.',
+            );
+          } else {
+            _queueOffline(type, entry);
+          }
         } else {
           showClockResult(success: false, message: ApiClient.errorMessage(e));
         }
@@ -890,6 +939,13 @@ class AttendanceController extends GetxController with WidgetsBindingObserver {
   Future<Position?> _currentPosition() async {
     try {
       if (await _permissionGate() != null) return null;
+
+      final fresh = _freshPosition;
+      if (fresh != null &&
+          DateTime.now().difference(fresh.timestamp).abs() <=
+              const Duration(minutes: 2)) {
+        return fresh;
+      }
 
       return await _lastKnownPosition() ?? await _livePosition();
     } catch (_) {

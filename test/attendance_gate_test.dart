@@ -1,5 +1,6 @@
 import 'package:avanahr/app/data/models/attendance.dart';
 import 'package:avanahr/app/data/models/dashboard.dart';
+import 'package:avanahr/app/modules/attendance/attendance_controller.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 /// The two things that decide whether the clock button is offered at all:
@@ -39,6 +40,17 @@ void main() {
       });
 
       expect(today.canClockIn, isFalse);
+      expect(today.isDone, isTrue);
+    });
+
+    test('normalizes status and next action from the API', () {
+      final today = AttendanceToday.fromJson({
+        'date': '2026-07-31',
+        'next_action': ' DONE ',
+        'summary': {'status': ' LaTe '},
+      });
+
+      expect(today.status, 'late');
       expect(today.isDone, isTrue);
     });
 
@@ -198,6 +210,38 @@ void main() {
 
     test('falls back to the fenced scope when the server sends none', () {
       expect(const WorkLocations(items: []).isAnywhere, isFalse);
+    });
+  });
+
+  group('attendance location gate', () {
+    test('allows server validation only after GPS has coordinates', () {
+      expect(
+        AttendanceController.locationGateAllows(
+          state: GeoState.serverValidation,
+          hasCoordinates: true,
+          worksFromHome: false,
+        ),
+        isTrue,
+      );
+      expect(
+        AttendanceController.locationGateAllows(
+          state: GeoState.serverValidation,
+          hasCoordinates: false,
+          worksFromHome: false,
+        ),
+        isFalse,
+      );
+    });
+
+    test('does not bypass the gate when GPS itself failed', () {
+      expect(
+        AttendanceController.locationGateAllows(
+          state: GeoState.error,
+          hasCoordinates: true,
+          worksFromHome: false,
+        ),
+        isFalse,
+      );
     });
   });
 }

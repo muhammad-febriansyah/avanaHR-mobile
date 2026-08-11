@@ -1,5 +1,6 @@
 import 'package:avanahr/app/data/services/face_detector_service.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:flutter/widgets.dart';
 
 /// The scanner used to answer every rejection with one sentence, so "you are
 /// turned away", "your eyes are shut" and "the camera cannot make out your
@@ -33,6 +34,71 @@ void main() {
 
     test('still says something actionable for an unknown code', () {
       expect(detector.hintForRejection('something_new'), isNotEmpty);
+    });
+  });
+
+  group('FaceDetectorService.positionRejectionForBox', () {
+    const frameWidth = 480.0;
+    const frameHeight = 640.0;
+
+    test('accepts a complete, centered face at a usable distance', () {
+      expect(
+        FaceDetectorService.positionRejectionForBox(
+          const Rect.fromLTRB(120, 150, 360, 500),
+          frameWidth,
+          frameHeight,
+        ),
+        isNull,
+      );
+    });
+
+    test('rejects faces that are too far or too close', () {
+      expect(
+        FaceDetectorService.positionRejectionForBox(
+          const Rect.fromLTRB(200, 250, 280, 370),
+          frameWidth,
+          frameHeight,
+        ),
+        'too_far',
+      );
+      expect(
+        FaceDetectorService.positionRejectionForBox(
+          const Rect.fromLTRB(40, 50, 440, 610),
+          frameWidth,
+          frameHeight,
+        ),
+        'too_close',
+      );
+    });
+
+    test('rejects cropped and off-center faces', () {
+      expect(
+        FaceDetectorService.positionRejectionForBox(
+          const Rect.fromLTRB(-30, 150, 230, 500),
+          frameWidth,
+          frameHeight,
+        ),
+        'face_cropped',
+      );
+      expect(
+        FaceDetectorService.positionRejectionForBox(
+          const Rect.fromLTRB(0, 180, 120, 440),
+          frameWidth,
+          frameHeight,
+        ),
+        'not_centered',
+      );
+    });
+
+    test('rejects invalid frame geometry', () {
+      expect(
+        FaceDetectorService.positionRejectionForBox(
+          Rect.zero,
+          frameWidth,
+          frameHeight,
+        ),
+        'frame_invalid',
+      );
     });
   });
 }

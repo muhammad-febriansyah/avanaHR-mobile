@@ -307,6 +307,8 @@ class AttendanceView extends GetView<AttendanceController> {
         return 'Izin lokasi ditolak';
       case GeoState.noOffice:
         return 'Titik kantor belum diatur';
+      case GeoState.serverValidation:
+        return 'Radius diperiksa saat absen';
       default:
         return 'Lokasi belum terbaca';
     }
@@ -367,6 +369,12 @@ class AttendanceView extends GetView<AttendanceController> {
               : office != null
               ? 'Radius tidak dicek · terdekat $office ($dist m)'
               : 'Radius tidak dicek, lokasi tetap direkam';
+          break;
+        case GeoState.serverValidation:
+          color = AppColors.warning;
+          icon = Iconsax.location_tick;
+          title = 'Lokasi ditemukan';
+          sub = 'Koneksi kebijakan lokasi lambat · radius diperiksa saat absen';
           break;
         // The three states below all end in a punch the server refuses — it
         // wants coordinates on every clock, WFA included — so the chip says so
@@ -511,7 +519,7 @@ class AttendanceView extends GetView<AttendanceController> {
   }
 
   Widget _statusChip(String status) {
-    final normalized = status.toLowerCase();
+    final normalized = status.trim().toLowerCase();
     final (label, color) = switch (normalized) {
       'present' => ('Hadir', AppColors.success),
       'late' => ('Terlambat', AppColors.warning),

@@ -7,9 +7,18 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart' show DeviceOrientation;
 import 'package:get/get.dart';
 import 'package:image/image.dart' as img;
+import 'package:path_provider/path_provider.dart';
 import 'package:tflite_flutter/tflite_flutter.dart';
 
 import '../../core/utils/vector_math.dart';
+import 'camera_frame_decoder.dart';
+
+class FaceFrameCapture {
+  const FaceFrameCapture({required this.embedding, this.photoPath});
+
+  final List<double> embedding;
+  final String? photoPath;
+}
 
 /// Turns a detected face into a MobileFaceNet embedding on-device. The 192-d
 /// vector (not the photo) is what leaves the phone, matching happens server-side
@@ -34,7 +43,31 @@ class FaceEmbedderService extends GetxService {
   }
 
   Future<void> _ensureLoaded() async {
-    _interpreter ??= await Interpreter.fromAsset(_modelAsset);
+    if (_interpreter != null) return;
+
+    final interpreter = await Interpreter.fromAsset(_modelAsset);
+    try {
+      final inputs = interpreter.getInputTensors();
+      final outputs = interpreter.getOutputTensors();
+      final validContract =
+          inputs.length == 1 &&
+          listEquals(inputs.single.shape, const [1, inputSize, inputSize, 3]) &&
+          inputs.single.type == TensorType.float32 &&
+          outputs.length == 1 &&
+          listEquals(outputs.single.shape, const [1, embeddingSize]) &&
+          outputs.single.type == TensorType.float32;
+      if (!validContract) {
+        throw StateError(
+          'Unexpected MobileFaceNet tensor contract: '
+          'inputs=${inputs.map((tensor) => tensor.shape).toList()} '
+          'outputs=${outputs.map((tensor) => tensor.shape).toList()}',
+        );
+      }
+      _interpreter = interpreter;
+    } catch (_) {
+      interpreter.close();
+      rethrow;
+    }
   }
 
   /// L2-normalized 192-d embedding for the face at [box] within [full], or null
@@ -98,9 +131,8 @@ class FaceEmbedderService extends GetxService {
     );
   }
 
-  /// Embed a face from a live camera stream frame. No stop/restart, no shutter
-  /// — the embedding is computed directly from the raw [CameraImage] that already
-  /// passed the preview gate, so the camera preview never freezes.
+  /// Embed a face from a live camera stream frame. No stop/restart or shutter is
+  /// needed, so iOS does not have to switch its AVFoundation capture output.
   ///
   /// [camera] and [deviceOrientation] are needed so the raw sensor frame can be
   /// rotated into the same coordinate space ML Kit's bounding box is measured in.
@@ -111,6 +143,50 @@ class FaceEmbedderService extends GetxService {
     Offset? rightEye,
     required CameraDescription camera,
     required DeviceOrientation deviceOrientation,
+  }) async {
+    final capture = await captureFromCameraImage(
+      image,
+      box,
+      leftEye: leftEye,
+      rightEye: rightEye,
+      camera: camera,
+      deviceOrientation: deviceOrientation,
+    );
+
+    return capture?.embedding;
+  }
+
+  /// Persists a live camera frame without loading or running MobileFaceNet.
+  ///
+  /// Server-side recognition uses this JPEG as its input. Keeping the frame
+  /// conversion here also preserves the iOS stream-only capture path, so the
+  /// camera session never switches to `takePicture()` and flashes white.
+  Future<String?> saveCameraFrame(
+    CameraImage image, {
+    required CameraDescription camera,
+    required DeviceOrientation deviceOrientation,
+  }) async {
+    try {
+      final frame = _cameraImageToImg(image, camera, deviceOrientation);
+
+      return _saveFrame(frame);
+    } catch (e, st) {
+      debugPrint('[FaceEmbedder] saveCameraFrame failed: $e\n$st');
+      return null;
+    }
+  }
+
+  /// Embeds a live frame and optionally persists that exact frame as the
+  /// attendance selfie. Both results share one raw-frame conversion, avoiding
+  /// a second `takePicture()` capture and its iOS preview flash/freeze.
+  Future<FaceFrameCapture?> captureFromCameraImage(
+    CameraImage image,
+    Rect box, {
+    Offset? leftEye,
+    Offset? rightEye,
+    required CameraDescription camera,
+    required DeviceOrientation deviceOrientation,
+    bool savePhoto = false,
   }) async {
     try {
       await _ensureLoaded();
@@ -130,9 +206,17 @@ class FaceEmbedderService extends GetxService {
 
       _interpreter!.run(input, output);
 
-      return VectorMath.l2normalize(output[0]);
+      final embedding = VectorMath.l2normalize(output[0]);
+      final photoPath = savePhoto ? await _saveFrame(full) : null;
+      if (savePhoto && photoPath == null) {
+        return null;
+      }
+
+      return FaceFrameCapture(embedding: embedding, photoPath: photoPath);
     } catch (e, st) {
-      debugPrint('[FaceEmbedder] embedFromCameraImage failed (box=$box): $e\n$st');
+      debugPrint(
+        '[FaceEmbedder] captureFromCameraImage failed (box=$box): $e\n$st',
+      );
       return null;
     }
   }
@@ -143,6 +227,13 @@ class FaceEmbedderService extends GetxService {
     DeviceOrientation deviceOrientation,
   ) {
     final raw = Platform.isIOS ? _bgraToImage(image) : _nv21ToImage(image);
+
+    // camera_avfoundation applies the requested orientation to its video
+    // output connection before delivering BGRA frames. ML Kit also ignores the
+    // rotation metadata on iOS, so its face box is already in this raw frame's
+    // coordinate space. Rotating it again makes the crop miss the face.
+    if (Platform.isIOS) return raw;
+
     final degrees = _rotationDegrees(camera, deviceOrientation);
     if (degrees == 0) return raw;
 
@@ -162,8 +253,6 @@ class FaceEmbedderService extends GetxService {
     CameraDescription camera,
     DeviceOrientation deviceOrientation,
   ) {
-    if (Platform.isIOS) return camera.sensorOrientation;
-
     final compensation = _orientationDegrees[deviceOrientation] ?? 0;
 
     return camera.lensDirection == CameraLensDirection.front
@@ -172,47 +261,39 @@ class FaceEmbedderService extends GetxService {
   }
 
   img.Image _bgraToImage(CameraImage image) {
-    final w = image.width;
-    final h = image.height;
-    final bytes = image.planes.first.bytes;
-    final rowStride = image.planes.first.bytesPerRow;
-    final result = img.Image(width: w, height: h);
-
-    for (var y = 0; y < h; y++) {
-      for (var x = 0; x < w; x++) {
-        final o = y * rowStride + x * 4;
-        result.setPixelRgba(x, y, bytes[o + 2], bytes[o + 1], bytes[o], 255);
-      }
-    }
-
-    return result;
+    final plane = image.planes.first;
+    return CameraFrameDecoder.bgra8888(
+      width: image.width,
+      height: image.height,
+      bytesPerRow: plane.bytesPerRow,
+      bytes: plane.bytes,
+    );
   }
 
   img.Image _nv21ToImage(CameraImage image) {
-    final w = image.width;
-    final h = image.height;
-    final yPlane = image.planes[0];
-    final vuPlane = image.planes[1];
-    final yRowStride = yPlane.bytesPerRow;
-    final vuRowStride = vuPlane.bytesPerRow;
-    final result = img.Image(width: w, height: h);
+    final plane = image.planes.first;
+    return CameraFrameDecoder.nv21(
+      width: image.width,
+      height: image.height,
+      bytesPerRow: plane.bytesPerRow,
+      bytes: plane.bytes,
+    );
+  }
 
-    for (var y = 0; y < h; y++) {
-      for (var x = 0; x < w; x++) {
-        final yv = yPlane.bytes[y * yRowStride + x] & 0xFF;
-        final vuOff = (y ~/ 2) * vuRowStride + (x ~/ 2) * 2;
-        final v = (vuPlane.bytes[vuOff] & 0xFF) - 128;
-        final u = (vuPlane.bytes[vuOff + 1] & 0xFF) - 128;
+  Future<String?> _saveFrame(img.Image frame) async {
+    try {
+      final directory = await getTemporaryDirectory();
+      final path =
+          '${directory.path}/face_${DateTime.now().microsecondsSinceEpoch}.jpg';
+      await File(
+        path,
+      ).writeAsBytes(img.encodeJpg(frame, quality: 88), flush: true);
 
-        final r = (yv + 1.402 * v).round().clamp(0, 255);
-        final g = (yv - 0.344 * u - 0.714 * v).round().clamp(0, 255);
-        final b = (yv + 1.772 * u).round().clamp(0, 255);
-
-        result.setPixelRgba(x, y, r, g, b, 255);
-      }
+      return path;
+    } catch (e, st) {
+      debugPrint('[FaceEmbedder] saving attendance frame failed: $e\n$st');
+      return null;
     }
-
-    return result;
   }
 
   img.Image _cropFace(img.Image full, Rect box) {

@@ -1,11 +1,14 @@
 import 'dart:async';
 import 'dart:io' show Platform;
+import 'dart:math' as math;
 
 import 'package:camera/camera.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter/widgets.dart';
 import 'package:get/get.dart';
+import 'package:google_mlkit_face_detection/google_mlkit_face_detection.dart';
 
+import '../../data/services/active_liveness_service.dart';
 import '../../data/services/face_detector_service.dart';
 import '../../data/services/face_embedder_service.dart';
 import '../../data/services/face_scan_log_service.dart';
@@ -16,18 +19,19 @@ import '../../data/services/face_scan_log_service.dart';
 /// calling `takePicture()` blanked the preview white on every shot — several
 /// times a second, the employee could not see their own face well enough to aim
 /// it — and bought only one look per one-and-a-third seconds for the trouble.
-/// Frames now arrive from the camera itself, are gated as they come, and a
-/// single still is taken at the end: the authoritative frame the embedding is
-/// computed from, checked once more before it counts.
-class FaceVerifyController extends GetxController {
+/// Frames now arrive from the camera itself and are gated as they come. The
+/// accepted frame is saved as the attendance selfie and Laravel sends it to the
+/// private Python service for recognition, so iOS never switches capture output.
+class FaceVerifyController extends GetxController with WidgetsBindingObserver {
   final FaceDetectorService _detector = FaceDetectorService();
   final FaceEmbedderService _embedder = Get.find<FaceEmbedderService>();
   final FaceScanLogService _scanLog = Get.find<FaceScanLogService>();
+  late final ActiveLivenessGate _liveness;
 
   CameraController? camera;
 
   final isReady = false.obs;
-  final isBusy = false.obs; // embedding / finishing
+  final isBusy = false.obs; // saving / finishing
   final faceOk = false.obs; // a valid face is framed right now
   final hint = 'Menyiapkan kamera…'.obs;
 
@@ -42,20 +46,52 @@ class FaceVerifyController extends GetxController {
   bool _scanning = false; // a frame is being analysed right now
   bool _done = false; // captured & returning
   bool _streaming = false; // the preview stream is running
+  bool _closed = false;
+  bool _lifecyclePaused = false;
+  Future<void>? _cameraShutdown;
+  Future<void>? _cameraInit;
+  Future<void>? _cameraRecovery;
+  Future<void> _lifecycleOperations = Future.value();
+
+  int _consecutiveRejections = 0;
+  int? _trackingId;
+  static const _rejectionDebounce = 3;
 
   /// Frames arrive faster than they can be read; this drops the ones that come
   /// in while the previous is still being analysed, and keeps a floor between
   /// analyses so the phone is not pinned at full tilt for a whole scan.
   DateTime _lastFrameAt = DateTime.fromMillisecondsSinceEpoch(0);
-  static const _minFrameGap = Duration(milliseconds: 220);
+  static final _minFrameGap = Duration(
+    milliseconds: Platform.isIOS ? 320 : 220,
+  );
 
   @override
   void onInit() {
     super.onInit();
+    WidgetsBinding.instance.addObserver(this);
+    _liveness = ActiveLivenessGate(
+      challenge: math.Random.secure().nextBool()
+          ? ActiveLivenessChallenge.blink
+          : ActiveLivenessChallenge.turnHead,
+      openEyeThreshold: Platform.isIOS ? 0.35 : 0.5,
+    );
     _initCamera();
   }
 
-  Future<void> _initCamera() async {
+  Future<void> _initCamera() {
+    if (_closed || _done || _lifecyclePaused) return Future.value();
+    final active = _cameraInit;
+    if (active != null) return active;
+
+    late final Future<void> future;
+    future = _initCameraOnce().whenComplete(() {
+      if (identical(_cameraInit, future)) _cameraInit = null;
+    });
+    _cameraInit = future;
+    return future;
+  }
+
+  Future<void> _initCameraOnce() async {
     try {
       final cams = await availableCameras();
       if (cams.isEmpty) {
@@ -69,7 +105,9 @@ class FaceVerifyController extends GetxController {
       );
       final controller = CameraController(
         front,
-        ResolutionPreset.medium,
+        // Keep iOS image streaming light enough that AVFoundation's preview
+        // texture stays fed while accurate ML Kit detection runs.
+        Platform.isIOS ? ResolutionPreset.low : ResolutionPreset.medium,
         enableAudio: false,
         // ML Kit reads NV21 on Android and BGRA on iOS. The camera's own
         // default on Android is three-plane YUV_420, which it will not take.
@@ -78,11 +116,14 @@ class FaceVerifyController extends GetxController {
             : ImageFormatGroup.bgra8888,
       );
       await controller.initialize();
-      // The plugin's default is FlashMode.auto, and an iPhone front camera has
-      // no lamp — it flashes the *screen* white to light the face instead. In a
-      // dim room that fires on every still, which employees read as the app
-      // breaking. Nothing here needs a flash: the scan gates reject a face too
-      // dark to read and ask for better light in words.
+      if (_closed || _done || _lifecyclePaused) {
+        await controller.dispose();
+        return;
+      }
+      // Keep photo flash disabled defensively. The reported iOS white blink is
+      // caused by switching the capture session from streaming to a still, not
+      // by a front-camera LED; successful scans therefore persist the stream
+      // frame directly instead of calling takePicture().
       try {
         await controller.setFlashMode(FlashMode.off);
       } catch (_) {
@@ -101,13 +142,25 @@ class FaceVerifyController extends GetxController {
       }
       camera = controller;
       _lens = front;
-      isReady.value = true;
-      hint.value = 'Posisikan wajah di dalam bingkai';
+      controller.addListener(_onCameraValueChanged);
+      // Keep the dark loading surface until AVFoundation has delivered an
+      // actual frame. An initialized texture can still be temporarily empty.
+      isReady.value = false;
+      hint.value = 'Menyiapkan preview kamera…';
       await _startStream();
     } catch (e) {
       hint.value = 'Gagal membuka kamera. Beri izin kamera lalu coba lagi.';
       _log('blocked', 'camera_error', hint.value, {'error': e.toString()});
     }
+  }
+
+  void _reject(String msg) {
+    _consecutiveRejections++;
+    final livenessReset = _liveness.registerInvalidFrame();
+    if (_consecutiveRejections >= _rejectionDebounce || livenessReset) {
+      faceOk.value = false;
+    }
+    hint.value = msg;
   }
 
   /// Queue one scan attempt for the server-side face log.
@@ -133,6 +186,10 @@ class FaceVerifyController extends GetxController {
     final cam = camera;
     if (cam == null || _streaming || _done) return;
 
+    _consecutiveRejections = 0;
+    _trackingId = null;
+    if (!retried) _liveness.reset();
+
     try {
       await cam.startImageStream(_onFrame);
       _streaming = true;
@@ -152,13 +209,20 @@ class FaceVerifyController extends GetxController {
         return;
       }
 
-      // A device that refuses the stream still deserves a working scan, so fall
-      // back to the old shutter loop rather than leaving a dead camera.
+      // Android retains the old shutter fallback. On iOS that fallback is the
+      // behavior that disrupts the preview, so surface a stable error instead.
       debugPrint('[FaceVerify] image stream unavailable: $e');
       _log('fail', 'scan_error', null, {
         'error': 'stream_unavailable',
         'detail': e.toString(),
       });
+      if (Platform.isIOS) {
+        faceOk.value = false;
+        isBusy.value = false;
+        hint.value =
+            'Stream kamera tidak dapat dibaca. Tutup halaman ini lalu coba lagi.';
+        return;
+      }
       _startShutterFallback();
     }
   }
@@ -175,10 +239,19 @@ class FaceVerifyController extends GetxController {
     }
   }
 
-  /// Judge one preview frame. Cheap checks only — the still taken afterwards is
-  /// what an embedding is actually computed from.
+  /// Judge one preview frame and persist that exact frame for server-side
+  /// recognition and the attendance selfie.
   Future<void> _onFrame(CameraImage image) async {
-    if (_scanning || _done || isBusy.value) return;
+    if (_scanning || _done || _closed || _lifecyclePaused || isBusy.value) {
+      return;
+    }
+
+    if (!isReady.value) {
+      isReady.value = true;
+      hint.value = _liveness.currentHint;
+      _lastFrameAt = DateTime.now();
+      return;
+    }
 
     final now = DateTime.now();
     if (now.difference(_lastFrameAt) < _minFrameGap) return;
@@ -195,10 +268,9 @@ class FaceVerifyController extends GetxController {
         camera: lens,
         deviceOrientation: cam.value.deviceOrientation,
       );
+      if (_closed || _done || _lifecyclePaused) return;
 
       // Null means the platform handed over a format ML Kit will not read.
-      // Nothing about the frame is knowable, so stop guessing and go back to
-      // the shutter loop, which decodes a JPEG instead.
       if (faces == null) {
         debugPrint('[FaceVerify] unsupported stream format — falling back');
         _log('fail', 'scan_error', null, {
@@ -206,78 +278,131 @@ class FaceVerifyController extends GetxController {
           'detail': _detector.lastFrameRejection,
         });
         await _stopStream();
+        if (Platform.isIOS) {
+          faceOk.value = false;
+          isBusy.value = false;
+          hint.value =
+              'Format kamera iPhone tidak didukung. Perbarui aplikasi lalu coba lagi.';
+          return;
+        }
         _startShutterFallback();
 
         return;
       }
 
       if (faces.isEmpty || faces.length > 1) {
-        faceOk.value = false;
-        hint.value = faces.isEmpty
-            ? 'Wajah tidak terdeteksi — pastikan seluruh wajah terlihat'
-            : 'Hanya wajah Anda yang boleh terlihat';
+        _reject(
+          faces.isEmpty
+              ? 'Wajah tidak terdeteksi — pastikan seluruh wajah terlihat'
+              : 'Hanya wajah Anda yang boleh terlihat',
+        );
 
         return;
       }
 
       final face = faces.first;
-      if (!_detector.isCloseEnoughInFrame(face, image.width, image.height)) {
-        faceOk.value = false;
-        hint.value = 'Wajah terlalu jauh — dekatkan ke kamera';
+      final positionRejection = _detector.positionRejectionInFrame(
+        face,
+        image.width,
+        image.height,
+        camera: lens,
+        deviceOrientation: cam.value.deviceOrientation,
+      );
+      if (positionRejection != null) {
+        _reject(_detector.hintForPositionRejection(positionRejection));
 
         return;
       }
 
+      if (!_acceptTrackedFace(face)) {
+        return;
+      }
+
+      final observation = _livenessObservationOf(face);
+      if (observation == null) {
+        _reject(
+          'Wajah kurang jelas - pastikan seluruh wajah terlihat dan cahaya cukup',
+        );
+
+        return;
+      }
+
+      _consecutiveRejections = 0;
+      faceOk.value = true;
+      final previousStage = _liveness.stage;
+      final liveness = _liveness.observe(observation);
+      hint.value = liveness.hint;
+      if (liveness.timedOut) {
+        _log('fail', 'liveness_timeout', liveness.hint, _liveness.evidence);
+      }
+      if (!liveness.passed) {
+        if (previousStage != liveness.stage) {
+          HapticFeedback.selectionClick();
+        }
+        return;
+      }
+
+      // The challenge ends on a neutral, open-eyed frame. Keep the regular
+      // quality gate as a final safeguard before that exact frame is embedded.
       final rejection = _detector.rejectionOf(face);
       if (rejection != null) {
-        faceOk.value = false;
-        hint.value = _detector.hintForRejection(rejection);
-
+        _liveness.reset();
+        _reject(_detector.hintForRejection(rejection));
         return;
       }
 
-      // Compute the embedding from the stream frame directly — no stop/restart,
-      // no shutter flash, no re-check race against a separate still photo.
-      faceOk.value = true;
-      hint.value = 'Wajah terdeteksi — memverifikasi…';
+      // Save the accepted stream frame directly: no stop/restart, no shutter
+      // flash, and no local recognition model competing with the iOS preview.
+      hint.value = _liveness.currentHint;
       isBusy.value = true;
       HapticFeedback.mediumImpact();
 
-      final embedding = await _embedder.embedFromCameraImage(
+      final photoPath = await _embedder.saveCameraFrame(
         image,
-        face.boundingBox,
-        leftEye: _detector.leftEyeOf(face),
-        rightEye: _detector.rightEyeOf(face),
         camera: lens,
         deviceOrientation: cam.value.deviceOrientation,
       );
 
-      if (embedding != null) {
-        debugPrint('[FaceVerify] OK — embedding len=${embedding.length}');
+      if (_done || _closed || _lifecyclePaused) return;
+
+      if (photoPath != null) {
+        debugPrint('[FaceVerify] OK - frame saved');
         _log('ok', 'captured', null, {
           ..._detector.metricsOf(face),
-          'embedding_dimensions': embedding.length,
+          'liveness': _liveness.evidence,
         });
         _done = true;
-        await _stopStream();
-        final shot =
-            camera?.value.isInitialized == true ? await camera!.takePicture() : null;
+        await _shutdownCamera();
         _scanning = false;
-        Get.back(result: {
-          'embedding': embedding,
-          'photo': shot?.path,
-        });
+        Get.back(result: {'photo': photoPath, 'liveness': _liveness.evidence});
 
         return;
       }
 
-      // Fallback: stream embedding failed → try the old takePicture path.
-      debugPrint('[FaceVerify] stream embed failed, falling back to still');
+      // Fallback: frame persistence failed -> try the old takePicture path.
+      debugPrint(
+        '[FaceVerify] stream frame save failed, falling back to still',
+      );
       hint.value = 'Wajah terdeteksi — memverifikasi…';
       await _stopStream();
+      if (Platform.isIOS) {
+        faceOk.value = false;
+        isBusy.value = false;
+        hint.value =
+            'Frame wajah gagal diproses. Tutup halaman ini lalu coba lagi.';
+        _log('blocked', 'embed_failed', hint.value);
+        return;
+      }
       await _fallbackCapture();
     } catch (e, st) {
       debugPrint('[FaceVerify] frame error: $e\n$st');
+      if (!_closed && !_done) {
+        isBusy.value = false;
+        faceOk.value = false;
+        _liveness.reset();
+      }
+      _reject('Menyesuaikan kamera…');
+      _log('fail', 'scan_error', hint.value, {'error': e.toString()});
     } finally {
       _scanning = false;
     }
@@ -286,6 +411,9 @@ class FaceVerifyController extends GetxController {
   /// The old behaviour, kept for devices the stream does not work on: photograph
 
   Future<void> _fallbackCapture() async {
+    if (!Platform.isAndroid) {
+      throw StateError('Still-capture fallback is disabled on iOS');
+    }
     final cam = camera;
     if (cam == null || _done) return;
 
@@ -309,29 +437,32 @@ class FaceVerifyController extends GetxController {
       }
 
       final face = faces.first;
-      final embedding = await _embedder.embedFromFile(
+      final positionRejection = await _detector.positionRejectionInFile(
+        face,
         shot.path,
-        face.boundingBox,
-        leftEye: _detector.leftEyeOf(face),
-        rightEye: _detector.rightEyeOf(face),
       );
-
-      if (embedding == null) {
-        _log('blocked', 'embed_failed', hint.value, _detector.metricsOf(face));
+      final qualityRejection = _detector.rejectionOf(face);
+      if (positionRejection != null || qualityRejection != null) {
+        await _startStream();
         faceOk.value = false;
         isBusy.value = false;
-        hint.value = 'Model wajah tidak tersedia. Hubungi admin.';
-
+        hint.value = positionRejection != null
+            ? _detector.hintForPositionRejection(positionRejection)
+            : _detector.hintForRejection(qualityRejection!);
+        _log('fail', 'capture_quality', hint.value, {
+          ..._detector.metricsOf(face),
+          'error': positionRejection ?? qualityRejection,
+        });
         return;
       }
 
-      debugPrint('[FaceVerify] OK via fallback — embedding len=${embedding.length}');
+      debugPrint('[FaceVerify] OK via fallback - frame saved');
       _log('ok', 'captured', null, {
         ..._detector.metricsOf(face),
-        'embedding_dimensions': embedding.length,
+        'liveness': _liveness.evidence,
       });
       _done = true;
-      Get.back(result: {'embedding': embedding, 'photo': shot.path});
+      Get.back(result: {'photo': shot.path, 'liveness': _liveness.evidence});
     } catch (e, st) {
       debugPrint('[FaceVerify] fallback error: $e\n$st');
       _log('fail', 'scan_error', hint.value, {'error': e.toString()});
@@ -342,11 +473,23 @@ class FaceVerifyController extends GetxController {
     }
   }
 
-  /// the preview every so often and read the JPEG. It flashes the screen white
-  /// on every shot, which is why it is no longer the default.
+  /// the preview every so often and read the JPEG. Switching capture output can
+  /// flash or freeze the iOS preview, so this fallback is Android-only.
   void _startShutterFallback() {
+    if (!Platform.isAndroid) {
+      faceOk.value = false;
+      isBusy.value = false;
+      hint.value =
+          'Stream kamera tidak tersedia. Tutup halaman lalu coba lagi.';
+      return;
+    }
     if (_done) return;
 
+    // A blink can be shorter than a still-capture cycle. Head movement remains
+    // observable in this compatibility path and cannot be skipped.
+    _liveness.reset(withChallenge: ActiveLivenessChallenge.turnHead);
+    _trackingId = null;
+    hint.value = _liveness.currentHint;
     _scanTimer?.cancel();
     _scanTimer = Timer.periodic(
       const Duration(milliseconds: 1300),
@@ -355,6 +498,7 @@ class FaceVerifyController extends GetxController {
   }
 
   Future<void> _scanOnce() async {
+    if (!Platform.isAndroid) return;
     if (_scanning || _done || isBusy.value) return;
     final cam = camera;
     if (cam == null || !cam.value.isInitialized) return;
@@ -370,11 +514,11 @@ class FaceVerifyController extends GetxController {
         // don't match the preview is itself the diagnosis.
         await _detector.measureFrame(shot.path);
         final size = _detector.frameSize;
-        faceOk.value = false;
-        hint.value = faces.isEmpty
+        final message = faces.isEmpty
             ? 'Wajah tidak terdeteksi — dekatkan wajah'
             : 'Hanya wajah Anda yang boleh terlihat';
-        _log('fail', faces.isEmpty ? 'no_face' : 'multi_face', hint.value, {
+        _reject(message);
+        _log('fail', faces.isEmpty ? 'no_face' : 'multi_face', message, {
           'faces': faces.length,
           'detector': _detector.lastDetector,
           if (size != null) 'frame_width': size.$1,
@@ -387,21 +531,42 @@ class FaceVerifyController extends GetxController {
       await _detector.measureFrame(shot.path);
       final metrics = {'faces': faces.length, ..._detector.metricsOf(face)};
 
-      if (!_detector.isCloseEnough(face)) {
-        faceOk.value = false;
-        hint.value = 'Wajah terlalu jauh — dekatkan ke kamera';
-        _log('fail', 'too_far', hint.value, metrics);
+      final positionRejection = await _detector.positionRejectionInFile(
+        face,
+        shot.path,
+      );
+      if (positionRejection != null) {
+        final message = _detector.hintForPositionRejection(positionRejection);
+        _reject(message);
+        _log('fail', positionRejection, message, metrics);
+        return;
+      }
+
+      final observation = _livenessObservationOf(face);
+      if (observation == null) {
+        _reject(
+          'Wajah kurang jelas - pastikan seluruh wajah terlihat dan cahaya cukup',
+        );
+        return;
+      }
+
+      final previousStage = _liveness.stage;
+      final liveness = _liveness.observe(observation);
+      faceOk.value = true;
+      hint.value = liveness.hint;
+      if (liveness.timedOut) {
+        _log('fail', 'liveness_timeout', liveness.hint, _liveness.evidence);
+      }
+      if (!liveness.passed) {
+        if (previousStage != liveness.stage) {
+          HapticFeedback.selectionClick();
+        }
         return;
       }
 
       final rejection = _detector.rejectionOf(face);
       if (rejection != null) {
-        debugPrint(
-          '[FaceVerify] not frontal/open ($rejection) — '
-          'yaw=${face.headEulerAngleY} roll=${face.headEulerAngleZ} '
-          'leftEye=${face.leftEyeOpenProbability} '
-          'rightEye=${face.rightEyeOpenProbability}',
-        );
+        _liveness.reset(withChallenge: ActiveLivenessChallenge.turnHead);
         faceOk.value = false;
         hint.value = _detector.hintForRejection(rejection);
         _log('fail', 'not_frontal', hint.value, {
@@ -410,76 +575,191 @@ class FaceVerifyController extends GetxController {
         });
         return;
       }
-      if (!await _detector.isCentered(face, shot.path)) {
-        faceOk.value = false;
-        hint.value = 'Posisikan wajah di tengah bingkai';
-        _log('fail', 'not_centered', hint.value, metrics);
-        return;
-      }
 
       // Good frame → verify.
       faceOk.value = true;
-      hint.value = 'Wajah terdeteksi — memverifikasi…';
+      hint.value = _liveness.currentHint;
       isBusy.value = true;
       HapticFeedback.mediumImpact();
 
-      final embedding = await _embedder.embedFromFile(
-        shot.path,
-        face.boundingBox,
-        leftEye: _detector.leftEyeOf(face),
-        rightEye: _detector.rightEyeOf(face),
-      );
-      if (embedding == null) {
-        debugPrint('[FaceVerify] embedding null (see [FaceEmbedder] logs)');
-        isBusy.value = false;
-        faceOk.value = false;
-        hint.value = 'Model wajah tidak tersedia. Hubungi admin.';
-        _log('blocked', 'embed_failed', hint.value, metrics);
-        return;
-      }
-
-      debugPrint('[FaceVerify] OK — embedding len=${embedding.length}');
+      debugPrint('[FaceVerify] OK - still frame saved');
       _log('ok', 'captured', null, {
         ...metrics,
-        'embedding_dimensions': embedding.length,
+        'liveness': _liveness.evidence,
       });
       _done = true;
       _scanTimer?.cancel();
-      // Return the embedding (for server-side verification) AND the captured
-      // frame path so the clock action can upload it as the attendance selfie.
-      Get.back(result: {'embedding': embedding, 'photo': shot.path});
+      Get.back(result: {'photo': shot.path, 'liveness': _liveness.evidence});
     } catch (e, st) {
       // Transient capture/detect error — keep scanning.
       debugPrint('[FaceVerify] scan error: $e\n$st');
-      faceOk.value = false;
-      hint.value = 'Menyesuaikan kamera…';
+      _reject('Menyesuaikan kamera…');
       _log('fail', 'scan_error', hint.value, {'error': e.toString()});
     } finally {
       _scanning = false;
     }
   }
 
+  LivenessObservation? _livenessObservationOf(Face face) {
+    final yaw = face.headEulerAngleY;
+    final roll = face.headEulerAngleZ;
+    final leftEye = face.leftEyeOpenProbability;
+    final rightEye = face.rightEyeOpenProbability;
+    if (yaw == null || roll == null || leftEye == null || rightEye == null) {
+      return null;
+    }
+
+    return LivenessObservation(
+      yaw: yaw,
+      roll: roll,
+      leftEyeOpen: leftEye,
+      rightEyeOpen: rightEye,
+    );
+  }
+
+  bool _acceptTrackedFace(Face face) {
+    final trackingId = face.trackingId;
+    if (trackingId == null) return true;
+    final previousId = _trackingId;
+    _trackingId = trackingId;
+    if (previousId == null || previousId == trackingId) return true;
+
+    _liveness.reset();
+    _reject('Wajah berubah. Hadapkan wajah yang sama untuk mengulang.');
+    _log('fail', 'tracking_changed', hint.value, {
+      'previous_tracking_id': previousId,
+      'tracking_id': trackingId,
+    });
+    return false;
+  }
+
   /// Cancel and return nothing.
-  void cancel() {
+  Future<void> cancel() async {
     _scanTimer?.cancel();
     _done = true;
+    await _shutdownCamera();
     Get.back();
   }
 
   @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (_closed || _done) return;
+    if (state == AppLifecycleState.resumed) {
+      _lifecyclePaused = false;
+      _queueLifecycleOperation(_resumeAfterLifecycle);
+    } else if (state == AppLifecycleState.inactive ||
+        state == AppLifecycleState.paused ||
+        state == AppLifecycleState.hidden ||
+        state == AppLifecycleState.detached) {
+      _lifecyclePaused = true;
+      isReady.value = false;
+      faceOk.value = false;
+      hint.value = 'Kamera dijeda…';
+      _queueLifecycleOperation(_pauseForLifecycle);
+    }
+  }
+
+  void _queueLifecycleOperation(Future<void> Function() operation) {
+    _lifecycleOperations = _lifecycleOperations
+        .then((_) => operation())
+        .catchError((Object error, StackTrace stackTrace) {
+          debugPrint('[FaceVerify] lifecycle error: $error\n$stackTrace');
+        });
+  }
+
+  Future<void> _pauseForLifecycle() async {
+    await _cameraInit;
+    if (_closed) return;
+    _scanTimer?.cancel();
+    await _shutdownCamera();
+  }
+
+  Future<void> _resumeAfterLifecycle() async {
+    await _cameraInit;
+    await _cameraShutdown;
+    if (_closed || _done || _lifecyclePaused) {
+      return;
+    }
+    final cam = camera;
+    if (cam != null && cam.value.isInitialized) {
+      isReady.value = true;
+      hint.value = _liveness.currentHint;
+      if (!_streaming) await _startStream();
+      return;
+    }
+
+    _cameraShutdown = null;
+    _liveness.reset();
+    hint.value = 'Menyiapkan kembali kamera…';
+    await _initCamera();
+  }
+
+  void _onCameraValueChanged() {
+    final cam = camera;
+    if (_closed || _done || _lifecyclePaused || cam == null) return;
+    if (!cam.value.hasError) return;
+
+    debugPrint(
+      '[FaceVerify] camera runtime error: ${cam.value.errorDescription}',
+    );
+    _log('fail', 'camera_runtime_error', null, {
+      'error': cam.value.errorDescription,
+    });
+    _cameraRecovery ??= _recoverCamera().whenComplete(() {
+      _cameraRecovery = null;
+    });
+  }
+
+  Future<void> _recoverCamera() async {
+    isReady.value = false;
+    faceOk.value = false;
+    isBusy.value = false;
+    _liveness.reset();
+    hint.value = 'Memulihkan kamera…';
+    await _shutdownCamera();
+    if (_closed || _done || _lifecyclePaused) return;
+
+    _cameraShutdown = null;
+    await Future<void>.delayed(const Duration(milliseconds: 250));
+    await _initCamera();
+  }
+
+  Future<void> _shutdownCamera() => _cameraShutdown ??= _shutdownCameraOnce();
+
+  Future<void> _shutdownCameraOnce() async {
+    final cam = camera;
+    if (cam == null) return;
+
+    await _stopStream();
+    cam.removeListener(_onCameraValueChanged);
+    camera = null;
+    _lens = null;
+    isReady.value = false;
+    try {
+      await cam.dispose();
+    } catch (_) {
+      // The native session may already be gone while the route is closing.
+    }
+  }
+
+  Future<void> _disposeResources() async {
+    await _shutdownCamera();
+    while (_scanning) {
+      await Future<void>.delayed(const Duration(milliseconds: 10));
+    }
+    await _detector.dispose();
+  }
+
+  @override
   void onClose() {
+    _closed = true;
+    _done = true;
+    WidgetsBinding.instance.removeObserver(this);
     _scanTimer?.cancel();
     // Send whatever the session recorded — a user who gives up and backs out is
     // exactly the case the log exists for.
     _scanLog.flush();
-    if (_streaming) {
-      _streaming = false;
-      unawaited(
-        camera?.stopImageStream().catchError((_) {}) ?? Future.value(),
-      );
-    }
-    camera?.dispose();
-    _detector.dispose();
+    unawaited(_disposeResources());
     super.onClose();
   }
 }

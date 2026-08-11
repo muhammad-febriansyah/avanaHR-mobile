@@ -292,7 +292,6 @@ class AvanaApi {
     String? workMode,
     double? latitude,
     double? longitude,
-    List<double>? faceEmbedding,
     String? deviceId,
     bool? isMockLocation,
     bool? isRooted,
@@ -306,7 +305,6 @@ class AvanaApi {
       if (workMode != null) 'work_mode': workMode,
       if (latitude != null) 'latitude': latitude,
       if (longitude != null) 'longitude': longitude,
-      if (faceEmbedding != null) 'face_embedding': faceEmbedding,
       if (deviceId != null) 'device_id': deviceId,
       if (isMockLocation != null) 'is_mock_location': isMockLocation,
       if (isRooted != null) 'is_rooted': isRooted,
@@ -315,8 +313,8 @@ class AvanaApi {
       if (nonce != null) 'nonce': nonce,
     };
 
-    // No selfie → plain JSON. With a selfie → multipart so the captured face
-    // frame is uploaded as the attendance photo (verification stays on-device).
+    // No selfie -> plain JSON. With a selfie -> multipart so Laravel can send
+    // the same accepted frame to the private Python recognition service.
     if (selfiePath == null) {
       return _dio.post('/me/attendance/clock', data: fields);
     }
@@ -329,15 +327,9 @@ class AvanaApi {
     // Multipart quirks vs Laravel validation:
     //  - bools serialise to "true"/"false" strings the `boolean` rule rejects
     //    → send '1'/'0'.
-    //  - a List repeats the bare key, which Laravel reads as a scalar (fails
-    //    the `array` rule) → emit `face_embedding[]` entries instead.
     final form = FormData();
     fields.forEach((key, value) {
-      if (value is List) {
-        for (final element in value) {
-          form.fields.add(MapEntry('$key[]', element.toString()));
-        }
-      } else if (value is bool) {
+      if (value is bool) {
         form.fields.add(MapEntry(key, value ? '1' : '0'));
       } else {
         form.fields.add(MapEntry(key, value.toString()));
@@ -449,8 +441,22 @@ class AvanaApi {
   // ---- Face recognition ----
   Future<Response> faceStatus() => _dio.get('/me/face');
 
-  Future<Response> enrollFace(List<double> embedding) =>
-      _dio.post('/me/face/enroll', data: {'embedding': embedding});
+  Future<Response> enrollFace(List<String> imagePaths) async {
+    final form = FormData();
+    for (var index = 0; index < imagePaths.length; index++) {
+      form.files.add(
+        MapEntry(
+          'images[]',
+          await MultipartFile.fromFile(
+            imagePaths[index],
+            filename: 'face_${index + 1}.jpg',
+          ),
+        ),
+      );
+    }
+
+    return _dio.post('/me/face/enroll', data: form);
+  }
 
   /// Ship a batch of face-scan diagnostics so a failure that only happens on
   /// certain devices is visible server-side instead of only on the phone.

@@ -210,7 +210,7 @@ class _FaceVerifyViewState extends State<FaceVerifyView>
                   SizedBox(width: 6.w),
                   Flexible(
                     child: Text(
-                      'Hanya data wajah (bukan foto) yang dikirim.',
+                      'Satu foto absensi dan data wajah dikirim secara aman.',
                       style: TextStyle(
                         color: Colors.white60,
                         fontSize: 10.5.sp,
