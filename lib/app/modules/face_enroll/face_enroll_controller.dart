@@ -35,6 +35,7 @@ class FaceEnrollController extends GetxController with WidgetsBindingObserver {
   final enrolled = false.obs;
   final faceOk = false.obs; // a valid face for the current step is framed
   final hint = 'Menyiapkan kamera…'.obs;
+  final detectedFaceBoxes = <Rect>[].obs;
 
   /// 0 = neutral, 1 = smile, 2 = neutral after the expression change.
   final step = 0.obs;
@@ -291,6 +292,7 @@ class FaceEnrollController extends GetxController with WidgetsBindingObserver {
 
       // Null means the platform handed over a format ML Kit will not read.
       if (faces == null) {
+        detectedFaceBoxes.clear();
         debugPrint('[FaceEnroll] unsupported stream format — falling back');
         _log('fail', 'scan_error', null, {
           'error': 'unsupported_frame_format',
@@ -308,6 +310,16 @@ class FaceEnrollController extends GetxController with WidgetsBindingObserver {
 
         return;
       }
+
+      detectedFaceBoxes.assignAll(
+        _detector.overlayBoxesInFrame(
+          faces,
+          image.width,
+          image.height,
+          camera: lens,
+          deviceOrientation: cam.value.deviceOrientation,
+        ),
+      );
 
       if (faces.isEmpty || faces.length > 1) {
         _fail(

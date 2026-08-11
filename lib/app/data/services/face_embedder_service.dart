@@ -235,9 +235,7 @@ class FaceEmbedderService extends GetxService {
     if (Platform.isIOS) return raw;
 
     final degrees = _rotationDegrees(camera, deviceOrientation);
-    if (degrees == 0) return raw;
-
-    return img.copyRotate(raw, angle: -degrees);
+    return CameraFrameDecoder.rotateToInputOrientation(raw, degrees);
   }
 
   /// Degrees ML Kit rotated the frame internally. The raw camera image must be

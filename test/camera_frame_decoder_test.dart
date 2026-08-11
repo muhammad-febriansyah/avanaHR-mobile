@@ -43,4 +43,19 @@ void main() {
       throwsFormatException,
     );
   });
+
+  test('rotates CameraX pixels in the ML Kit metadata direction', () {
+    final source = CameraFrameDecoder.bgra8888(
+      width: 2,
+      height: 1,
+      bytesPerRow: 8,
+      bytes: Uint8List.fromList([0, 0, 255, 255, 255, 0, 0, 255]),
+    );
+
+    final rotated = CameraFrameDecoder.rotateToInputOrientation(source, 90);
+
+    expect((rotated.width, rotated.height), (1, 2));
+    expect(rotated.getPixel(0, 0).r, 255);
+    expect(rotated.getPixel(0, 1).b, 255);
+  });
 }

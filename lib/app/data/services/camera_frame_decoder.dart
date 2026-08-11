@@ -6,6 +6,19 @@ import 'package:image/image.dart' as img;
 class CameraFrameDecoder {
   const CameraFrameDecoder._();
 
+  /// Rotate RGB pixels in the same direction as the metadata supplied to ML
+  /// Kit. CameraX keeps NV21 pixels in sensor orientation, while ML Kit reports
+  /// face boxes in the rotated coordinate space.
+  static img.Image rotateToInputOrientation(
+    img.Image image,
+    int rotationDegrees,
+  ) {
+    final normalized = rotationDegrees % 360;
+    if (normalized == 0) return image;
+
+    return img.copyRotate(image, angle: normalized);
+  }
+
   static img.Image bgra8888({
     required int width,
     required int height,

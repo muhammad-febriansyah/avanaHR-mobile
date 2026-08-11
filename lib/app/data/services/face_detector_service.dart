@@ -114,6 +114,61 @@ class FaceDetectorService {
     return _live.processImage(input);
   }
 
+  /// Face rectangles normalized to the portrait camera preview. Android ML
+  /// Kit reports boxes after applying [InputImageMetadata.rotation], so the
+  /// sensor dimensions are swapped for quarter-turn rotations. Front previews
+  /// are mirrored by the camera plugin and the overlay follows that mirror.
+  List<Rect> overlayBoxesInFrame(
+    List<Face> faces,
+    int width,
+    int height, {
+    required CameraDescription camera,
+    required DeviceOrientation deviceOrientation,
+  }) {
+    var frameWidth = width.toDouble();
+    var frameHeight = height.toDouble();
+    final rotation = _rotationFor(camera, deviceOrientation);
+    if (Platform.isAndroid &&
+        (rotation == InputImageRotation.rotation90deg ||
+            rotation == InputImageRotation.rotation270deg)) {
+      final previousWidth = frameWidth;
+      frameWidth = frameHeight;
+      frameHeight = previousWidth;
+    }
+
+    return faces
+        .map(
+          (face) => normalizeOverlayBox(
+            face.boundingBox,
+            frameWidth,
+            frameHeight,
+            mirrorHorizontally:
+                camera.lensDirection == CameraLensDirection.front,
+          ),
+        )
+        .whereType<Rect>()
+        .toList(growable: false);
+  }
+
+  static Rect? normalizeOverlayBox(
+    Rect box,
+    double frameWidth,
+    double frameHeight, {
+    bool mirrorHorizontally = false,
+  }) {
+    if (frameWidth <= 0 || frameHeight <= 0 || box.isEmpty) return null;
+
+    final left = (box.left / frameWidth).clamp(0.0, 1.0).toDouble();
+    final top = (box.top / frameHeight).clamp(0.0, 1.0).toDouble();
+    final right = (box.right / frameWidth).clamp(0.0, 1.0).toDouble();
+    final bottom = (box.bottom / frameHeight).clamp(0.0, 1.0).toDouble();
+    if (right <= left || bottom <= top) return null;
+
+    return mirrorHorizontally
+        ? Rect.fromLTRB(1 - right, top, 1 - left, bottom)
+        : Rect.fromLTRB(left, top, right, bottom);
+  }
+
   /// Build an ML Kit input from a camera frame, or null when the platform
   /// handed over a format it cannot read.
   ///

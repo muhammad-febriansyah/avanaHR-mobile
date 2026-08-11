@@ -5,6 +5,7 @@ import 'package:get/get.dart';
 import 'package:iconsax/iconsax.dart';
 
 import '../../core/theme/app_colors.dart';
+import '../../core/widgets/face_detection_overlay.dart';
 import 'face_verify_controller.dart';
 
 const _bg = Color(0xFF0B1020);
@@ -51,6 +52,7 @@ class _FaceVerifyViewState extends State<FaceVerifyView>
           fit: StackFit.expand,
           children: [
             _preview(),
+            _faceDetectionOverlay(),
             // Only the very top/bottom edges are dimmed so the chrome reads —
             // the centred face stays bright and clear.
             const Positioned.fill(child: IgnorePointer(child: _EdgeGradient())),
@@ -91,6 +93,21 @@ class _FaceVerifyViewState extends State<FaceVerifyView>
         width: cam.value.previewSize?.height ?? 1,
         height: cam.value.previewSize?.width ?? 1,
         child: CameraPreview(cam),
+      ),
+    );
+  }
+
+  Widget _faceDetectionOverlay() {
+    final preview = c.camera?.value.previewSize;
+    if (preview == null) return const SizedBox.shrink();
+
+    return Positioned.fill(
+      child: Obx(
+        () => FaceDetectionOverlay(
+          boxes: c.detectedFaceBoxes.toList(growable: false),
+          previewSize: Size(preview.height, preview.width),
+          faceAccepted: c.faceOk.value,
+        ),
       ),
     );
   }

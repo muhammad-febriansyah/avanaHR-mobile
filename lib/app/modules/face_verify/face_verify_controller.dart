@@ -34,6 +34,7 @@ class FaceVerifyController extends GetxController with WidgetsBindingObserver {
   final isBusy = false.obs; // saving / finishing
   final faceOk = false.obs; // a valid face is framed right now
   final hint = 'Menyiapkan kamera…'.obs;
+  final detectedFaceBoxes = <Rect>[].obs;
 
   /// The camera this controller opened, kept for the rotation maths a stream
   /// frame needs.
@@ -272,6 +273,7 @@ class FaceVerifyController extends GetxController with WidgetsBindingObserver {
 
       // Null means the platform handed over a format ML Kit will not read.
       if (faces == null) {
+        detectedFaceBoxes.clear();
         debugPrint('[FaceVerify] unsupported stream format — falling back');
         _log('fail', 'scan_error', null, {
           'error': 'unsupported_frame_format',
@@ -289,6 +291,16 @@ class FaceVerifyController extends GetxController with WidgetsBindingObserver {
 
         return;
       }
+
+      detectedFaceBoxes.assignAll(
+        _detector.overlayBoxesInFrame(
+          faces,
+          image.width,
+          image.height,
+          camera: lens,
+          deviceOrientation: cam.value.deviceOrientation,
+        ),
+      );
 
       if (faces.isEmpty || faces.length > 1) {
         _reject(

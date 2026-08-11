@@ -101,4 +101,24 @@ void main() {
       );
     });
   });
+
+  group('FaceDetectorService.normalizeOverlayBox', () {
+    test('normalizes and mirrors a front-camera face box', () {
+      final box = FaceDetectorService.normalizeOverlayBox(
+        const Rect.fromLTRB(40, 100, 160, 300),
+        400,
+        800,
+        mirrorHorizontally: true,
+      );
+
+      expect(box, const Rect.fromLTRB(0.6, 0.125, 0.9, 0.375));
+    });
+
+    test('rejects invalid overlay geometry', () {
+      expect(
+        FaceDetectorService.normalizeOverlayBox(Rect.zero, 400, 800),
+        isNull,
+      );
+    });
+  });
 }
