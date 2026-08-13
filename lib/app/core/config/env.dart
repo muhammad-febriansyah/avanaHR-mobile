@@ -10,30 +10,36 @@ class Env {
 
   static const _definedApiBaseUrl = String.fromEnvironment('API_BASE_URL');
 
-  /// Debug/profile runs use the development API while release builds always
-  /// use production. A compile-time define remains available as an explicit
-  /// override for CI or one-off environments.
+  /// A compile-time define is the highest-priority CI override. Otherwise all
+  /// build modes use the URL selected in the bundled `.env` file.
   static String get apiBaseUrl {
     return resolveApiBaseUrl(
       releaseMode: kReleaseMode,
       definedApiBaseUrl: _definedApiBaseUrl,
-      developmentApiBaseUrl: dotenv.maybeGet('API_BASE_URL'),
+      dotenvApiBaseUrl: dotenv.maybeGet('API_BASE_URL'),
     );
   }
 
   static String resolveApiBaseUrl({
     required bool releaseMode,
     String definedApiBaseUrl = '',
-    String? developmentApiBaseUrl,
+    String? dotenvApiBaseUrl,
   }) {
-    if (definedApiBaseUrl.isNotEmpty) {
-      return definedApiBaseUrl;
+    final defined = definedApiBaseUrl.trim();
+    if (defined.isNotEmpty) {
+      return defined;
     }
+
+    final configured = dotenvApiBaseUrl?.trim();
+    if (configured != null && configured.isNotEmpty) {
+      return configured;
+    }
+
     if (releaseMode) {
       return 'https://avanahr.id/api/v1';
     }
 
-    return developmentApiBaseUrl ?? 'https://dev.avanahr.id/api/v1';
+    return 'https://dev.avanahr.id/api/v1';
   }
 
   /// Scheme + host + port of the API (drops the `/api/v1` path), e.g.

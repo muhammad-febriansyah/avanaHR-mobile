@@ -14,7 +14,7 @@ void main() {
     }
   });
 
-  test('selects dev for ordinary runs and production for release', () {
+  test('uses mode defaults only when dotenv has no API URL', () {
     expect(
       Env.resolveApiBaseUrl(releaseMode: false),
       'https://dev.avanahr.id/api/v1',
@@ -27,6 +27,27 @@ void main() {
       Env.resolveApiBaseUrl(
         releaseMode: true,
         definedApiBaseUrl: 'https://staging.example/api/v1',
+      ),
+      'https://staging.example/api/v1',
+    );
+  });
+
+  test('uses the dotenv API URL in release mode', () {
+    expect(
+      Env.resolveApiBaseUrl(
+        releaseMode: true,
+        dotenvApiBaseUrl: 'https://dev.avanahr.id/api/v1',
+      ),
+      'https://dev.avanahr.id/api/v1',
+    );
+  });
+
+  test('a compile-time API URL still overrides dotenv', () {
+    expect(
+      Env.resolveApiBaseUrl(
+        releaseMode: true,
+        definedApiBaseUrl: 'https://staging.example/api/v1',
+        dotenvApiBaseUrl: 'https://dev.avanahr.id/api/v1',
       ),
       'https://staging.example/api/v1',
     );
