@@ -116,7 +116,7 @@ class ReimbursementView extends GetView<ReimbursementController> {
   }
 
   void _openSheet(BuildContext context) {
-    final categoryC = TextEditingController();
+    final category = RxnString();
     final amountC = TextEditingController();
     final receiptPath = RxnString();
 
@@ -126,12 +126,19 @@ class ReimbursementView extends GetView<ReimbursementController> {
       children: [
         const SheetHeader('Ajukan Reimbursement'),
         SizedBox(height: 18.h),
-        AppTextField(
-          controller: categoryC,
-          label: 'Kategori',
-          hint: 'mis. transport, medis',
-          icon: Iconsax.category,
-          required: true,
+        Obx(
+          () => AppDropdownField<String>(
+            label: 'Kategori',
+            hint: 'Pilih kategori',
+            required: true,
+            value: category.value,
+            items: ReimbursementController.categories.entries
+                .map(
+                  (e) => DropdownMenuItem(value: e.key, child: Text(e.value)),
+                )
+                .toList(),
+            onChanged: (v) => category.value = v,
+          ),
         ),
         SizedBox(height: 14.h),
         AppMoneyField(controller: amountC, label: 'Nominal', required: true),
@@ -153,12 +160,12 @@ class ReimbursementView extends GetView<ReimbursementController> {
             label: 'Ajukan',
             onPressed: () async {
               final amount = parseRupiah(amountC.text);
-              if (categoryC.text.trim().isEmpty || amount <= 0) {
+              if (category.value == null || amount <= 0) {
                 AppToast.warning('Lengkapi kategori & nominal.');
                 return;
               }
               final ok = await controller.submit(
-                category: categoryC.text.trim(),
+                category: category.value!,
                 amount: amount,
                 receiptPath: receiptPath.value,
               );

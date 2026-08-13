@@ -10,6 +10,18 @@ import '../../data/providers/avana_api.dart';
 class ReimbursementController extends GetxController {
   final AvanaApi _api = AvanaApi();
 
+  /// Mirrors `Reimbursement::CATEGORIES` on the backend — the API rejects
+  /// any `category` value outside this exact set, so the form must offer a
+  /// picker instead of letting the employee type something that doesn't
+  /// match (e.g. "transport" vs. the required "transportasi").
+  static const Map<String, String> categories = {
+    'medical': 'Medical Reimbursement',
+    'komunikasi': 'Komunikasi / Internet',
+    'transportasi': 'Transportasi',
+    'operasional': 'Pembelian Operasional',
+    'representasi': 'Biaya Representasi',
+  };
+
   final isLoading = true.obs;
   final submitting = false.obs;
   final items = <ReimbursementItem>[].obs;
