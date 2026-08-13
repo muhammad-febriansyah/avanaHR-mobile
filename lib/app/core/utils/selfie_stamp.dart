@@ -55,8 +55,11 @@ class SelfieStamp {
         logo = await _downloadLogo(logoUrl);
       }
 
+      // The logo stands in for the company name, so keep the text line only
+      // when no logo could be loaded.
       final lines = <String>[
-        if (company != null && company.trim().isNotEmpty) company.trim(),
+        if (logo == null && company != null && company.trim().isNotEmpty)
+          company.trim(),
         if (subtitle != null && subtitle.trim().isNotEmpty) subtitle.trim(),
         _formatTime(at ?? DateTime.now()),
         if (address != null && address.trim().isNotEmpty) address.trim(),
@@ -108,7 +111,24 @@ class SelfieStamp {
     final lineHeight = font.lineHeight + 4;
     final padding = (image.width * 0.03).round().clamp(10, 28);
     final lineCount = lines.length;
-    final blockHeight = (lineCount > 0 ? lineCount * lineHeight : 0) + padding * 2;
+
+    // The logo sits on its own row above the text, where the company name
+    // would otherwise be.
+    var logoW = 0;
+    var logoH = 0;
+    if (logo != null) {
+      logoH = _logoMaxHeight;
+      logoW = (logoH * logo.width / logo.height).round();
+      final maxW = (image.width * 0.45).round();
+      if (logoW > maxW) {
+        logoW = maxW;
+        logoH = (logoW * logo.height / logo.width).round();
+      }
+    }
+
+    final logoBlock = logo != null ? logoH + (lineCount > 0 ? padding ~/ 2 : 0) : 0;
+    final blockHeight =
+        logoBlock + (lineCount > 0 ? lineCount * lineHeight : 0) + padding * 2;
     final top = image.height - blockHeight;
 
     img.fillRect(
@@ -120,24 +140,21 @@ class SelfieStamp {
       color: img.ColorRgba8(0, 0, 0, 140),
     );
 
-    var xCursor = padding;
+    final xCursor = padding;
+    var yCursor = top + padding;
 
     if (logo != null) {
-      final logoH = (_logoMaxHeight).clamp(16, blockHeight - padding ~/ 2);
-      final logoW = (logoH * logo.width / logo.height).round();
-      final logoTop = top + (blockHeight - logoH) ~/ 2;
-
       img.compositeImage(
         image,
         img.copyResize(logo, width: logoW, height: logoH),
         dstX: xCursor,
-        dstY: logoTop,
+        dstY: yCursor,
       );
-      xCursor += logoW + padding;
+      yCursor += logoBlock;
     }
 
     if (lineCount > 0) {
-      var y = top + padding;
+      var y = yCursor;
       for (final line in lines) {
         img.drawString(
           image,
