@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:dio/dio.dart';
 import 'package:get/get.dart' hide Response;
 import 'package:get_storage/get_storage.dart';
@@ -162,6 +164,9 @@ class SosmedController extends GetxController {
     await load();
   }
 
+  /// Mirrors the `image.max:5120` rule in Api\SocialController::store.
+  static const int _maxImageBytes = 5 * 1024 * 1024;
+
   Future<bool> createPost({
     required String body,
     int? categoryId,
@@ -175,6 +180,17 @@ class SosmedController extends GetxController {
       final prepared = imagePath == null
           ? null
           : await ImageCompressor.compress(imagePath);
+
+      // Compression can fail to decode the file (e.g. an unsupported/corrupt
+      // image) and falls back to the original, uncompressed path. Catch that
+      // case here instead of letting the server reject the upload after the
+      // whole file has already gone over the wire.
+      if (prepared != null &&
+          await File(prepared).length() > _maxImageBytes) {
+        submitting.value = false;
+        AppToast.error('Ukuran foto maksimal 5 MB.');
+        return false;
+      }
 
       final res = await _api.createSocialPost(
         body: body,
