@@ -141,6 +141,9 @@ class AttendanceCorrectionView extends GetView<AttendanceCorrectionController> {
             label: 'Tanggal',
             value: date.value,
             onPick: (d) => date.value = d,
+            // Matches AttendanceCorrectionController::store's
+            // before_or_equal:today — a future date always fails server-side.
+            lastDate: DateTime.now(),
             required: true,
           ),
         ),

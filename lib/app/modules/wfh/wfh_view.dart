@@ -151,6 +151,10 @@ class WfhView extends GetView<WfhController> {
                   label: 'Selesai',
                   value: end.value,
                   onPick: (d) => end.value = d,
+                  // Matches WfhController::store's
+                  // end_date >= start_date — picking an earlier end date
+                  // always fails server-side.
+                  firstDate: start.value,
                   required: true,
                 ),
               ),
