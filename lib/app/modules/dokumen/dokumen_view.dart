@@ -267,8 +267,7 @@ class DokumenView extends GetView<DokumenController> {
           final isImage =
               lower.endsWith('.jpg') ||
               lower.endsWith('.jpeg') ||
-              lower.endsWith('.png') ||
-              lower.endsWith('.webp');
+              lower.endsWith('.png');
 
           if (isImage && path.value != null) {
             return _imagePreview(fname, path, fileName);
@@ -303,9 +302,11 @@ class DokumenView extends GetView<DokumenController> {
     return InkWell(
       borderRadius: BorderRadius.circular(14.r),
       onTap: () async {
+        // Matches DocumentController::store's `mimes:pdf,jpg,jpeg,png` — a
+        // picked webp would preview fine here but get rejected by the server.
         const typeGroup = XTypeGroup(
           label: 'Dokumen',
-          extensions: ['pdf', 'jpg', 'jpeg', 'png', 'webp'],
+          extensions: ['pdf', 'jpg', 'jpeg', 'png'],
         );
         final picked = await openFile(acceptedTypeGroups: [typeGroup]);
         if (picked != null) {
