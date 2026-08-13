@@ -201,15 +201,31 @@ class ApiClient extends GetxService {
   }
 
   /// Extract a friendly message from an error-shaped response body.
+  ///
+  /// Laravel's 422 payload carries a generic top-level `message` ("The given
+  /// data was invalid.") plus a per-field `errors` map with the actual
+  /// validation text (e.g. "Ukuran foto maksimal 5 MB."). The field message is
+  /// what the employee needs to see, so it takes priority when present.
   static String messageFrom(
     Response? response, [
     String fallback = 'Terjadi kesalahan.',
   ]) {
     final data = response?.data;
-    if (data is Map &&
-        data['message'] is String &&
-        (data['message'] as String).isNotEmpty) {
-      return data['message'] as String;
+    if (data is Map) {
+      final errors = data['errors'];
+      if (errors is Map && errors.isNotEmpty) {
+        final first = errors.values.first;
+        if (first is List && first.isNotEmpty && first.first is String) {
+          return first.first as String;
+        }
+        if (first is String && first.isNotEmpty) {
+          return first;
+        }
+      }
+
+      if (data['message'] is String && (data['message'] as String).isNotEmpty) {
+        return data['message'] as String;
+      }
     }
     return fallback;
   }
