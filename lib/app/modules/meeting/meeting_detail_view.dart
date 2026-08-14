@@ -22,15 +22,16 @@ import '../../data/providers/avana_api.dart';
 /// there to be checked against, not read front to back.
 class MeetingDetailView extends StatefulWidget {
   final int meetingId;
+  final AvanaApi? api;
 
-  const MeetingDetailView({super.key, required this.meetingId});
+  const MeetingDetailView({super.key, required this.meetingId, this.api});
 
   @override
   State<MeetingDetailView> createState() => _MeetingDetailViewState();
 }
 
 class _MeetingDetailViewState extends State<MeetingDetailView> {
-  final AvanaApi _api = AvanaApi();
+  late final AvanaApi _api;
 
   final TextEditingController _newItem = TextEditingController();
 
@@ -69,6 +70,7 @@ class _MeetingDetailViewState extends State<MeetingDetailView> {
   @override
   void initState() {
     super.initState();
+    _api = widget.api ?? AvanaApi();
     _load();
   }
 
@@ -234,7 +236,10 @@ class _MeetingDetailViewState extends State<MeetingDetailView> {
       actions: [
         if (detail != null && detail.hasSummaryContent)
           HeaderAction(Iconsax.share, _share),
-        if (detail != null && detail.canReprocess && !detail.meeting.isWorking)
+        if (detail != null &&
+            detail.canReprocess &&
+            !detail.meeting.isWorking &&
+            !detail.meeting.isFailed)
           HeaderAction(Iconsax.refresh, _confirmReprocess),
       ],
       child: _loading
@@ -391,13 +396,56 @@ class _MeetingDetailViewState extends State<MeetingDetailView> {
           Icon(Iconsax.warning_2, color: AppColors.danger, size: 19.sp),
           SizedBox(width: 12.w),
           Expanded(
-            child: Text(
-              detail.failureReason ?? 'Ringkasan gagal dibuat.',
-              style: TextStyle(
-                fontSize: 12.5.sp,
-                height: 1.5,
-                color: AppColors.textPrimary,
-              ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  detail.failureReason ?? 'Ringkasan gagal dibuat.',
+                  style: TextStyle(
+                    fontSize: 12.5.sp,
+                    height: 1.5,
+                    color: AppColors.textPrimary,
+                  ),
+                ),
+                if (detail.canReprocess) ...[
+                  SizedBox(height: 12.h),
+                  SizedBox(
+                    width: double.infinity,
+                    child: FilledButton.icon(
+                      key: const Key('meeting-summary-reprocess'),
+                      onPressed: _busy ? null : _confirmReprocess,
+                      icon: _busy
+                          ? SizedBox(
+                              width: 16.w,
+                              height: 16.w,
+                              child: const CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: Colors.white,
+                              ),
+                            )
+                          : Icon(Iconsax.refresh, size: 17.sp),
+                      label: Text(
+                        _busy ? 'Memproses...' : 'Buat ulang ringkasan',
+                      ),
+                      style: FilledButton.styleFrom(
+                        backgroundColor: AppColors.primary,
+                        disabledBackgroundColor: AppColors.primary.withValues(
+                          alpha: 0.45,
+                        ),
+                        foregroundColor: Colors.white,
+                        minimumSize: Size(0, 44.h),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12.r),
+                        ),
+                        textStyle: TextStyle(
+                          fontSize: 12.5.sp,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ],
             ),
           ),
         ],
