@@ -41,7 +41,11 @@
 		<string>Lokasi tepat diperlukan untuk memastikan Anda berada di dalam radius kantor saat absen. Tanpa ini, lokasi Anda bisa meleset ribuan meter.</string>
 	</dict>
 	<key>NSLocationWhenInUseUsageDescription</key>
-	<string>Lokasi digunakan untuk memverifikasi Anda berada di area kantor saat absensi.</string>
+	<string>Lokasi digunakan untuk memverifikasi area absensi dan mencatat perjalanan selama jam kerja.</string>
+	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+	<string>Setelah Clock In, lokasi dicatat selama jam kerja meski aplikasi di latar belakang dan berhenti saat Clock Out.</string>
+	<key>NSLocationAlwaysUsageDescription</key>
+	<string>Setelah Clock In, lokasi dicatat selama jam kerja meski aplikasi di latar belakang dan berhenti saat Clock Out.</string>
 	<key>NSMicrophoneUsageDescription</key>
 	<string>Mikrofon digunakan untuk merekam rapat pada fitur AI Recorder, lalu diubah menjadi transkrip dan ringkasan.</string>
 	<key>NSPhotoLibraryAddUsageDescription</key>
@@ -73,6 +77,7 @@
 	<true/>
 	<key>UIBackgroundModes</key>
 	<array>
+		<string>location</string>
 		<string>remote-notification</string>
 	</array>
 	<key>UILaunchStoryboardName</key>

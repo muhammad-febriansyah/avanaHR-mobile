@@ -17,8 +17,12 @@ class ConnectionDialog extends StatelessWidget {
     final color = offline ? AppColors.destructive : AppColors.warning;
     final icon = offline ? Iconsax.wifi_square : Iconsax.warning_2;
     final title = offline ? 'Tidak Ada Koneksi' : 'Koneksi Tidak Stabil';
+    // This popup is app-wide and knows nothing about the tenant's attendance
+    // policy, so it must not promise that a punch will be queued: under face
+    // recognition it cannot be. The attendance screen carries the accurate,
+    // policy-aware sentence.
     final body = offline
-        ? 'Perangkat tidak terhubung ke internet. Absen tetap tersimpan & terkirim otomatis begitu online.'
+        ? 'Perangkat tidak terhubung ke internet. Sebagian fitur tidak tersedia sampai koneksi kembali.'
         : 'Terhubung, tapi internet tidak terjangkau (sinyal lemah / jaringan bermasalah). Coba pindah ke tempat dengan sinyal lebih baik.';
 
     return Dialog(

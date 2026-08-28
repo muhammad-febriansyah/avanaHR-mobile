@@ -24,6 +24,7 @@ import 'app/data/services/face_embedder_service.dart';
 import 'app/data/services/face_scan_log_service.dart';
 import 'app/data/services/push_service.dart';
 import 'app/data/services/storage_service.dart';
+import 'app/data/services/tracking_service.dart';
 import 'app/routes/app_pages.dart';
 
 /// Background FCM handler (top-level, required by firebase_messaging). The OS
@@ -57,6 +58,7 @@ Future<void> main() async {
   Get.put(FaceScanLogService(), permanent: true);
   Get.put(AuthService(), permanent: true);
   Get.put(AttendanceQueueService(), permanent: true);
+  Get.put(TrackingService(), permanent: true);
   Get.put(ConfigService(), permanent: true);
   // Warm branding in the background so any entry point (deep link too) has it.
   Get.find<ConfigService>().load();

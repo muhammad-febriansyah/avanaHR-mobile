@@ -32,9 +32,28 @@ class _SplashViewState extends State<SplashView> {
     await Future.delayed(const Duration(milliseconds: 800));
     if (!mounted) return;
 
-    if (auth.isLoggedIn && await auth.loadMe()) {
-      Get.offAllNamed(Routes.MAIN);
-      return;
+    if (auth.isLoggedIn) {
+      final session = await auth.checkSession();
+
+      // Unreachable is not a refusal. A phone with no signal used to be sent to
+      // a login screen that needed the network it did not have — locking the
+      // employee out of the offline attendance queue entirely. Fall back to the
+      // profile cached from the last successful launch instead.
+      final proceed =
+          session == SessionState.active ||
+          (session == SessionState.unreachable && auth.restoreCachedSession());
+
+      if (proceed) {
+        Get.offAllNamed(Routes.MAIN);
+        return;
+      }
+
+      // Only a genuine refusal clears the session; an unreachable server with
+      // nothing cached simply falls through to the login screen with the token
+      // left intact, so the next launch with a connection can still use it.
+      if (session == SessionState.rejected) {
+        await auth.logout();
+      }
     }
     if (!storage.onboarded) {
       Get.offAllNamed(Routes.ONBOARDING);

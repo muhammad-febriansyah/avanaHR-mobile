@@ -128,8 +128,31 @@ class AttendanceToday {
       requiresFaceEnrollment: requirements['require_face_enrollment'] == true,
       timezone: (requirements['timezone'] as String?) ?? 'Asia/Jakarta',
       timezoneLabel: (requirements['timezone_label'] as String?) ?? 'WIB',
+      pendingSync: json['pending_sync'] == true,
     );
   }
+
+  Map<String, dynamic> toCacheJson() => {
+    'date': date,
+    'work_date': workDate,
+    'clock_in': clockIn,
+    'clock_out': clockOut,
+    'clock_in_at': clockInAt,
+    'next_action': nextAction,
+    'summary': {'status': status, 'work_minutes': workMinutes},
+    'work_mode': workMode,
+    'pending_sync': pendingSync,
+    'requirements': {
+      'wfh_approved_today': wfhApprovedToday,
+      'face_mode': faceMode,
+      'face_enforcement': faceEnforcement,
+      'device_binding_enabled': deviceBindingEnabled,
+      'require_liveness_challenge': requiresLivenessChallenge,
+      'require_face_enrollment': requiresFaceEnrollment,
+      'timezone': timezone,
+      'timezone_label': timezoneLabel,
+    },
+  };
 
   AttendanceToday copyWith({
     String? date,

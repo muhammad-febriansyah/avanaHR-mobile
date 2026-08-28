@@ -10,6 +10,7 @@ import '../providers/avana_api.dart';
 import 'device_service.dart';
 import 'push_service.dart';
 import 'storage_service.dart';
+import 'tracking_service.dart';
 
 /// GetStorage keys for the cached tenant brand (applied at cold start so the
 /// splash is tenant-branded on every launch after the first login).
@@ -37,7 +38,8 @@ class LoginResult {
 
   const LoginResult.success() : this._();
   const LoginResult.failed(String message) : this._(error: message);
-  const LoginResult.twoFactorRequired(String token) : this._(challengeToken: token);
+  const LoginResult.twoFactorRequired(String token)
+    : this._(challengeToken: token);
 
   bool get isSuccess => error == null && challengeToken == null;
   bool get needsTwoFactor => challengeToken != null;
@@ -61,6 +63,23 @@ class TwoFactorResult {
     : this._(error: message, challengeExpired: true);
 
   bool get isSuccess => error == null;
+}
+
+/// What a session check concluded.
+///
+/// The three cases used to collapse into one `false`, which is how a phone with
+/// no signal ended up at a login screen it had no way to complete: the only
+/// route back into the app needed the very network that was missing.
+enum SessionState {
+  /// The server confirmed the session.
+  active,
+
+  /// The server refused the token — expired beyond renewal, revoked, or the
+  /// account is gone. Sign out.
+  rejected,
+
+  /// The server could not be reached. Says nothing about the token.
+  unreachable,
 }
 
 /// Holds the authenticated session: the JWT (via StorageService) and the
@@ -123,7 +142,10 @@ class AuthService extends GetxService {
       // the status is read off it: 401 is the server saying the challenge is
       // gone, while 422 is a wrong code the same challenge still has attempts
       // left for.
-      final message = ApiClient.messageFrom(res, 'Kode verifikasi tidak valid.');
+      final message = ApiClient.messageFrom(
+        res,
+        'Kode verifikasi tidak valid.',
+      );
 
       return res.statusCode == 401
           ? TwoFactorResult.expired(message)
@@ -139,31 +161,86 @@ class AuthService extends GetxService {
   /// the app to the tenant behind them.
   Future<void> _openSession(dynamic data) async {
     await _storage.saveToken(data['access_token']);
-    user.value = AppUser.fromJson(Map<String, dynamic>.from(data['user']));
+    final profile = Map<String, dynamic>.from(data['user']);
+    user.value = AppUser.fromJson(profile);
+    // Seed the offline cache here too: an employee who signs in and immediately
+    // walks out of coverage should not need one more online launch first.
+    await _storage.saveCachedUser(profile);
     _applyTenantBrand();
   }
 
-  /// Refresh the current user from /auth/me. Returns false if the token is dead.
-  Future<bool> loadMe() async {
+  /// How long a session may run on the cached profile alone.
+  ///
+  /// Matched to the server's `JWT_REFRESH_TTL` (90 days): past that the token
+  /// can no longer be renewed even once the phone is back online, so keeping
+  /// the employee "signed in" would only defer the login screen to a worse
+  /// moment. Raise this only alongside the server value — a test pins the
+  /// number so the two cannot drift apart unnoticed.
+  static const offlineSessionWindow = Duration(days: 90);
+
+  /// Refresh the current user from /auth/me.
+  ///
+  /// A network failure is not a verdict on the token, so it no longer signs
+  /// anyone out; the caller decides what to do with [SessionState.unreachable].
+  Future<SessionState> checkSession() async {
     try {
-      user.value = await _api.me();
+      final data = await _api.meJson();
+      user.value = AppUser.fromJson(data);
+      await _storage.saveCachedUser(data);
       _applyTenantBrand();
-      return true;
+
+      return SessionState.active;
+    } on DioException catch (error) {
+      if (ApiClient.isOffline(error)) {
+        // Nothing was learned about the session — say so rather than guessing.
+        return SessionState.unreachable;
+      }
+
+      return SessionState.rejected;
     } catch (_) {
-      // Dead/absent token, network error, or an unexpected response shape:
-      // treat all as "not authenticated" so the splash routes to login instead
-      // of throwing an unhandled exception.
-      return false;
+      // A malformed body is the server talking, so the request did reach it.
+      return SessionState.rejected;
     }
   }
 
+  /// Refresh the user, reporting only whether it worked. Kept for the screens
+  /// that pull to refresh and have nothing to do with the answer.
+  Future<bool> loadMe() async => await checkSession() == SessionState.active;
+
+  /// Rebuild the session from the last profile this device saw.
+  ///
+  /// Returns false when there is nothing cached, or when the cache is older
+  /// than [offlineSessionWindow] — an employee who has been away from the
+  /// network longer than the server would renew a token for has to sign in
+  /// again, and finding that out at the splash is kinder than at the first
+  /// request that fails.
+  bool restoreCachedSession() {
+    final cached = _storage.cachedUser;
+    if (cached == null) return false;
+
+    final cachedAt = _storage.cachedUserAt;
+    if (cachedAt == null ||
+        DateTime.now().toUtc().difference(cachedAt) > offlineSessionWindow) {
+      return false;
+    }
+
+    user.value = AppUser.fromJson(cached);
+    _applyTenantBrand();
+
+    return true;
+  }
+
   Future<void> logout() async {
+    if (Get.isRegistered<TrackingService>()) {
+      await Get.find<TrackingService>().stop(clearSession: false);
+    }
     try {
       await _api.logout();
     } catch (_) {
       // Ignore network errors on logout — clear the session regardless.
     }
     await _storage.clearToken();
+    await _storage.clearCachedUser();
     // Reset onboarding so a logged-out user sees the intro again on next launch.
     await _storage.clearOnboarded();
     user.value = null;
@@ -194,7 +271,9 @@ class AuthService extends GetxService {
     // none of its own, and the employee sees someone else's brand.
     final cachedTenantId = box.read<int>(kBrandTenantKey);
 
-    if (tenantId != null && cachedTenantId != null && cachedTenantId != tenantId) {
+    if (tenantId != null &&
+        cachedTenantId != null &&
+        cachedTenantId != tenantId) {
       box.remove(kBrandAccentKey);
       box.remove(kBrandNameKey);
       box.remove(kBrandLogoKey);

@@ -8,6 +8,8 @@ import 'package:latlong2/latlong.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/widgets/app_page.dart';
 import '../../data/services/attendance_queue_service.dart';
+import '../../data/services/connectivity_service.dart';
+import '../../data/services/tracking_service.dart';
 import '../../routes/app_pages.dart';
 import 'attendance_controller.dart';
 
@@ -24,11 +26,67 @@ class AttendanceView extends GetView<AttendanceController> {
       showBack: Navigator.of(context).canPop(),
       child: Column(
         children: [
+          _offlineBanner(),
           _pendingBanner(),
           Expanded(child: _body()),
         ],
       ),
     );
+  }
+
+  /// Standing notice while the internet is unreachable.
+  ///
+  /// Being offline used to surface only as a toast after a tap that went
+  /// nowhere — the state was invisible until the employee tried and failed.
+  /// What it says depends on whether a punch can still be made: with the face
+  /// check off the punch is queued, with recognition on it cannot happen at
+  /// all, and promising a queue in that case would be a lie.
+  Widget _offlineBanner() {
+    final connectivity = Get.find<ConnectivityService>();
+
+    return Obx(() {
+      final status = connectivity.status.value;
+      if (status == ConnStatus.online) return const SizedBox.shrink();
+
+      final blocked = controller.requiresOnlineFace;
+      final color = blocked ? AppColors.destructive : const Color(0xFFB45309);
+      final background = blocked
+          ? const Color(0xFFFEE2E2)
+          : const Color(0xFFFEF3C7);
+      final headline = status == ConnStatus.unstable
+          ? 'Internet tidak stabil'
+          : 'Tidak ada internet';
+      final detail = blocked
+          ? 'Absen belum bisa dikirim — verifikasi wajah butuh koneksi.'
+          : 'Absen tetap bisa dilakukan dan terkirim otomatis saat online.';
+
+      return Material(
+        color: background,
+        child: InkWell(
+          onTap: connectivity.recheck,
+          child: Padding(
+            padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 9.h),
+            child: Row(
+              children: [
+                Icon(Iconsax.wifi_square, size: 15.sp, color: color),
+                SizedBox(width: 8.w),
+                Expanded(
+                  child: Text(
+                    '$headline. $detail',
+                    style: TextStyle(
+                      fontSize: 11.5.sp,
+                      color: color,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+                Icon(Iconsax.refresh, size: 15.sp, color: color),
+              ],
+            ),
+          ),
+        ),
+      );
+    });
   }
 
   /// Shows queued actions and server rejections that need a correction request.
@@ -116,18 +174,32 @@ class AttendanceView extends GetView<AttendanceController> {
                   _geoStatus(),
                   SizedBox(height: 14.h),
                   _todayCard(),
+                  _trackingStatus(),
                   _workModePicker(),
                   SizedBox(height: 18.h),
                   _clockButton(),
                   SizedBox(height: 8.h),
-                  Text(
-                    'Wajah, lokasi & perangkat direkam saat absen.',
-                    style: TextStyle(
-                      color: AppColors.textMuted,
-                      fontSize: 11.5.sp,
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
+                  Obx(() {
+                    // Say what this particular punch will do. Offline with the
+                    // face check off, it is stored and sent later — worth
+                    // saying, so the employee does not read the missing
+                    // confirmation as a punch that never happened.
+                    final queues = controller.queuesOffline;
+
+                    return Text(
+                      queues
+                          ? 'Tanpa internet — absen disimpan di perangkat dan terkirim otomatis saat online.'
+                          : 'Wajah, lokasi & perangkat direkam saat absen.',
+                      style: TextStyle(
+                        color: queues
+                            ? const Color(0xFFB45309)
+                            : AppColors.textMuted,
+                        fontSize: 11.5.sp,
+                        fontWeight: queues ? FontWeight.w600 : FontWeight.w400,
+                      ),
+                      textAlign: TextAlign.center,
+                    );
+                  }),
                   SizedBox(height: 18.h),
                   // Map sits at the bottom as location confirmation.
                   const _GeofenceMap(),
@@ -237,6 +309,11 @@ class AttendanceView extends GetView<AttendanceController> {
       final unavailable =
           controller.today.value == null || controller.loadFailed.value;
       final blocked = !unavailable && !done && !controller.canClockByLocation;
+      // A punch the face policy cannot complete offline is shut here rather
+      // than after the tap: the old screen left this button fully lit, and the
+      // only way to learn it would fail was to press it and read a toast.
+      final offline =
+          !unavailable && !done && controller.offlineBlockReason != null;
       // Still resolving is not the same as being outside the fence — saying so
       // reads as a refusal on a screen that is merely waiting.
       final locating = controller.geoState.value == GeoState.loading;
@@ -244,7 +321,7 @@ class AttendanceView extends GetView<AttendanceController> {
         width: double.infinity,
         height: 54.h,
         child: ElevatedButton.icon(
-          onPressed: busy || unavailable || blocked || done
+          onPressed: busy || unavailable || blocked || offline || done
               ? null
               : controller.clock,
           style: ElevatedButton.styleFrom(
@@ -268,6 +345,8 @@ class AttendanceView extends GetView<AttendanceController> {
               : Icon(
                   done
                       ? Iconsax.tick_circle
+                      : offline
+                      ? Iconsax.wifi_square
                       : isIn
                       ? Iconsax.login_1
                       : Iconsax.logout_1,
@@ -284,6 +363,8 @@ class AttendanceView extends GetView<AttendanceController> {
                 ? 'Mendeteksi lokasi…'
                 : blocked
                 ? _blockedLabel(controller.geoState.value)
+                : offline
+                ? 'Tanpa internet — scan wajah tak bisa'
                 : isIn
                 ? 'Absen Masuk (Scan Wajah)'
                 : 'Absen Pulang (Scan Wajah)',
@@ -516,6 +597,92 @@ class AttendanceView extends GetView<AttendanceController> {
         ],
       ),
     );
+  }
+
+  /// Explicit privacy indicator: tracking is never hidden behind Clock In.
+  Widget _trackingStatus() {
+    final tracking = Get.find<TrackingService>();
+
+    return Obx(() {
+      final today = controller.today.value;
+      final duringWork = today != null && !today.canClockIn && !today.isDone;
+      final active = tracking.isTracking.value;
+      final message = tracking.warning.value;
+
+      if (!duringWork && !active) return const SizedBox.shrink();
+
+      final color = active ? AppColors.success : AppColors.warning;
+      final pending = tracking.pendingPoints.value;
+
+      return Container(
+        width: double.infinity,
+        margin: EdgeInsets.only(top: 12.h),
+        padding: EdgeInsets.all(14.w),
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: 0.08),
+          borderRadius: BorderRadius.circular(14.r),
+          border: Border.all(color: color.withValues(alpha: 0.2)),
+        ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Container(
+              width: 34.w,
+              height: 34.w,
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                color: color.withValues(alpha: 0.14),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(
+                active ? Iconsax.location_tick : Iconsax.warning_2,
+                color: color,
+                size: 18.sp,
+              ),
+            ),
+            SizedBox(width: 11.w),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    active ? 'Tracking Aktif' : 'Tracking Belum Aktif',
+                    style: TextStyle(
+                      color: color,
+                      fontSize: 13.sp,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  SizedBox(height: 3.h),
+                  Text(
+                    active
+                        ? 'Lokasi dicatat selama jam kerja dan berhenti saat Clock Out.'
+                        : message ??
+                              'Izin background location diperlukan untuk tracking.',
+                    style: TextStyle(
+                      color: AppColors.textMuted,
+                      fontSize: 11.5.sp,
+                      height: 1.35,
+                    ),
+                  ),
+                  if (pending > 0) ...[
+                    SizedBox(height: 4.h),
+                    Text(
+                      '$pending titik tersimpan dan akan disinkronkan otomatis.',
+                      style: TextStyle(
+                        color: color,
+                        fontSize: 10.5.sp,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          ],
+        ),
+      );
+    });
   }
 
   Widget _statusChip(String status) {

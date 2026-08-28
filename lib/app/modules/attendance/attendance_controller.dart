@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:io' show Platform;
 
 import 'package:dio/dio.dart';
@@ -18,6 +19,7 @@ import '../../data/services/attendance_queue_service.dart';
 import '../../data/services/auth_service.dart';
 import '../../data/services/connectivity_service.dart';
 import '../../data/services/device_service.dart';
+import '../../data/services/tracking_service.dart';
 import '../../routes/app_pages.dart';
 import '../home/controllers/home_controller.dart';
 import 'widgets/clock_dialogs.dart';
@@ -46,6 +48,7 @@ class AttendanceController extends GetxController with WidgetsBindingObserver {
   final loadFailed = false.obs;
   final today = Rxn<AttendanceToday>();
   late final Worker _queueWorker;
+  Timer? _locationRetryTimer;
 
   /// Where the employee says they are working from: 'office' or 'home'.
   /// 'home' is only offered — and only accepted by the server — on a day an
@@ -57,6 +60,66 @@ class AttendanceController extends GetxController with WidgetsBindingObserver {
 
   /// Clocking out must stay in the mode the day was clocked in under.
   String get effectiveWorkMode => today.value?.workMode ?? workMode.value;
+
+  /// Whether today's face policy can only be satisfied with a live server.
+  ///
+  /// Recognition runs behind Laravel, and so does enrolment; a tenant that
+  /// blocks the punch when the face check fails cannot have that check skipped
+  /// either. Under any of those the punch simply cannot be made offline.
+  /// Read by both [clock] and the view, so the button's state and what
+  /// tapping it actually does can never disagree.
+  bool get requiresOnlineFace => faceNeedsNetwork(today.value);
+
+  /// The rule itself, free of the controller so it can be tested against a
+  /// policy without a live connectivity plugin — the same reason
+  /// [locationGateAllows] is a static.
+  ///
+  /// A null day is the app's cold start, before the policy has been fetched;
+  /// it is treated as strict so an unknown tenant is never handed a looser
+  /// gate than it configured.
+  static bool faceNeedsNetwork(AttendanceToday? day) {
+    final requiresFaceCapture = day?.requiresFaceCapture ?? true;
+
+    return requiresFaceCapture &&
+        ((day?.blocksOnFaceFailure ?? true) ||
+            (day?.requiresFaceEnrollment ?? true) ||
+            day?.faceMode == 'recognition');
+  }
+
+  /// Whether a punch made right now would be stored on the phone and sent
+  /// later. False when there is a connection (it goes straight out) and false
+  /// when the face policy forbids an offline punch altogether.
+  bool get queuesOffline => queuesWhileOffline(
+    status: Get.find<ConnectivityService>().status.value,
+    requiresOnlineFace: requiresOnlineFace,
+  );
+
+  static bool queuesWhileOffline({
+    required ConnStatus status,
+    required bool requiresOnlineFace,
+  }) => status != ConnStatus.online && !requiresOnlineFace;
+
+  /// Why the clock is shut while offline, or null when being offline is no
+  /// obstacle. Phrased for the tenant's actual face policy rather than a
+  /// blanket "no internet".
+  String? get offlineBlockReason => offlineBlockMessage(
+    status: Get.find<ConnectivityService>().status.value,
+    requiresOnlineFace: requiresOnlineFace,
+  );
+
+  static String? offlineBlockMessage({
+    required ConnStatus status,
+    required bool requiresOnlineFace,
+  }) {
+    if (status == ConnStatus.online || !requiresOnlineFace) return null;
+
+    // "Unstable" is a live interface with no route out — telling that employee
+    // there is "no internet" sends them looking for a wifi bar that is already
+    // full.
+    return status == ConnStatus.unstable
+        ? 'Internet tidak stabil. Verifikasi wajah butuh koneksi yang jalan.'
+        : 'Tidak ada internet. Verifikasi wajah butuh koneksi.';
+  }
 
   /// Whether the employee has enrolled a face and must verify before clocking.
   /// Cached so an offline launch still knows to prompt for the capture.
@@ -199,12 +262,21 @@ class AttendanceController extends GetxController with WidgetsBindingObserver {
     });
     load();
     detectLocation();
+    _locationRetryTimer = Timer.periodic(const Duration(seconds: 15), (_) {
+      if (!isLocating.value &&
+          (geoState.value == GeoState.error ||
+              geoState.value == GeoState.gpsOff ||
+              geoState.value == GeoState.serverValidation)) {
+        detectLocation();
+      }
+    });
   }
 
   @override
   void onClose() {
     WidgetsBinding.instance.removeObserver(this);
     _queueWorker.dispose();
+    _locationRetryTimer?.cancel();
     super.onClose();
   }
 
@@ -249,8 +321,20 @@ class AttendanceController extends GetxController with WidgetsBindingObserver {
     loadFailed.value = false;
     try {
       today.value = await _api.attendanceToday();
+      _cacheToday(today.value!);
     } catch (_) {
-      loadFailed.value = true;
+      final cached = _readCachedToday();
+      final current = today.value;
+      final fallback = current != null && current.date == _localToday()
+          ? current
+          : cached;
+      if (fallback != null && fallback.date == _localToday()) {
+        final pending = Get.find<AttendanceQueueService>().pendingCount.value;
+        today.value = fallback.copyWith(pendingSync: pending > 0);
+        loadFailed.value = false;
+      } else {
+        loadFailed.value = true;
+      }
     }
     isLoading.value = false;
 
@@ -261,6 +345,35 @@ class AttendanceController extends GetxController with WidgetsBindingObserver {
     }
 
     _refreshFaceRequirement();
+  }
+
+  String? get _attendanceCacheKey {
+    final user = Get.find<AuthService>().user.value;
+    if (user == null) return null;
+    return 'attendance_today_cache_${user.tenantId ?? 'unknown'}_${user.id}';
+  }
+
+  void _cacheToday(AttendanceToday record) {
+    final key = _attendanceCacheKey;
+    if (key != null) _box.write(key, jsonEncode(record.toCacheJson()));
+  }
+
+  AttendanceToday? _readCachedToday() {
+    final key = _attendanceCacheKey;
+    final raw = key == null ? null : _box.read<String>(key);
+    if (raw == null || raw.isEmpty) return null;
+    try {
+      final json = Map<String, dynamic>.from(jsonDecode(raw) as Map);
+      final requirements = json['requirements'];
+      return AttendanceToday.fromJson(
+        json,
+        requirements: requirements is Map
+            ? Map<String, dynamic>.from(requirements)
+            : const {},
+      );
+    } catch (_) {
+      return null;
+    }
   }
 
   /// Best-effort refresh of the face-enrollment flag from the API.
@@ -353,6 +466,18 @@ class AttendanceController extends GetxController with WidgetsBindingObserver {
     // the fix still lands on the map and the server still rules on the punch.
     WorkLocations? locations;
 
+    final seed = await seedRequest;
+    final live = await liveRequest;
+
+    if (live != null) {
+      // Do not keep the screen in a spinner while the office list is loading.
+      // The server remains the authority for the final geofence decision.
+      _recordFix(live, fresh: true);
+      geoState.value = GeoState.serverValidation;
+    }
+
+    // GPS must not wait behind a slow office-policy endpoint. A live fix is
+    // useful immediately; the policy is applied as soon as its request ends.
     try {
       locations = await policyRequest;
     } catch (_) {
@@ -360,34 +485,20 @@ class AttendanceController extends GetxController with WidgetsBindingObserver {
     }
 
     final isAnywhere = locations?.isAnywhere ?? false;
-
-    // Shown while the fix is still coming, so a WFA employee is not left reading
-    // "di luar radius" in the meantime.
-    if (isAnywhere) {
-      geoState.value = GeoState.anywhere;
-    }
-
     final offices = (locations?.items ?? const <WorkLocationItem>[])
         .where((l) => l.latitude != null && l.longitude != null)
         .toList();
+    final fix = live ?? seed;
 
-    // The stored fix is only a map seed. For a fenced office it must not settle
-    // the gate because the employee may have moved since it was recorded.
-    final seed = await seedRequest;
-    if (seed != null && locations != null) {
-      _applyFix(seed, offices, isAnywhere, settleGate: false);
-    }
-
-    final live = await liveRequest;
-    if (live != null) {
-      if (locations == null) {
-        _recordFix(live, fresh: true);
-        // GPS succeeded but the policy endpoint did not. Do not misreport this
-        // as "no office"; let the attendance endpoint validate the radius.
-        geoState.value = GeoState.serverValidation;
-      } else {
-        _applyFix(live, offices, isAnywhere);
-      }
+    if (fix != null && locations != null) {
+      if (isAnywhere) geoState.value = GeoState.anywhere;
+      _applyFix(fix, offices, isAnywhere, settleGate: live != null);
+      if (live == null) geoState.value = GeoState.error;
+    } else if (live != null) {
+      _recordFix(live, fresh: true);
+      // GPS succeeded but the policy endpoint did not. Let the server validate
+      // the radius when the punch is submitted.
+      geoState.value = GeoState.serverValidation;
     } else if (seed == null) {
       geoState.value = GeoState.error;
     } else if (locations == null) {
@@ -548,6 +659,19 @@ class AttendanceController extends GetxController with WidgetsBindingObserver {
     final streams = <StreamSubscription<Position>>[];
 
     for (final settings in providers) {
+      // A few Android devices do not emit the first stream event until the
+      // activity is recreated. A one-shot request gives those devices a direct
+      // path to the fused/location-manager provider.
+      unawaited(() async {
+        try {
+          final position = await Geolocator.getCurrentPosition(
+            locationSettings: settings,
+          );
+          if (!first.isCompleted) first.complete(position);
+        } catch (_) {
+          // The stream provider below may still be available.
+        }
+      }());
       try {
         streams.add(
           Geolocator.getPositionStream(locationSettings: settings).listen(
@@ -564,8 +688,6 @@ class AttendanceController extends GetxController with WidgetsBindingObserver {
         // Provider unavailable on this device.
       }
     }
-
-    if (streams.isEmpty) return null;
 
     try {
       return await first.future.timeout(_fixBudget);
@@ -654,13 +776,9 @@ class AttendanceController extends GetxController with WidgetsBindingObserver {
     // run enrollment (active liveness) first, then clock. Recognition itself
     // runs behind Laravel, so strict face modes require a network connection.
     final requiresFaceCapture = today.value?.requiresFaceCapture ?? true;
-    final requiresOnlineFace =
-        requiresFaceCapture &&
-        ((today.value?.blocksOnFaceFailure ?? true) ||
-            (today.value?.requiresFaceEnrollment ?? true) ||
-            today.value?.faceMode == 'recognition');
-    if (requiresOnlineFace && !Get.find<ConnectivityService>().online.value) {
-      AppToast.warning('Koneksi internet diperlukan untuk verifikasi wajah.');
+    final blockedOffline = offlineBlockReason;
+    if (blockedOffline != null) {
+      AppToast.warning(blockedOffline);
       return;
     }
 
@@ -793,6 +911,8 @@ class AttendanceController extends GetxController with WidgetsBindingObserver {
       final nonce = needsChallenge ? await _api.attendanceChallenge() : null;
 
       try {
+        final tracking = Get.find<TrackingService>();
+        if (type == 'out') await tracking.prepareClockOut();
         final res = await _api.clock(
           nonce: nonce,
           type: type,
@@ -808,6 +928,7 @@ class AttendanceController extends GetxController with WidgetsBindingObserver {
         hideClockLoader();
         final code = res.statusCode ?? 0;
         if (code >= 200 && code < 300) {
+          await tracking.handleClockResponse(type, res);
           await load();
           _syncHome();
           showClockResult(
@@ -823,7 +944,7 @@ class AttendanceController extends GetxController with WidgetsBindingObserver {
       } on DioException catch (e) {
         hideClockLoader();
         // Lost connection mid-request → fall back to the offline queue.
-        if (_isNetworkError(e)) {
+        if (ApiClient.isOffline(e)) {
           if (requiresOnlineFace) {
             showClockResult(
               success: false,
@@ -858,6 +979,12 @@ class AttendanceController extends GetxController with WidgetsBindingObserver {
       ...entry,
       'work_date': today.value?.workDate ?? today.value?.date,
     });
+    final tracking = Get.find<TrackingService>();
+    if (type == 'in') {
+      unawaited(tracking.startPendingClockIn());
+    } else {
+      unawaited(tracking.stopForPendingClockOut());
+    }
     _applyOptimistic(type);
     // Offline: there is nothing to re-fetch, so hand the home card the same
     // optimistic record this screen is showing.
@@ -884,12 +1011,6 @@ class AttendanceController extends GetxController with WidgetsBindingObserver {
 
     home.refreshAttendance();
   }
-
-  bool _isNetworkError(DioException e) =>
-      e.type == DioExceptionType.connectionError ||
-      e.type == DioExceptionType.connectionTimeout ||
-      e.type == DioExceptionType.sendTimeout ||
-      e.type == DioExceptionType.receiveTimeout;
 
   /// Reverse-geocode a fix into a short human address for the selfie watermark.
   /// Best-effort — returns null when geocoding gives nothing.
@@ -938,6 +1059,8 @@ class AttendanceController extends GetxController with WidgetsBindingObserver {
         pendingSync: true,
       );
     }
+    final updated = today.value;
+    if (updated != null) _cacheToday(updated);
   }
 
   /// Best-effort GPS for the punch itself; null if permission denied or

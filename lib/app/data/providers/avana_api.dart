@@ -16,6 +16,7 @@ import '../models/payslip.dart';
 import '../models/profile.dart';
 import '../models/schedule.dart';
 import '../models/two_factor_status.dart';
+import '../models/tracking.dart';
 import '../models/user.dart';
 import 'api_client.dart';
 
@@ -63,7 +64,15 @@ class AvanaApi {
     },
   );
 
-  Future<AppUser> me() async {
+  Future<AppUser> me() async => AppUser.fromJson(await meJson());
+
+  /// The raw `/auth/me` payload.
+  ///
+  /// [AuthService] caches this verbatim so a launch without a connection can
+  /// rebuild the session from it. Caching the parsed [AppUser] instead would
+  /// mean writing a second serialiser and losing every field the model does
+  /// not yet read.
+  Future<Map<String, dynamic>> meJson() async {
     final res = await _dio.get('/auth/me');
     final data = res.data is Map ? (res.data as Map)['data'] : null;
     if (data is! Map) {
@@ -72,7 +81,8 @@ class AvanaApi {
       // of a raw TypeError from Map.from(null).
       throw StateError('Unexpected /auth/me response');
     }
-    return AppUser.fromJson(Map<String, dynamic>.from(data));
+
+    return Map<String, dynamic>.from(data);
   }
 
   Future<void> logout() => _dio.post('/auth/logout');
@@ -339,6 +349,28 @@ class AvanaApi {
 
     return _dio.post('/me/attendance/clock', data: form);
   }
+
+  /// The session the backend created with Clock In. Used on cold start and
+  /// after an offline attendance queue reconnects.
+  Future<TrackingSessionState?> activeTrackingSession() async {
+    final res = await _dio.get('/me/tracking/active');
+    final data = res.data['data'];
+
+    return data is Map
+        ? TrackingSessionState.fromJson(Map<String, dynamic>.from(data))
+        : null;
+  }
+
+  Future<Response> uploadTrackingLocations({
+    required int sessionId,
+    required List<TrackingPoint> locations,
+  }) => _dio.post(
+    '/me/tracking/locations',
+    data: {
+      'tracking_session_id': sessionId,
+      'locations': locations.map((point) => point.toJson()).toList(),
+    },
+  );
 
   // ---- Attendance corrections (koreksi absen) ----
   Future<List<AttendanceCorrectionItem>> attendanceCorrections() async {

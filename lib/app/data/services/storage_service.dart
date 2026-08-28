@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:get/get.dart';
 import 'package:get_storage/get_storage.dart';
@@ -24,6 +26,8 @@ class StorageService extends GetxService {
   static const _kOnboarded = 'onboarded';
   static const _kRememberEmail = 'remember_email';
   static const _kMoodPromptDate = 'mood_prompt_date';
+  static const _kCachedUser = 'cached_user';
+  static const _kCachedUserAt = 'cached_user_at';
 
   /// The token, mirrored in memory.
   ///
@@ -68,6 +72,34 @@ class StorageService extends GetxService {
   /// at most once per calendar day, even if the user dismissed it.
   String? get moodPromptDate => _box.read<String>(_kMoodPromptDate);
 
+  /// The last `/auth/me` payload, so a launch with no connection can rebuild
+  /// the session instead of throwing the employee back to a login screen they
+  /// cannot complete.
+  ///
+  /// This is profile data, not a credential — the token stays in the keystore —
+  /// so it lives in GetStorage with everything else. It is cleared on sign-out.
+  Map<String, dynamic>? get cachedUser {
+    final raw = _box.read<String>(_kCachedUser);
+    if (raw == null || raw.isEmpty) return null;
+    try {
+      final decoded = jsonDecode(raw);
+
+      return decoded is Map ? Map<String, dynamic>.from(decoded) : null;
+    } catch (_) {
+      // A half-written or hand-edited cache is not worth crashing a cold start
+      // over; treat it as absent and let the app re-fetch.
+      return null;
+    }
+  }
+
+  /// When [cachedUser] was written, used to stop an offline session outliving
+  /// the window the server would still renew its token in.
+  DateTime? get cachedUserAt {
+    final raw = _box.read<String>(_kCachedUserAt);
+
+    return raw == null ? null : DateTime.tryParse(raw);
+  }
+
   Future<void> saveToken(String token) async {
     _token = token;
     await _secure.write(key: _kToken, value: token);
@@ -91,4 +123,14 @@ class StorageService extends GetxService {
 
   Future<void> setMoodPromptDate(String date) =>
       _box.write(_kMoodPromptDate, date);
+
+  Future<void> saveCachedUser(Map<String, dynamic> user) async {
+    await _box.write(_kCachedUser, jsonEncode(user));
+    await _box.write(_kCachedUserAt, DateTime.now().toUtc().toIso8601String());
+  }
+
+  Future<void> clearCachedUser() async {
+    await _box.remove(_kCachedUser);
+    await _box.remove(_kCachedUserAt);
+  }
 }

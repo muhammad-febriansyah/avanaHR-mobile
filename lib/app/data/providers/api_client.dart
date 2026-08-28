@@ -64,7 +64,9 @@ class ApiClient extends GetxService {
             return;
           }
 
-          final (retried, sessionOver) = await _recover(response.requestOptions);
+          final (retried, sessionOver) = await _recover(
+            response.requestOptions,
+          );
 
           if (retried != null) {
             handler.resolve(retried);
@@ -193,7 +195,12 @@ class ApiClient extends GetxService {
   }
 
   void _endSession() {
-    Get.find<StorageService>().clearToken();
+    final storage = Get.find<StorageService>();
+    storage.clearToken();
+    // The cached profile must go with the token. Left behind, the next launch
+    // without a connection would rebuild a session the server has already
+    // refused.
+    storage.clearCachedUser();
 
     if (Get.currentRoute != Routes.LOGIN) {
       Get.offAllNamed(Routes.LOGIN);
@@ -229,6 +236,17 @@ class ApiClient extends GetxService {
     }
     return fallback;
   }
+
+  /// Whether a failure was the connection rather than the server.
+  ///
+  /// The distinction decides whether the app may keep a session: a request that
+  /// never arrived says nothing about whether the token is still good, so it
+  /// must not be read as a refusal.
+  static bool isOffline(DioException e) =>
+      e.type == DioExceptionType.connectionError ||
+      e.type == DioExceptionType.connectionTimeout ||
+      e.type == DioExceptionType.sendTimeout ||
+      e.type == DioExceptionType.receiveTimeout;
 
   /// Friendly message for a DioException, distinguishing a network/connectivity
   /// problem (no or bad internet) from a server-side error.

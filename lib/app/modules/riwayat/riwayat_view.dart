@@ -407,7 +407,7 @@ class RiwayatView extends GetView<RiwayatController> {
               children: [
                 TileLayer(
                   urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-                  userAgentPackageName: 'com.avanahr.avanahr',
+                  userAgentPackageName: 'com.avanahr.id',
                 ),
                 MarkerLayer(
                   markers: [

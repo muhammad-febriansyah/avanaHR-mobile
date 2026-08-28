@@ -8,6 +8,7 @@ import '../providers/api_client.dart';
 import '../providers/avana_api.dart';
 import 'auth_service.dart';
 import 'connectivity_service.dart';
+import 'tracking_service.dart';
 
 /// Persists clock actions per authenticated employee and keeps rejected entries
 /// visible until the employee resolves them through attendance correction.
@@ -139,12 +140,16 @@ class AttendanceQueueService extends GetxService {
         }
 
         try {
+          final type = entry['type'] as String;
+          if (type == 'out' && Get.isRegistered<TrackingService>()) {
+            await Get.find<TrackingService>().prepareClockOut();
+          }
           final nonce = entry['needs_nonce'] == true
               ? await _api.attendanceChallenge()
               : null;
           final res = await _api.clock(
             nonce: nonce,
-            type: entry['type'] as String,
+            type: type,
             workMode: entry['work_mode'] as String?,
             latitude: (entry['latitude'] as num?)?.toDouble(),
             longitude: (entry['longitude'] as num?)?.toDouble(),
@@ -156,6 +161,9 @@ class AttendanceQueueService extends GetxService {
           );
           final code = res.statusCode ?? 0;
           if (code >= 200 && code < 300) {
+            if (Get.isRegistered<TrackingService>()) {
+              await Get.find<TrackingService>().handleClockResponse(type, res);
+            }
             changed = true;
             continue;
           }
