@@ -1,6 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
-import 'dart:io' show Platform;
+import 'dart:io' show Directory, File, Platform;
 
 import 'package:dio/dio.dart';
 import 'package:flutter/widgets.dart';
@@ -8,6 +8,7 @@ import 'package:geocoding/geocoding.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:get/get.dart' hide Response;
 import 'package:get_storage/get_storage.dart';
+import 'package:path_provider/path_provider.dart';
 
 import '../../core/utils/selfie_stamp.dart';
 import '../../core/widgets/app_toast.dart';
@@ -68,22 +69,39 @@ class AttendanceController extends GetxController with WidgetsBindingObserver {
   /// either. Under any of those the punch simply cannot be made offline.
   /// Read by both [clock] and the view, so the button's state and what
   /// tapping it actually does can never disagree.
-  bool get requiresOnlineFace => faceNeedsNetwork(today.value);
+  bool get requiresOnlineFace =>
+      faceNeedsNetwork(today.value, isEnrolled: requiresFace.value);
 
   /// The rule itself, free of the controller so it can be tested against a
   /// policy without a live connectivity plugin — the same reason
   /// [locationGateAllows] is a static.
   ///
+  /// Recognition does NOT need a live connection: the scan runs entirely on the
+  /// phone and the photo travels with the queued punch, so the server matches
+  /// it when the punch finally arrives. What happens if it does not match is
+  /// the tenant's existing `face_enforcement` call — reject (block) or accept
+  /// and flag — and that decision belongs on the server either way. Only two
+  /// things genuinely cannot be done without a network:
+  ///
+  ///  * enrolling a face, because the template is stored server-side — so an
+  ///    employee who has never enrolled has nothing to be matched against;
+  ///  * a liveness challenge, whose nonce has to be minted live to mean
+  ///    anything. Fetching one later, at sync, would prove nothing about when
+  ///    the punch was made.
+  ///
   /// A null day is the app's cold start, before the policy has been fetched;
-  /// it is treated as strict so an unknown tenant is never handed a looser
-  /// gate than it configured.
-  static bool faceNeedsNetwork(AttendanceToday? day) {
-    final requiresFaceCapture = day?.requiresFaceCapture ?? true;
+  /// it is treated as strict so an unknown tenant is never handed a looser gate
+  /// than it configured.
+  static bool faceNeedsNetwork(
+    AttendanceToday? day, {
+    required bool isEnrolled,
+  }) {
+    if (day == null) return true;
+    if (day.requiresLivenessChallenge) return true;
+    if (!day.requiresFaceCapture) return false;
 
-    return requiresFaceCapture &&
-        ((day?.blocksOnFaceFailure ?? true) ||
-            (day?.requiresFaceEnrollment ?? true) ||
-            day?.faceMode == 'recognition');
+    // Enrolment is only in the way while the employee has not done it yet.
+    return !isEnrolled && day.requiresFaceEnrollment;
   }
 
   /// Whether a punch made right now would be stored on the phone and sent
@@ -104,21 +122,39 @@ class AttendanceController extends GetxController with WidgetsBindingObserver {
   /// blanket "no internet".
   String? get offlineBlockReason => offlineBlockMessage(
     status: Get.find<ConnectivityService>().status.value,
-    requiresOnlineFace: requiresOnlineFace,
+    day: today.value,
+    isEnrolled: requiresFace.value,
   );
 
+  /// Why the clock is shut while offline, or null when being offline is no
+  /// obstacle. Names the actual obstacle: "verifikasi wajah butuh koneksi" was
+  /// true of every tenant when recognition was thought to need the network, and
+  /// is now misleading — the scan itself runs on the phone.
   static String? offlineBlockMessage({
     required ConnStatus status,
-    required bool requiresOnlineFace,
+    required AttendanceToday? day,
+    required bool isEnrolled,
   }) {
-    if (status == ConnStatus.online || !requiresOnlineFace) return null;
+    if (status == ConnStatus.online) return null;
+    if (!faceNeedsNetwork(day, isEnrolled: isEnrolled)) return null;
 
     // "Unstable" is a live interface with no route out — telling that employee
     // there is "no internet" sends them looking for a wifi bar that is already
     // full.
-    return status == ConnStatus.unstable
-        ? 'Internet tidak stabil. Verifikasi wajah butuh koneksi yang jalan.'
-        : 'Tidak ada internet. Verifikasi wajah butuh koneksi.';
+    final connection = status == ConnStatus.unstable
+        ? 'Internet tidak stabil'
+        : 'Tidak ada internet';
+
+    if (day == null) {
+      return '$connection. Status absensi belum termuat — buka lagi saat online.';
+    }
+
+    if (day.requiresLivenessChallenge) {
+      return '$connection. Absen di kantor ini butuh verifikasi langsung ke server.';
+    }
+
+    return '$connection. Daftarkan wajah dulu saat online, setelah itu absen '
+        'bisa dilakukan offline.';
   }
 
   /// Whether the employee has enrolled a face and must verify before clocking.
@@ -871,6 +907,10 @@ class AttendanceController extends GetxController with WidgetsBindingObserver {
       final entry = <String, dynamic>{
         'type': type,
         'work_mode': effectiveWorkMode,
+        // Carried so a queued punch can still be identified. The scan happened
+        // on the phone; only the match needs the server, and it gets the same
+        // frame whenever the punch finally arrives.
+        'selfie_path': selfiePath,
         'latitude': pos?.latitude,
         'longitude': pos?.longitude,
         'device_id': device.deviceId,
@@ -901,7 +941,7 @@ class AttendanceController extends GetxController with WidgetsBindingObserver {
             message: 'Koneksi terputus sebelum wajah dapat diverifikasi.',
           );
         } else {
-          _queueOffline(type, entry);
+          await _queueOffline(type, entry);
         }
         return;
       }
@@ -951,7 +991,7 @@ class AttendanceController extends GetxController with WidgetsBindingObserver {
               message: 'Koneksi terputus saat memverifikasi wajah.',
             );
           } else {
-            _queueOffline(type, entry);
+            await _queueOffline(type, entry);
           }
         } else {
           showClockResult(success: false, message: ApiClient.errorMessage(e));
@@ -967,7 +1007,7 @@ class AttendanceController extends GetxController with WidgetsBindingObserver {
     }
   }
 
-  void _queueOffline(String type, Map<String, dynamic> entry) {
+  Future<void> _queueOffline(String type, Map<String, dynamic> entry) async {
     if (today.value == null) {
       AppToast.warning(
         'Status absensi belum tersedia. Muat ulang lalu coba lagi.',
@@ -975,8 +1015,18 @@ class AttendanceController extends GetxController with WidgetsBindingObserver {
 
       return;
     }
+
+    // The scan lands in a cache directory the OS is free to empty whenever it
+    // wants space. A punch may sit in the queue for days, so the frame is moved
+    // somewhere the system will not reclaim before it has been sent.
+    final selfiePath = entry['selfie_path'] as String?;
+    final storedSelfie = selfiePath == null
+        ? null
+        : await _persistSelfie(selfiePath);
+
     Get.find<AttendanceQueueService>().enqueue({
       ...entry,
+      'selfie_path': storedSelfie,
       'work_date': today.value?.workDate ?? today.value?.date,
     });
     final tracking = Get.find<TrackingService>();
@@ -992,6 +1042,35 @@ class AttendanceController extends GetxController with WidgetsBindingObserver {
     AppToast.info(
       'Tidak ada internet. Absen disimpan & dikirim otomatis saat online.',
     );
+  }
+
+  /// Move a just-captured selfie into the app's documents directory and return
+  /// its new path, or null when the copy fails — a punch is worth more than its
+  /// photo, so a failed copy queues the punch without one rather than losing it.
+  Future<String?> _persistSelfie(String path) async {
+    try {
+      final source = File(path);
+      if (!await source.exists()) return null;
+
+      final dir = Directory(
+        '${(await getApplicationDocumentsDirectory()).path}/attendance_queue',
+      );
+      await dir.create(recursive: true);
+
+      // Keep the original extension so the upload still declares a real image
+      // type; anything unexpected falls back to .jpg rather than pulling in a
+      // path package for one substring.
+      final dot = path.lastIndexOf('.');
+      final extension = dot > path.lastIndexOf('/') && dot != -1
+          ? path.substring(dot)
+          : '.jpg';
+      final name = 'punch_${DateTime.now().microsecondsSinceEpoch}$extension';
+      final copied = await source.copy('${dir.path}/$name');
+
+      return copied.path;
+    } catch (_) {
+      return null;
+    }
   }
 
   /// The home tab keeps its own copy of today's attendance and only re-pulls it

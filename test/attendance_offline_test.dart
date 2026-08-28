@@ -18,40 +18,64 @@ AttendanceToday day(Map<String, dynamic> requirements) =>
 
 void main() {
   group('faceNeedsNetwork', () {
-    test('recognition always needs the server', () {
+    test('recognition is punchable offline once enrolled', () {
+      // The scan runs on the phone and the frame travels with the queued punch;
+      // the server matches it on arrival. Blocking here used to make offline
+      // attendance impossible for every tenant, since all of them run
+      // recognition.
       expect(
         AttendanceController.faceNeedsNetwork(
           day({
             'face_mode': 'recognition',
-            'face_enforcement': 'flag',
-            'require_face_enrollment': false,
-          }),
-        ),
-        isTrue,
-      );
-    });
-
-    test('a blocking policy needs the server even in detection mode', () {
-      expect(
-        AttendanceController.faceNeedsNetwork(
-          day({
-            'face_mode': 'detection',
             'face_enforcement': 'block',
-            'require_face_enrollment': false,
-          }),
-        ),
-        isTrue,
-      );
-    });
-
-    test('enrolment needs the server', () {
-      expect(
-        AttendanceController.faceNeedsNetwork(
-          day({
-            'face_mode': 'detection',
-            'face_enforcement': 'flag',
             'require_face_enrollment': true,
           }),
+          isEnrolled: true,
+        ),
+        isFalse,
+      );
+    });
+
+    test('an unenrolled employee cannot punch offline', () {
+      // The template lives on the server, so there is nothing to match against
+      // and nothing the phone can do about it.
+      expect(
+        AttendanceController.faceNeedsNetwork(
+          day({
+            'face_mode': 'recognition',
+            'face_enforcement': 'block',
+            'require_face_enrollment': true,
+          }),
+          isEnrolled: false,
+        ),
+        isTrue,
+      );
+    });
+
+    test(
+      'enrolment that is not required does not block an unenrolled punch',
+      () {
+        expect(
+          AttendanceController.faceNeedsNetwork(
+            day({
+              'face_mode': 'recognition',
+              'face_enforcement': 'block',
+              'require_face_enrollment': false,
+            }),
+            isEnrolled: false,
+          ),
+          isFalse,
+        );
+      },
+    );
+
+    test('a liveness challenge always needs the server', () {
+      // Its nonce has to be minted live; fetching one at sync would prove
+      // nothing about when the punch was made.
+      expect(
+        AttendanceController.faceNeedsNetwork(
+          day({'face_mode': 'off', 'require_liveness_challenge': true}),
+          isEnrolled: true,
         ),
         isTrue,
       );
@@ -60,73 +84,81 @@ void main() {
     test('face off can be punched without a server', () {
       expect(
         AttendanceController.faceNeedsNetwork(
-          day({
-            'face_mode': 'off',
-            'face_enforcement': 'flag',
-            'require_face_enrollment': false,
-          }),
-        ),
-        isFalse,
-      );
-    });
-
-    test('detection that only flags can be punched without a server', () {
-      expect(
-        AttendanceController.faceNeedsNetwork(
-          day({
-            'face_mode': 'detection',
-            'face_enforcement': 'flag',
-            'require_face_enrollment': false,
-          }),
+          day({'face_mode': 'off'}),
+          isEnrolled: false,
         ),
         isFalse,
       );
     });
 
     test('an unfetched policy is treated as strict', () {
-      expect(AttendanceController.faceNeedsNetwork(null), isTrue);
+      expect(
+        AttendanceController.faceNeedsNetwork(null, isEnrolled: true),
+        isTrue,
+      );
     });
   });
 
   group('offlineBlockMessage', () {
+    final recognition = day({
+      'face_mode': 'recognition',
+      'face_enforcement': 'block',
+      'require_face_enrollment': true,
+    });
+
     test('says nothing while online', () {
       expect(
         AttendanceController.offlineBlockMessage(
           status: ConnStatus.online,
-          requiresOnlineFace: true,
+          day: recognition,
+          isEnrolled: false,
         ),
         isNull,
       );
     });
 
-    test('says nothing offline when the punch can be queued', () {
+    test('says nothing offline once the punch can be queued', () {
       expect(
         AttendanceController.offlineBlockMessage(
           status: ConnStatus.offline,
-          requiresOnlineFace: false,
+          day: recognition,
+          isEnrolled: true,
         ),
         isNull,
       );
     });
 
-    test('blocks an offline punch that needs face verification', () {
-      expect(
-        AttendanceController.offlineBlockMessage(
-          status: ConnStatus.offline,
-          requiresOnlineFace: true,
-        ),
-        contains('Tidak ada internet'),
+    test('points an unenrolled employee at enrolling, not at the scan', () {
+      final message = AttendanceController.offlineBlockMessage(
+        status: ConnStatus.offline,
+        day: recognition,
+        isEnrolled: false,
       );
+
+      expect(message, contains('Daftarkan wajah'));
+      // The old copy blamed the scan itself, which runs on the phone.
+      expect(message, isNot(contains('Verifikasi wajah butuh koneksi')));
     });
 
     test('distinguishes a dead network from no network at all', () {
+      expect(
+        AttendanceController.offlineBlockMessage(
+          status: ConnStatus.unstable,
+          day: recognition,
+          isEnrolled: false,
+        ),
+        contains('tidak stabil'),
+      );
+    });
+
+    test('names the liveness challenge as the obstacle when it is one', () {
       final message = AttendanceController.offlineBlockMessage(
-        status: ConnStatus.unstable,
-        requiresOnlineFace: true,
+        status: ConnStatus.offline,
+        day: day({'face_mode': 'off', 'require_liveness_challenge': true}),
+        isEnrolled: true,
       );
 
-      expect(message, contains('tidak stabil'));
-      expect(message, isNot(contains('Tidak ada internet')));
+      expect(message, contains('verifikasi langsung ke server'));
     });
   });
 

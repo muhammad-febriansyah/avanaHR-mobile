@@ -1,4 +1,6 @@
+import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:dio/dio.dart';
 import 'package:get/get.dart' hide Response;
@@ -113,8 +115,36 @@ class AttendanceQueueService extends GetxService {
     }).toList();
     if (remaining.length == queue.length) return;
 
+    for (final entry in queue) {
+      if (!remaining.contains(entry)) unawaited(_discardSelfie(entry));
+    }
+
     _save(owner, remaining);
     revision.value++;
+  }
+
+  /// The queued frame's path, or null when the file is gone.
+  ///
+  /// A punch is worth more than its photo: a phone that lost the file (cleared
+  /// storage, a restore onto another device) still sends the punch and lets the
+  /// tenant's face policy judge a selfie-less clock, rather than holding the
+  /// whole thing hostage to a missing image.
+  Future<String?> _readableSelfie(Map<String, dynamic> entry) async {
+    final path = entry['selfie_path'] as String?;
+    if (path == null || path.isEmpty) return null;
+
+    return await File(path).exists() ? path : null;
+  }
+
+  Future<void> _discardSelfie(Map<String, dynamic> entry) async {
+    final path = entry['selfie_path'] as String?;
+    if (path == null || path.isEmpty) return;
+    try {
+      final file = File(path);
+      if (await file.exists()) await file.delete();
+    } catch (_) {
+      // A frame left behind is untidy, never broken.
+    }
   }
 
   Future<void> flush() async {
@@ -147,6 +177,12 @@ class AttendanceQueueService extends GetxService {
           final nonce = entry['needs_nonce'] == true
               ? await _api.attendanceChallenge()
               : null;
+          // The frame captured when the punch was made. Without it the server
+          // has nothing to match and a recognition tenant could never accept an
+          // offline punch at all; with it, the tenant's own face_enforcement
+          // decides what a mismatch means, exactly as it does online.
+          final selfiePath = await _readableSelfie(entry);
+
           final res = await _api.clock(
             nonce: nonce,
             type: type,
@@ -158,18 +194,24 @@ class AttendanceQueueService extends GetxService {
             isRooted: entry['is_rooted'] as bool?,
             isEmulator: entry['is_emulator'] as bool?,
             clockedAt: entry['clocked_at'] as String?,
+            selfiePath: selfiePath,
           );
           final code = res.statusCode ?? 0;
           if (code >= 200 && code < 300) {
             if (Get.isRegistered<TrackingService>()) {
               await Get.find<TrackingService>().handleClockResponse(type, res);
             }
+            await _discardSelfie(entry);
             changed = true;
             continue;
           }
           if (code == 422) {
+            // Refused for good: it will never be sent again, so the frame is
+            // just a photo of somebody's face sitting on disk.
+            await _discardSelfie(entry);
             remaining.add({
               ...entry,
+              'selfie_path': null,
               'sync_status': 'failed',
               'failure_message': ApiClient.messageFrom(
                 res,
@@ -182,8 +224,10 @@ class AttendanceQueueService extends GetxService {
           remaining.add(entry);
         } on DioException catch (error) {
           if (error.response?.statusCode == 422) {
+            await _discardSelfie(entry);
             remaining.add({
               ...entry,
+              'selfie_path': null,
               'sync_status': 'failed',
               'failure_message': ApiClient.errorMessage(error),
             });

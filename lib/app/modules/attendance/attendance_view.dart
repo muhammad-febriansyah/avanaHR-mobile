@@ -57,7 +57,7 @@ class AttendanceView extends GetView<AttendanceController> {
           ? 'Internet tidak stabil'
           : 'Tidak ada internet';
       final detail = blocked
-          ? 'Absen belum bisa dikirim — verifikasi wajah butuh koneksi.'
+          ? 'Absen belum bisa dilakukan — daftarkan wajah dulu saat online.'
           : 'Absen tetap bisa dilakukan dan terkirim otomatis saat online.';
 
       return Material(
@@ -185,9 +185,18 @@ class AttendanceView extends GetView<AttendanceController> {
                     // saying, so the employee does not read the missing
                     // confirmation as a punch that never happened.
                     final queues = controller.queuesOffline;
+                    // Under a blocking face policy the match happens at sync,
+                    // so the punch is provisional until then. Saying "tersimpan"
+                    // and nothing else would let an employee walk away believing
+                    // a punch is settled that the server may still refuse.
+                    final verifiedLater =
+                        queues &&
+                        (controller.today.value?.blocksOnFaceFailure ?? true);
 
                     return Text(
-                      queues
+                      verifiedLater
+                          ? 'Tanpa internet — absen disimpan dan dikirim saat online. Wajah dicocokkan saat itu.'
+                          : queues
                           ? 'Tanpa internet — absen disimpan di perangkat dan terkirim otomatis saat online.'
                           : 'Wajah, lokasi & perangkat direkam saat absen.',
                       style: TextStyle(
