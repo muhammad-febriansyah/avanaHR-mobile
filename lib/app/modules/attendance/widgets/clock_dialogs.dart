@@ -283,3 +283,135 @@ class _ResultDialogState extends State<_ResultDialog> {
     );
   }
 }
+
+/// Offer the employee a retry when the screen could not resolve a location.
+///
+/// The attendance screen has always carried a small refresh button, but a
+/// detection that failed showed up only as a grey status chip — indistinguishable
+/// from one still loading. Employees waited it out and then killed the app,
+/// because a cold start was the only retry they could see. This says what went
+/// wrong, retries in place, and closes itself the moment a fix arrives.
+///
+/// [reason] is read again after every attempt, so the text follows the failure
+/// rather than freezing on the first one. [onOpenSettings] is null when the
+/// phone's settings have nothing to do with the problem.
+Future<void> showLocationRetryDialog({
+  required String Function() reason,
+  required Future<bool> Function() onRetry,
+  Future<void> Function()? onOpenSettings,
+}) {
+  return Get.dialog(
+    _LocationRetryDialog(
+      reason: reason,
+      onRetry: onRetry,
+      onOpenSettings: onOpenSettings,
+    ),
+    barrierDismissible: true,
+  );
+}
+
+class _LocationRetryDialog extends StatefulWidget {
+  final String Function() reason;
+  final Future<bool> Function() onRetry;
+  final Future<void> Function()? onOpenSettings;
+
+  const _LocationRetryDialog({
+    required this.reason,
+    required this.onRetry,
+    this.onOpenSettings,
+  });
+
+  @override
+  State<_LocationRetryDialog> createState() => _LocationRetryDialogState();
+}
+
+class _LocationRetryDialogState extends State<_LocationRetryDialog> {
+  bool _busy = false;
+  late String _reason = widget.reason();
+
+  Future<void> _retry() async {
+    if (_busy) return;
+    setState(() => _busy = true);
+    final resolved = await widget.onRetry();
+    if (!mounted) return;
+    if (resolved) {
+      Get.back();
+
+      return;
+    }
+    setState(() {
+      _busy = false;
+      _reason = widget.reason();
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final settings = widget.onOpenSettings;
+
+    return _shell(
+      Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          _iconCircle(Iconsax.gps_slash, AppColors.warning),
+          SizedBox(height: 16.h),
+          Text(
+            'Lokasi Belum Terbaca',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontSize: 16.sp,
+              fontWeight: FontWeight.w800,
+              color: AppColors.navy,
+            ),
+          ),
+          SizedBox(height: 8.h),
+          Text(
+            _reason,
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontSize: 12.5.sp,
+              height: 1.5,
+              color: AppColors.textMuted,
+            ),
+          ),
+          SizedBox(height: 20.h),
+          if (settings != null) ...[
+            SizedBox(
+              width: double.infinity,
+              child: _dialogButton(
+                'Buka Pengaturan',
+                () => settings(),
+                filled: false,
+              ),
+            ),
+            SizedBox(height: 10.h),
+          ],
+          Row(
+            children: [
+              Expanded(
+                child: _dialogButton('Tutup', () => Get.back(), filled: false),
+              ),
+              SizedBox(width: 10.w),
+              Expanded(
+                child: _busy
+                    ? SizedBox(
+                        height: 46.h,
+                        child: Center(
+                          child: SizedBox(
+                            width: 20.w,
+                            height: 20.w,
+                            child: const CircularProgressIndicator(
+                              strokeWidth: 2,
+                            ),
+                          ),
+                        ),
+                      )
+                    : _dialogButton('Coba Lagi', _retry, filled: true),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}

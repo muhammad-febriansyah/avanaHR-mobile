@@ -243,5 +243,57 @@ void main() {
         isFalse,
       );
     });
+
+    test('a punch bound for the offline queue needs no fix', () {
+      // A phone with no data often cannot resolve a position either. Refusing
+      // here costs the employee the punch entirely; the queue fills the
+      // coordinate in at sync and the server flags it for review.
+      expect(
+        AttendanceController.locationGateAllows(
+          state: GeoState.error,
+          hasCoordinates: false,
+          worksFromHome: false,
+          queuesOffline: true,
+        ),
+        isTrue,
+      );
+      expect(
+        AttendanceController.locationGateAllows(
+          state: GeoState.gpsOff,
+          hasCoordinates: false,
+          worksFromHome: false,
+          queuesOffline: true,
+        ),
+        isTrue,
+      );
+    });
+
+    test('online, a missing fix still shuts the clock', () {
+      // Online the server refuses a punch without coordinates, so opening the
+      // gate would only move the refusal to after the face scan.
+      expect(
+        AttendanceController.locationGateAllows(
+          state: GeoState.inside,
+          hasCoordinates: false,
+          worksFromHome: true,
+        ),
+        isFalse,
+      );
+    });
+
+    test('being offline does not excuse a fix that is outside the radius', () {
+      // The employee has coordinates: they were taken where the punch was made
+      // and the fence still applies. Only a punch with no fix at all is
+      // deferred, or airplane mode would be a way around the geofence.
+      expect(
+        AttendanceController.locationGateAllows(
+          state: GeoState.outside,
+          hasCoordinates: true,
+          worksFromHome: false,
+          queuesOffline: true,
+        ),
+        isFalse,
+      );
+    });
   });
 }

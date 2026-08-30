@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:dio/dio.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:get/get.dart' hide Response;
 import 'package:get_storage/get_storage.dart';
 
@@ -136,6 +137,50 @@ class AttendanceQueueService extends GetxService {
     return await File(path).exists() ? path : null;
   }
 
+  /// A coordinate for a punch that was made without one.
+  ///
+  /// A phone with no data often cannot resolve a position at all, so those
+  /// punches are queued bare rather than refused. By the time the queue runs
+  /// the network is back and a fix is usually instant — it is not where the
+  /// employee stood when they clocked, which is exactly why it travels as
+  /// `location_deferred` and is never judged against an office radius.
+  /// Best-effort: a punch is worth more than its coordinate.
+  Future<Position?> _deferredFix() async {
+    try {
+      if (!await Geolocator.isLocationServiceEnabled().timeout(
+        const Duration(seconds: 5),
+      )) {
+        return null;
+      }
+
+      final permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied ||
+          permission == LocationPermission.deniedForever) {
+        return null;
+      }
+    } catch (_) {
+      return null;
+    }
+
+    try {
+      return await Geolocator.getCurrentPosition(
+        locationSettings: const LocationSettings(
+          accuracy: LocationAccuracy.medium,
+        ),
+      ).timeout(const Duration(seconds: 12));
+    } catch (_) {
+      // The sync runs in the background; a slow receiver must not hold the
+      // whole queue, and the last known point is better than nothing.
+      try {
+        return await Geolocator.getLastKnownPosition().timeout(
+          const Duration(seconds: 3),
+        );
+      } catch (_) {
+        return null;
+      }
+    }
+  }
+
   Future<void> _discardSelfie(Map<String, dynamic> entry) async {
     final path = entry['selfie_path'] as String?;
     if (path == null || path.isEmpty) return;
@@ -183,18 +228,33 @@ class AttendanceQueueService extends GetxService {
           // decides what a mismatch means, exactly as it does online.
           final selfiePath = await _readableSelfie(entry);
 
+          final deferredLocation = entry['location_deferred'] == true;
+          var latitude = (entry['latitude'] as num?)?.toDouble();
+          var longitude = (entry['longitude'] as num?)?.toDouble();
+          var isMocked = entry['is_mock_location'] as bool?;
+
+          if (deferredLocation && latitude == null) {
+            final fix = await _deferredFix();
+            if (fix != null) {
+              latitude = fix.latitude;
+              longitude = fix.longitude;
+              isMocked = (isMocked ?? false) || fix.isMocked;
+            }
+          }
+
           final res = await _api.clock(
             nonce: nonce,
             type: type,
             workMode: entry['work_mode'] as String?,
-            latitude: (entry['latitude'] as num?)?.toDouble(),
-            longitude: (entry['longitude'] as num?)?.toDouble(),
+            latitude: latitude,
+            longitude: longitude,
             deviceId: entry['device_id'] as String?,
-            isMockLocation: entry['is_mock_location'] as bool?,
+            isMockLocation: isMocked,
             isRooted: entry['is_rooted'] as bool?,
             isEmulator: entry['is_emulator'] as bool?,
             clockedAt: entry['clocked_at'] as String?,
             selfiePath: selfiePath,
+            locationDeferred: deferredLocation ? true : null,
           );
           final code = res.statusCode ?? 0;
           if (code >= 200 && code < 300) {

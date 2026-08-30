@@ -151,7 +151,9 @@ class AttendanceView extends GetView<AttendanceController> {
       return RefreshIndicator(
         onRefresh: () async {
           await controller.load();
-          await controller.detectLocation();
+          // A pull is the employee retrying: the chip is in front of them, so
+          // a failure answers there rather than with a dialog on top.
+          await controller.detectLocation(userAsked: true);
         },
         child: SingleChildScrollView(
           physics: const AlwaysScrollableScrollPhysics(
@@ -495,6 +497,17 @@ class AttendanceView extends GetView<AttendanceController> {
           break;
       }
 
+      // Offline the punch no longer waits on a fix: it is queued and the
+      // location is filled in when the connection returns. Saying "periksa GPS"
+      // here would send an employee chasing a signal they do not need.
+      if (controller.queuesOffline &&
+          controller.userLat.value == null &&
+          st != GeoState.loading) {
+        sub =
+            'Tanpa internet — absen tetap bisa, lokasi diisi otomatis saat '
+            'koneksi pulih';
+      }
+
       return Container(
         padding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 12.h),
         decoration: BoxDecoration(
@@ -540,7 +553,7 @@ class AttendanceView extends GetView<AttendanceController> {
                     ),
                   )
                 : InkWell(
-                    onTap: controller.detectLocation,
+                    onTap: () => controller.detectLocation(userAsked: true),
                     borderRadius: BorderRadius.circular(999),
                     child: Padding(
                       padding: EdgeInsets.all(8.w),

@@ -172,6 +172,15 @@ class AttendanceController extends GetxController with WidgetsBindingObserver {
   final isLocating = false.obs;
   Position? _freshPosition;
 
+  /// Run counter for [detectLocation]. A detection abandoned by the watchdog
+  /// must not settle state a newer run has since replaced.
+  int _locateRun = 0;
+  DateTime? _locateStartedAt;
+
+  /// Whether the retry dialog has already been offered for the current failure.
+  /// Cleared as soon as a detection succeeds, so the next failure may speak.
+  bool _locationPromptShown = false;
+
   /// Seconds the current detection has been running, so the chip can count a
   /// slow fix out loud rather than look stuck.
   final locatingSeconds = 0.obs;
@@ -208,6 +217,7 @@ class AttendanceController extends GetxController with WidgetsBindingObserver {
       state: geoState.value,
       hasCoordinates: userLat.value != null && userLng.value != null,
       worksFromHome: effectiveWorkMode == 'home',
+      queuesOffline: queuesOffline,
     );
   }
 
@@ -218,8 +228,16 @@ class AttendanceController extends GetxController with WidgetsBindingObserver {
     required GeoState state,
     required bool hasCoordinates,
     required bool worksFromHome,
+    bool queuesOffline = false,
   }) {
-    if (!hasCoordinates) return false;
+    // No fix at all. Online that is a dead end — the server refuses the punch
+    // and the employee gains nothing by tapping. Offline it is the normal case:
+    // a phone with no data often cannot resolve a position either, and holding
+    // the clock shut over it costs the employee the punch itself. Such a punch
+    // is queued without coordinates, the queue fills them in when the network
+    // returns, and the server records it flagged `location_deferred` instead of
+    // measuring a radius against a fix that does not exist.
+    if (!hasCoordinates) return queuesOffline;
 
     return worksFromHome ||
         state == GeoState.anywhere ||
@@ -444,10 +462,35 @@ class AttendanceController extends GetxController with WidgetsBindingObserver {
   /// phone was seconds away from answering.
   static const _fixBudget = Duration(seconds: 10);
 
+  /// The longest a single detection may live.
+  ///
+  /// Every step inside is bounded, but a platform channel that never answers is
+  /// not: one hung call used to leave [isLocating] true forever, and from then
+  /// on the refresh button, the retry timer and a pull all returned at the
+  /// guard below without doing anything. Restarting the app was the only way
+  /// back — which is exactly what employees were doing.
+  static const _detectionBudget = Duration(seconds: 45);
+
+  /// Whether the detection in flight has outlived its budget and may be
+  /// abandoned by a new one.
+  bool get _detectionIsStuck {
+    final started = _locateStartedAt;
+
+    return started == null ||
+        DateTime.now().difference(started) > _detectionBudget;
+  }
+
   /// Resolve the nearest office geofence + the user's live position for the
   /// map and the clock gate. Best-effort; never throws, always settles.
-  Future<void> detectLocation() async {
-    if (isLocating.value) return;
+  ///
+  /// [userAsked] marks a retry the employee triggered themselves (the chip's
+  /// refresh, the dialog's "Coba Lagi"), which suppresses nothing but tells the
+  /// failure path who is already watching.
+  Future<void> detectLocation({bool userAsked = false}) async {
+    if (isLocating.value && !_detectionIsStuck) return;
+
+    final run = ++_locateRun;
+    _locateStartedAt = DateTime.now();
     isLocating.value = true;
     geoState.value = GeoState.loading;
     // A cold fix can take twenty seconds, which reads as a frozen screen unless
@@ -458,21 +501,102 @@ class AttendanceController extends GetxController with WidgetsBindingObserver {
       (_) => locatingSeconds.value++,
     );
     try {
-      await _resolveGeofence();
+      await _resolveGeofence(run).timeout(_detectionBudget);
     } catch (_) {
-      geoState.value = GeoState.error;
+      if (run == _locateRun) geoState.value = GeoState.error;
     } finally {
       tick.cancel();
-      // A step that timed out leaves the gate unresolved; unknown location must
-      // open the gate (the server still validates), never hold it shut.
-      if (geoState.value == GeoState.loading) {
-        geoState.value = GeoState.error;
+      // A run the watchdog abandoned no longer owns the screen: whatever
+      // replaced it is the one allowed to settle the state.
+      if (run == _locateRun) {
+        // A step that timed out leaves the gate unresolved; unknown location
+        // must open the gate (the server still validates), never hold it shut.
+        if (geoState.value == GeoState.loading) {
+          geoState.value = GeoState.error;
+        }
+        isLocating.value = false;
+        _locateStartedAt = null;
+        _offerLocationRetry(userAsked: userAsked);
       }
-      isLocating.value = false;
     }
   }
 
-  Future<void> _resolveGeofence() async {
+  /// Whether detection ended with nothing the employee can act on.
+  bool get _locationUnresolved =>
+      userLat.value == null ||
+      geoState.value == GeoState.gpsOff ||
+      geoState.value == GeoState.denied;
+
+  /// Put the retry dialog on screen when detection came back empty.
+  ///
+  /// The screen already carried a refresh button, but a failure that only ever
+  /// showed up as a grey chip read as "still loading": employees waited, then
+  /// killed the app, because a cold start was the one thing that visibly
+  /// retried. The dialog says what went wrong and offers the retry directly.
+  void _offerLocationRetry({required bool userAsked}) {
+    if (!_locationUnresolved) {
+      _locationPromptShown = false;
+
+      return;
+    }
+
+    // The employee is already looking at the answer: the chip spins for their
+    // own refresh, and the dialog they retried from is still open.
+    if (userAsked || _locationPromptShown) return;
+    // Never over the face scanner, the punch loader or a result card.
+    if (isClocking.value || (Get.isDialogOpen ?? false)) return;
+    if (Get.currentRoute != Routes.ATTENDANCE) return;
+
+    _locationPromptShown = true;
+    unawaited(
+      showLocationRetryDialog(
+        reason: () => locationRetryReason,
+        onRetry: retryLocation,
+        onOpenSettings: _locationSettingsAction,
+      ),
+    );
+  }
+
+  /// What the retry dialog says, including what being offline changes.
+  String get locationRetryReason {
+    final base = locationBlockReason;
+
+    // Offline the punch is no longer waiting on a fix — saying only "lokasi
+    // belum terbaca" would read as a refusal on a screen that will happily
+    // queue the clock.
+    if (queuesOffline) {
+      return '$base\n\nTanpa internet absen tetap bisa dilakukan — lokasi '
+          'akan diisi otomatis saat koneksi pulih.';
+    }
+
+    return base;
+  }
+
+  /// Re-run detection for the dialog. True once a coordinate is in hand.
+  Future<bool> retryLocation() async {
+    await detectLocation(userAsked: true);
+
+    return !_locationUnresolved;
+  }
+
+  /// The settings screen that can fix the current failure, or null when the
+  /// phone's settings have nothing to do with it.
+  Future<void> Function()? get _locationSettingsAction {
+    switch (geoState.value) {
+      case GeoState.gpsOff:
+        return () => Geolocator.openLocationSettings();
+      case GeoState.denied:
+        return () => Geolocator.openAppSettings();
+      default:
+        return null;
+    }
+  }
+
+  /// [run] is the [detectLocation] run this belongs to; a run the watchdog has
+  /// already abandoned stops writing to the screen the moment a newer one owns
+  /// it, or a hung provider answering minutes late would overwrite a fix that
+  /// is currently on the map.
+  Future<void> _resolveGeofence(int run) async {
     // The permission gate can sit on a system dialog for as long as a person
     // takes to read it. The policy request therefore starts *after* it, never
     // alongside: a twelve-second deadline that begins while an employee is
@@ -481,6 +605,8 @@ class AttendanceController extends GetxController with WidgetsBindingObserver {
     // network. It still overlaps the slow half — the GPS lock below — which is
     // what keeps a cold fix off the critical path.
     final gate = await _permissionGate();
+
+    if (run != _locateRun) return;
 
     if (gate != null) {
       geoState.value = gate;
@@ -505,6 +631,8 @@ class AttendanceController extends GetxController with WidgetsBindingObserver {
     final seed = await seedRequest;
     final live = await liveRequest;
 
+    if (run != _locateRun) return;
+
     if (live != null) {
       // Do not keep the screen in a spinner while the office list is loading.
       // The server remains the authority for the final geofence decision.
@@ -519,6 +647,8 @@ class AttendanceController extends GetxController with WidgetsBindingObserver {
     } catch (_) {
       locations = null;
     }
+
+    if (run != _locateRun) return;
 
     final isAnywhere = locations?.isAnywhere ?? false;
     final offices = (locations?.items ?? const <WorkLocationItem>[])
@@ -796,7 +926,9 @@ class AttendanceController extends GetxController with WidgetsBindingObserver {
     // is worth one more attempt before refusing: the employee may have walked
     // into the radius, or turned GPS on, since the screen last looked.
     if (!canClockByLocation) {
-      await detectLocation();
+      // Their own tap is the retry, so the failure answers with the toast
+      // below rather than a dialog on top of it.
+      await detectLocation(userAsked: true);
     }
     if (!canClockByLocation) {
       AppToast.warning(locationBlockReason);
@@ -913,6 +1045,10 @@ class AttendanceController extends GetxController with WidgetsBindingObserver {
         'selfie_path': selfiePath,
         'latitude': pos?.latitude,
         'longitude': pos?.longitude,
+        // No fix at punch time. The queue tries again when the network is back
+        // and sends whatever it finds flagged, so the server records the punch
+        // without measuring a sync-time coordinate against an office radius.
+        'location_deferred': pos == null,
         'device_id': device.deviceId,
         // The rest of the device's identity travels too, so the face log can
         // say which phone a punch was matched (or refused) on. Without it the
@@ -1040,7 +1176,10 @@ class AttendanceController extends GetxController with WidgetsBindingObserver {
     // optimistic record this screen is showing.
     _syncHome(optimistic: today.value);
     AppToast.info(
-      'Tidak ada internet. Absen disimpan & dikirim otomatis saat online.',
+      entry['location_deferred'] == true
+          ? 'Tidak ada internet & lokasi belum terbaca. Absen disimpan; '
+                'lokasi diisi otomatis saat koneksi pulih.'
+          : 'Tidak ada internet. Absen disimpan & dikirim otomatis saat online.',
     );
   }
 

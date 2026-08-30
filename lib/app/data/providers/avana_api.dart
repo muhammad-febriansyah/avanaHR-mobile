@@ -309,6 +309,7 @@ class AvanaApi {
     String? clockedAt,
     String? selfiePath,
     String? nonce,
+    bool? locationDeferred,
   }) async {
     final fields = <String, dynamic>{
       'type': type,
@@ -321,6 +322,10 @@ class AvanaApi {
       if (isEmulator != null) 'is_emulator': isEmulator,
       if (clockedAt != null) 'clocked_at': clockedAt,
       if (nonce != null) 'nonce': nonce,
+      // Set only by the offline queue: the coordinates below (if any) were not
+      // taken where the punch was made, so the server records them without
+      // judging them against a radius.
+      if (locationDeferred != null) 'location_deferred': locationDeferred,
     };
 
     // No selfie -> plain JSON. With a selfie -> multipart so Laravel can send
