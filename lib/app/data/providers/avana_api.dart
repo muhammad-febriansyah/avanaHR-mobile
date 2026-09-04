@@ -848,14 +848,25 @@ class AvanaApi {
     required String body,
     int? categoryId,
     String? imagePath,
+    List<int> taggedEmployeeIds = const [],
   }) async {
     final form = FormData.fromMap({
       'body': body,
       if (categoryId != null) 'social_category_id': categoryId,
       if (imagePath != null) 'image': await MultipartFile.fromFile(imagePath),
     });
+    _addMentionFields(form, taggedEmployeeIds);
 
     return _dio.post('/me/social/posts', data: form);
+  }
+
+  /// Repeats `mentioned_employee_ids[]` once per tagged colleague — the shape
+  /// a multipart body needs for an array field, since `FormData.fromMap` only
+  /// handles scalars.
+  void _addMentionFields(FormData form, List<int> ids) {
+    for (final id in ids) {
+      form.fields.add(MapEntry('mentioned_employee_ids[]', '$id'));
+    }
   }
 
   Future<SocialPostItem> socialPost(int id) async {
@@ -908,9 +919,15 @@ class AvanaApi {
     int postId,
     String body, {
     int? parentId,
+    List<int> taggedEmployeeIds = const [],
   }) => _dio.post(
     '/me/social/posts/$postId/comments',
-    data: {'body': body, if (parentId != null) 'parent_id': parentId},
+    data: {
+      'body': body,
+      if (parentId != null) 'parent_id': parentId,
+      if (taggedEmployeeIds.isNotEmpty)
+        'mentioned_employee_ids': taggedEmployeeIds,
+    },
   );
 
   Future<Response> deleteSocialComment(int id) =>
@@ -927,6 +944,18 @@ class AvanaApi {
     final list = (res.data['data'] as List?) ?? [];
     return list
         .map((e) => SocialLeaderItem.fromJson(Map<String, dynamic>.from(e)))
+        .toList();
+  }
+
+  // ---- Company directory (used by the Ruang Kita tag picker) ----
+  Future<List<TaggedPerson>> directorySearch(String search) async {
+    final res = await _dio.get(
+      '/me/directory',
+      queryParameters: {if (search.isNotEmpty) 'search': search, 'per_page': 30},
+    );
+    final list = (res.data['data'] as List?) ?? [];
+    return list
+        .map((e) => TaggedPerson.fromJson(Map<String, dynamic>.from(e)))
         .toList();
   }
 

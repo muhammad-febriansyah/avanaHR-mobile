@@ -19,6 +19,7 @@ import 'sosmed_controller.dart';
 import 'sosmed_leaderboard_view.dart';
 import 'widgets/comments_sheet.dart';
 import 'widgets/post_card.dart';
+import 'widgets/tag_picker_sheet.dart';
 
 /// The employee wall: category chips, an infinite feed, and a compose button.
 class SosmedView extends GetView<SosmedController> {
@@ -556,12 +557,13 @@ class SosmedView extends GetView<SosmedController> {
     );
   }
 
-  /// Compose sheet: category chip, text (max 500), optional photo.
+  /// Compose sheet: category chip, text (max 500), optional photo, optional tags.
   void _openCompose(BuildContext context) {
     final bodyC = TextEditingController();
     final imagePath = RxnString();
     final imageName = RxnString();
     final categoryId = Rxn<int>();
+    final tagged = <TaggedPerson>[].obs;
     final length = 0.obs;
 
     bodyC.addListener(() => length.value = bodyC.text.characters.length);
@@ -769,6 +771,9 @@ class SosmedView extends GetView<SosmedController> {
           );
         }),
 
+        SizedBox(height: 14.h),
+        _tagTeamRow(context, tagged),
+
         SizedBox(height: 20.h),
         Obx(
           () => AppSubmitButton(
@@ -786,12 +791,94 @@ class SosmedView extends GetView<SosmedController> {
                 body: body,
                 categoryId: categoryId.value,
                 imagePath: imagePath.value,
+                taggedEmployeeIds: tagged.map((p) => p.id).toList(),
               );
               if (ok) Get.back();
             },
           ),
         ),
       ],
+    );
+  }
+
+  /// "Tag Teman" trigger plus removable chips for whoever is picked so far.
+  /// Shared shape between the compose sheet and the comment composer.
+  Widget _tagTeamRow(BuildContext context, RxList<TaggedPerson> tagged) {
+    return Obx(
+      () => Wrap(
+        crossAxisAlignment: WrapCrossAlignment.center,
+        spacing: 8.w,
+        runSpacing: 8.h,
+        children: [
+          GestureDetector(
+            onTap: () async {
+              final picked = await showTagPickerSheet(
+                context,
+                initiallySelected: tagged,
+              );
+              if (picked != null) {
+                tagged.assignAll(picked);
+              }
+            },
+            child: Container(
+              padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 8.h),
+              decoration: BoxDecoration(
+                color: AppColors.primary.withValues(alpha: 0.08),
+                borderRadius: BorderRadius.circular(10.r),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    Iconsax.user_tag,
+                    size: 15.sp,
+                    color: AppColors.primary,
+                  ),
+                  SizedBox(width: 6.w),
+                  Text(
+                    tagged.isEmpty ? 'Tag Teman' : 'Tag Teman (${tagged.length})',
+                    style: TextStyle(
+                      fontSize: 12.sp,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.primary,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          for (final person in tagged)
+            Container(
+              padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 6.h),
+              decoration: BoxDecoration(
+                color: AppColors.muted,
+                borderRadius: BorderRadius.circular(99.r),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    person.name,
+                    style: TextStyle(
+                      fontSize: 11.5.sp,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.textPrimary,
+                    ),
+                  ),
+                  SizedBox(width: 4.w),
+                  GestureDetector(
+                    onTap: () => tagged.remove(person),
+                    child: Icon(
+                      Iconsax.close_circle,
+                      size: 14.sp,
+                      color: AppColors.textMuted,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+        ],
+      ),
     );
   }
 }

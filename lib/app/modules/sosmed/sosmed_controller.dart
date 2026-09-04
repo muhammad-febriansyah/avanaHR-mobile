@@ -171,6 +171,7 @@ class SosmedController extends GetxController {
     required String body,
     int? categoryId,
     String? imagePath,
+    List<int> taggedEmployeeIds = const [],
   }) async {
     submitting.value = true;
 
@@ -196,6 +197,7 @@ class SosmedController extends GetxController {
         body: body,
         categoryId: categoryId,
         imagePath: prepared,
+        taggedEmployeeIds: taggedEmployeeIds,
       );
       submitting.value = false;
 
@@ -332,12 +334,14 @@ class SosmedController extends GetxController {
     SocialPostItem post,
     String body, {
     int? parentId,
+    List<int> taggedEmployeeIds = const [],
   }) async {
     try {
       final res = await _api.createSocialComment(
         post.id,
         body,
         parentId: parentId,
+        taggedEmployeeIds: taggedEmployeeIds,
       );
       post.commentsCount += 1;
       posts.refresh();

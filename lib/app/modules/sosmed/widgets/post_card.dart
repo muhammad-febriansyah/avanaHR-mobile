@@ -77,6 +77,17 @@ class PostCard extends StatelessWidget {
                           color: AppColors.textMuted,
                         ),
                       ),
+                      if (post.tagged.isNotEmpty)
+                        Text(
+                          'bersama ${post.tagged.map((p) => p.name).join(', ')}',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontSize: (compact ? 10 : 11).sp,
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.primary,
+                          ),
+                        ),
                     ],
                   ),
                 ),

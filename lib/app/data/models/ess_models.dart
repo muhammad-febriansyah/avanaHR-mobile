@@ -627,6 +627,23 @@ class SocialCategoryItem {
       );
 }
 
+/// A colleague picked from the company directory to tag on a post or comment,
+/// Facebook-style. Also doubles as a directory search result row — the tag
+/// picker and the tag chip render off the same shape.
+class TaggedPerson {
+  final int id;
+  final String name;
+  final String? photoUrl;
+
+  const TaggedPerson({required this.id, required this.name, this.photoUrl});
+
+  factory TaggedPerson.fromJson(Map<String, dynamic> j) => TaggedPerson(
+    id: j['id'],
+    name: j['name'] ?? 'Karyawan',
+    photoUrl: Env.resolveMedia((j['photo_url'] ?? j['photo']) as String?),
+  );
+}
+
 /// One post on the social wall. `liked` and `likesCount` are mutable so the
 /// like button can flip instantly and roll back if the request fails.
 class SocialPostItem {
@@ -649,6 +666,9 @@ class SocialPostItem {
   /// display; this is the id the edit sheet needs to preselect the right chip.
   final int? categoryId;
 
+  /// Colleagues the author tagged, Facebook-style. Empty on most posts.
+  final List<TaggedPerson> tagged;
+
   SocialPostItem({
     required this.id,
     required this.body,
@@ -665,6 +685,7 @@ class SocialPostItem {
     this.createdAt,
     this.edited = false,
     this.categoryId,
+    this.tagged = const [],
   });
 
   factory SocialPostItem.fromJson(Map<String, dynamic> j) => SocialPostItem(
@@ -683,6 +704,9 @@ class SocialPostItem {
     createdAt: j['created_at'],
     edited: j['edited'] == true,
     categoryId: (j['social_category_id'] as num?)?.toInt(),
+    tagged: ((j['tagged'] as List?) ?? [])
+        .map((e) => TaggedPerson.fromJson(Map<String, dynamic>.from(e)))
+        .toList(),
   );
 }
 
@@ -706,6 +730,9 @@ class SocialCommentItem {
   /// carries replies of its own.
   final List<SocialCommentItem> replies;
 
+  /// Colleagues tagged in this comment.
+  final List<TaggedPerson> tagged;
+
   SocialCommentItem({
     required this.id,
     required this.body,
@@ -716,6 +743,7 @@ class SocialCommentItem {
     this.parentId,
     this.replyTo,
     this.replies = const [],
+    this.tagged = const [],
   });
 
   factory SocialCommentItem.fromJson(Map<String, dynamic> j) =>
@@ -732,6 +760,9 @@ class SocialCommentItem {
             .map(
               (e) => SocialCommentItem.fromJson(Map<String, dynamic>.from(e)),
             )
+            .toList(),
+        tagged: ((j['tagged'] as List?) ?? [])
+            .map((e) => TaggedPerson.fromJson(Map<String, dynamic>.from(e)))
             .toList(),
       );
 }

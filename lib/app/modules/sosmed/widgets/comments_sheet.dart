@@ -11,6 +11,7 @@ import '../../../core/widgets/ui.dart';
 import '../../../data/models/ess_models.dart';
 import '../sosmed_controller.dart';
 import '../sosmed_view.dart' show hexColor;
+import 'tag_picker_sheet.dart';
 
 /// Open a post and its thread as a sheet over the feed.
 ///
@@ -65,6 +66,10 @@ class _PostCommentsSheetState extends State<PostCommentsSheet> {
 
   /// The comment being replied to, or null for a top-level comment.
   final Rxn<SocialCommentItem> _replyTo = Rxn<SocialCommentItem>();
+
+  /// Colleagues tagged on the comment/reply currently being composed. Cleared
+  /// once it is sent.
+  final RxList<TaggedPerson> _tagged = <TaggedPerson>[].obs;
 
   @override
   void initState() {
@@ -309,6 +314,15 @@ class _PostCommentsSheetState extends State<PostCommentsSheet> {
                       color: AppColors.textMuted,
                     ),
                   ),
+                  if (post.tagged.isNotEmpty)
+                    Text(
+                      'bersama ${post.tagged.map((p) => p.name).join(', ')}',
+                      style: TextStyle(
+                        fontSize: 11.sp,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.primary,
+                      ),
+                    ),
                 ],
               ),
             ),
@@ -485,6 +499,17 @@ class _PostCommentsSheetState extends State<PostCommentsSheet> {
                       color: AppColors.textPrimary,
                     ),
                   ),
+                  if (comment.tagged.isNotEmpty) ...[
+                    SizedBox(height: 4.h),
+                    Text(
+                      'bersama ${comment.tagged.map((p) => p.name).join(', ')}',
+                      style: TextStyle(
+                        fontSize: 11.sp,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.primary,
+                      ),
+                    ),
+                  ],
                   SizedBox(height: 6.h),
                   GestureDetector(
                     onTap: () {
@@ -560,8 +585,78 @@ class _PostCommentsSheetState extends State<PostCommentsSheet> {
               ),
             );
           }),
+          // Chips for whoever is tagged on the comment being typed, only
+          // shown once something has been picked.
+          Obx(() {
+            if (_tagged.isEmpty) {
+              return const SizedBox.shrink();
+            }
+
+            return Padding(
+              padding: EdgeInsets.only(bottom: 8.h),
+              child: Wrap(
+                spacing: 6.w,
+                runSpacing: 6.h,
+                children: _tagged
+                    .map(
+                      (person) => Container(
+                        padding: EdgeInsets.symmetric(
+                          horizontal: 9.w,
+                          vertical: 5.h,
+                        ),
+                        decoration: BoxDecoration(
+                          color: AppColors.muted,
+                          borderRadius: BorderRadius.circular(99.r),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              person.name,
+                              style: TextStyle(
+                                fontSize: 11.sp,
+                                fontWeight: FontWeight.w600,
+                                color: AppColors.textPrimary,
+                              ),
+                            ),
+                            SizedBox(width: 4.w),
+                            GestureDetector(
+                              onTap: () => _tagged.remove(person),
+                              child: Icon(
+                                Iconsax.close_circle,
+                                size: 13.sp,
+                                color: AppColors.textMuted,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    )
+                    .toList(),
+              ),
+            );
+          }),
           Row(
             children: [
+              GestureDetector(
+                onTap: () async {
+                  final picked = await showTagPickerSheet(
+                    context,
+                    initiallySelected: _tagged,
+                  );
+                  if (picked != null) {
+                    _tagged.assignAll(picked);
+                  }
+                },
+                child: Padding(
+                  padding: EdgeInsets.only(right: 8.w),
+                  child: Icon(
+                    Iconsax.user_tag,
+                    size: 20.sp,
+                    color: AppColors.textMuted,
+                  ),
+                ),
+              ),
               Expanded(
                 child: TextField(
                   controller: _input,
@@ -647,12 +742,15 @@ class _PostCommentsSheetState extends State<PostCommentsSheet> {
       post,
       body,
       parentId: target?.id,
+      taggedEmployeeIds: _tagged.map((p) => p.id).toList(),
     );
     _sending.value = false;
 
     if (created == null) {
       return;
     }
+
+    _tagged.clear();
 
     _input.clear();
     _replyTo.value = null;
@@ -674,6 +772,8 @@ class _PostCommentsSheetState extends State<PostCommentsSheet> {
           isMine: parent.isMine,
           createdAt: parent.createdAt,
           parentId: parent.parentId,
+          replyTo: parent.replyTo,
+          tagged: parent.tagged,
           replies: [...parent.replies, created],
         );
       } else {
